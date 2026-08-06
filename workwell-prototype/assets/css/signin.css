@@ -1,0 +1,214 @@
+/* ==========================================================================
+   WorkWell — Sign-in screen
+   Standalone: no app shell, no sidebar, no tab bar.
+   ========================================================================== */
+
+.auth-body { background: var(--bg); }
+
+.auth {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  min-height: 100vh;
+}
+
+/* ------------------------------------------------------------ Brand side */
+
+.auth__brand {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--s-6);
+  padding: var(--s-10) var(--s-9);
+  background:
+    radial-gradient(120% 90% at 12% 8%, var(--accent-quiet) 0%, transparent 60%),
+    var(--surface-2);
+  border-right: 1px solid var(--border);
+}
+
+.auth__brandmark { display: flex; align-items: center; gap: var(--s-3); }
+.auth__wordmark {
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-heavy);
+  letter-spacing: -0.03em;
+}
+
+.auth__tagline {
+  font-size: var(--fs-3xl);
+  font-weight: var(--fw-heavy);
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  max-width: 15ch;
+}
+
+.auth__points { display: flex; flex-direction: column; gap: var(--s-4); max-width: 42ch; }
+.auth__points li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  font-size: var(--fs-md);
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+.auth__points svg { width: 18px; height: 18px; flex: none; margin-top: 2px; color: var(--accent-text); }
+
+/* ------------------------------------------------------------ Panel side */
+
+.auth__panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: var(--s-5);
+  padding: var(--s-8) var(--s-6);
+}
+
+.auth__card { width: min(400px, 100%); }
+
+.auth__mobilebrand {
+  display: none;
+  align-items: center;
+  gap: var(--s-3);
+  margin-bottom: var(--s-7);
+}
+
+.auth__title {
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-heavy);
+  letter-spacing: -0.025em;
+  margin-bottom: var(--s-2);
+}
+.auth__sub { color: var(--text-muted); margin-bottom: var(--s-6); }
+
+.auth__foot {
+  font-size: var(--fs-xs);
+  color: var(--text-subtle);
+  text-align: center;
+  max-width: 400px;
+}
+.auth__foot a { color: var(--text-subtle); }
+
+/* -------------------------------------------------------- Account chooser */
+
+.acct-list { display: flex; flex-direction: column; gap: var(--s-2); }
+
+.acct {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  width: 100%;
+  text-align: left;
+  padding: var(--s-3) var(--s-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  transition: border-color var(--dur-fast) var(--ease),
+              background var(--dur-fast) var(--ease),
+              transform var(--dur-fast) var(--ease);
+}
+.acct:hover {
+  border-color: var(--accent);
+  background: var(--accent-quiet);
+  transform: translateY(-1px);
+}
+.acct__text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.acct__name { font-weight: var(--fw-bold); font-size: var(--fs-md); }
+/* Wraps rather than truncates — the role explains what the account can do,
+   so cutting it off loses the point. */
+.acct__meta {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+.acct__go { color: var(--text-subtle); display: grid; place-items: center; }
+.acct__go svg { width: 18px; height: 18px; }
+
+.auth__alt {
+  display: block;
+  width: 100%;
+  margin-top: var(--s-4);
+  padding: var(--s-3);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  color: var(--accent-text);
+}
+.auth__alt:hover { background: var(--accent-quiet); }
+
+.auth__back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin-bottom: var(--s-4);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  color: var(--text-muted);
+}
+.auth__back:hover { color: var(--text); }
+.auth__back svg { width: 15px; height: 15px; }
+
+/* ------------------------------------------------------------- Form bits */
+
+.input-wrap { position: relative; }
+.input-wrap .input { padding-right: 46px; }
+.input-action {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px; height: 34px;
+  display: grid; place-items: center;
+  border-radius: var(--r-xs);
+  color: var(--text-subtle);
+}
+.input-action:hover { background: var(--surface-2); color: var(--text); }
+.input-action svg { width: 17px; height: 17px; }
+
+.checkline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.checkline input { width: 16px; height: 16px; accent-color: var(--accent); }
+
+.auth__or {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin: var(--s-5) 0;
+  color: var(--text-subtle);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+}
+.auth__or::before, .auth__or::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.auth__spinner {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: 3px solid var(--surface-3);
+  border-top-color: var(--accent);
+  animation: spin .8s linear infinite;
+  margin: 0 auto var(--s-3);
+}
+@keyframes spin { to { transform: rotate(360deg) } }
+
+:root[data-motion="reduced"] .auth__spinner { animation-duration: 2.4s; }
+@media (prefers-reduced-motion: reduce) {
+  :root:where(:not([data-motion="full"])) .auth__spinner { animation-duration: 2.4s; }
+}
+
+/* ------------------------------------------------------------ Responsive */
+
+@media (max-width: 900px) {
+  .auth { grid-template-columns: minmax(0, 1fr); }
+  .auth__brand { display: none; }
+  .auth__mobilebrand { display: flex; }
+  .auth__panel { justify-content: flex-start; padding-top: var(--s-9); }
+}

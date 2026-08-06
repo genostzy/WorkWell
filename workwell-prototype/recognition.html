@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recognition</title>
+<meta name="description" content="Peer appreciation, virtual coffee, and a private route to HR support.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/room.css">
+</head>
+<body data-plane="private" data-page="recognition" data-title="Recognition">
+
+<main class="content" data-content>
+
+  <div class="page-head">
+    <h1>Recognition &amp; connection</h1>
+    <p class="t-lead">Optional, off by default, never counted.</p>
+  </div>
+
+  <div class="privacy-note mb-5">
+    <span data-icon="shield"></span>
+    <span><b>Participation is never measured.</b>
+      <button class="privacy-more" type="button" data-privacy-more aria-expanded="false">What this means</button>
+      <span class="privacy-detail" hidden>No leaderboard, no "most appreciated" ranking, no
+        report of who sends least. Recognition that gets counted stops being recognition.</span></span>
+  </div>
+
+  <div data-state-group>
+
+    <!-- ================================================== POPULATED ==== -->
+    <section data-state-panel="populated" data-state-label="Populated" class="is-active">
+      <div class="grid grid--sidebar-right">
+
+        <div class="stack">
+          <!-- Composer -->
+          <div class="card">
+            <div class="card__head"><div>
+              <div class="card__title">Appreciate someone</div>
+              <div class="card__sub">Private unless you both choose otherwise</div>
+            </div></div>
+
+            <div class="field mb-4">
+              <label class="field__label" for="who">Who</label>
+              <input class="input" id="who" type="text" placeholder="Start typing a name…"
+                     value="Priya N.">
+            </div>
+            <div class="field mb-4">
+              <label class="field__label" for="what">What they did</label>
+              <textarea class="textarea" id="what"
+                placeholder="Be specific — &quot;you unblocked the release&quot; lands better than &quot;great work&quot;."></textarea>
+            </div>
+
+            <div class="field mb-5">
+              <span class="field__label">Who else can see it</span>
+              <div class="segmented" role="group" aria-label="Visibility">
+                <button type="button" aria-pressed="true">Just them</button>
+                <button type="button" aria-pressed="false">Their team</button>
+                <button type="button" aria-pressed="false">Everyone</button>
+              </div>
+              <span class="field__hint">Anything wider needs their agreement.</span>
+            </div>
+
+            <div class="row">
+              <button class="btn btn--primary" type="button">
+                <span data-icon="send"></span> Send appreciation</button>
+              <button class="btn btn--secondary" type="button">
+                <span data-icon="coffee"></span> Send a virtual coffee instead</button>
+            </div>
+          </div>
+
+          <!-- Feed -->
+          <div class="card">
+            <div class="card__head"><div>
+              <div class="card__title">For you</div>
+              <div class="card__sub">Things colleagues have sent you</div>
+            </div></div>
+            <div data-recognition-feed></div>
+          </div>
+        </div>
+
+        <!-- Rail -->
+        <div class="stack">
+          <!-- Virtual coffee opt-in -->
+          <div class="card">
+            <div class="card__head">
+              <div>
+                <div class="card__title">Virtual coffee</div>
+                <div class="card__sub">Occasional pairing suggestions</div>
+              </div>
+              <button class="switch" type="button" role="switch" aria-checked="true"
+                      aria-label="Virtual coffee opt-in"></button>
+            </div>
+
+            <div class="field mb-4">
+              <label class="field__label" for="freq">How often</label>
+              <select class="select" id="freq">
+                <option>Every week</option>
+                <option selected>Every two weeks</option>
+                <option>Once a month</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="field__label" for="scope">Pair me with</label>
+              <select class="select" id="scope">
+                <option>My team</option>
+                <option selected>Anyone in the company</option>
+                <option>People I haven't met</option>
+              </select>
+              <span class="field__hint">Declining is one tap. Nobody is told.</span>
+            </div>
+
+            <div class="card__foot">
+              <div class="nudge" style="box-shadow:none;border:none;padding:0">
+                <div class="nudge__icon"><span data-icon="coffee" data-size="19"></span></div>
+                <div class="grow">
+                  <div class="nudge__title" style="font-size:var(--fs-sm)">Coffee with Sam O.?</div>
+                  <p class="nudge__text">Thursday 10:30 is free for you both.</p>
+                  <div class="nudge__actions">
+                    <button class="btn btn--primary btn--sm" type="button">Accept</button>
+                    <button class="btn btn--ghost btn--sm" type="button">Not this time</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Private HR / EAP request -->
+          <div class="card">
+            <div class="card__head"><div>
+              <div class="card__title">Ask for support</div>
+              <div class="card__sub">Private route to HR or the EAP</div>
+            </div></div>
+
+            <p class="t-subtle mb-4">HR only hears from you if <em>you</em> send this. The
+              system never generates a flag and never tells anyone you looked here.</p>
+
+            <div class="field mb-4">
+              <label class="field__label" for="topic">What's this about</label>
+              <select class="select" id="topic">
+                <option selected>I'd rather say in my own words</option>
+                <option>Workload</option>
+                <option>A situation with a colleague</option>
+                <option>Health or personal circumstances</option>
+                <option>Something else</option>
+              </select>
+            </div>
+            <div class="field mb-4">
+              <label class="field__label" for="msg">Your message</label>
+              <textarea class="textarea" id="msg" style="min-height:84px"
+                placeholder="Only the person you send this to will read it."></textarea>
+            </div>
+            <div class="field mb-4">
+              <label class="field__label" for="to">Send to</label>
+              <select class="select" id="to">
+                <option selected>HR — Dee K. (People Partner)</option>
+                <option>Employee assistance programme (external, confidential)</option>
+              </select>
+            </div>
+
+            <button class="btn btn--primary btn--block" type="button">
+              <span data-icon="send"></span> Send privately</button>
+            <p class="field__hint mt-3">Your manager is not copied.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================== EMPTY ==== -->
+    <section data-state-panel="empty" data-state-label="Empty">
+      <div class="grid grid--2">
+        <div class="card">
+          <div class="state">
+            <div class="state__icon"><span data-icon="users" data-size="25"></span></div>
+            <h2 class="state__title">Nothing here yet</h2>
+            <p class="state__text">An empty feed means nothing about you. Plenty of people
+              never use this.</p>
+            <div class="state__actions">
+              <button class="btn btn--primary" type="button">
+                <span data-icon="sparkle"></span> Appreciate someone</button>
+            </div>
+          </div>
+        </div>
+        <div class="card card--quiet">
+          <div class="state">
+            <div class="state__icon"><span data-icon="coffee" data-size="25"></span></div>
+            <h2 class="state__title">Virtual coffee is off</h2>
+            <p class="state__text">Turn it on for occasional pairings. Decline any of them
+              without a word to anyone.</p>
+            <div class="state__actions">
+              <button class="btn btn--secondary" type="button">Turn on virtual coffee</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================== SENT ======= -->
+    <section data-state-panel="sent" data-state-label="Support request sent">
+      <div class="card" style="max-width:600px;margin:0 auto">
+        <div class="state state--info">
+          <div class="state__icon"><span data-icon="check" data-size="25"></span></div>
+          <h2 class="state__title">Sent to Dee K.</h2>
+          <p class="state__text">Only Dee can read it. Your manager was not copied.</p>
+          <p class="state__text t-subtle">Usually answered within a working day.
+            Withdrawable until it's read.</p>
+          <div class="state__actions row" style="justify-content:center">
+            <button class="btn btn--secondary" type="button">Withdraw request</button>
+            <a class="btn btn--primary" href="trends.html">Back to your trends</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================== LOADING ==== -->
+    <section data-state-panel="loading" data-state-label="Loading">
+      <div class="grid grid--sidebar-right" aria-hidden="true">
+        <div class="stack">
+          <div class="card"><div class="skel skel--title mb-4"></div>
+            <div class="skel" style="height:44px" ></div>
+            <div class="skel mt-3" style="height:104px"></div></div>
+          <div class="card"><div class="skel skel--title mb-4"></div>
+            <div class="stack stack--tight">
+              <div class="skel skel--text"></div><div class="skel skel--text w-70"></div></div></div>
+        </div>
+        <div class="card"><div class="skel skel--title mb-4"></div>
+          <div class="skel" style="height:148px"></div></div>
+      </div>
+      <p class="sr-only" role="status">Loading recognition.</p>
+    </section>
+
+    <!-- ====================================================== ERROR ==== -->
+    <section data-state-panel="error" data-state-label="Error">
+      <div class="card">
+        <div class="state state--error">
+          <div class="state__icon"><span data-icon="alert" data-size="25"></span></div>
+          <h2 class="state__title">Couldn't load the feed</h2>
+          <p class="state__text">Any draft you were writing is still on this device.</p>
+          <div class="state__actions row" style="justify-content:center">
+            <button class="btn btn--primary" type="button">
+              <span data-icon="refresh"></span> Try again</button>
+            <button class="btn btn--secondary" type="button">Recover my draft</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<script src="assets/js/icons.js"></script>
+<script src="assets/js/room.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/charts.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/page-recognition.js"></script>
+</body>
+</html>

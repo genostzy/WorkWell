@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design System</title>
+<meta name="description" content="Every component in the WorkWell design system, both accents, all states.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/room.css">
+<style>
+  .spec { margin-bottom: var(--s-8); }
+  .spec > h2 { margin-bottom: var(--s-2); }
+  .spec > p  { color: var(--text-muted); margin-bottom: var(--s-4); max-width: 68ch; }
+  .swatch-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: var(--s-3); }
+  .swatch { border-radius: var(--r-sm); overflow: hidden; border: 1px solid var(--border); }
+  .swatch__chip { height: 56px; }
+  .swatch__meta { padding: var(--s-2) var(--s-3); background: var(--surface); }
+  .swatch__name { font-size: var(--fs-xs); font-weight: 700; }
+  .swatch__hex { font-size: 11px; color: var(--text-subtle); font-variant-numeric: tabular-nums; }
+  code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+         font-size: .875em; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body data-plane="private" data-page="components" data-title="Design System">
+
+<main class="content" data-content>
+
+  <div class="page-head">
+    <h1>Design system</h1>
+    <p class="t-lead">The pieces every screen is assembled from.</p>
+  </div>
+
+  <!-- ------------------------------------------------------- Colour --- -->
+  <section class="spec">
+    <h2>Plane accents</h2>
+    <p>Two accents distinguish plane context. Both meet WCAG AA as text on their own
+      plane's background, in both light and dark. Critically, they are <em>never</em> the
+      only signal — an icon and a written label always accompany them.</p>
+
+    <div class="grid grid--2 mb-4">
+      <div class="card">
+        <div class="card__title mb-3">Private — teal-green</div>
+        <div class="swatch-row" data-swatches="private"></div>
+      </div>
+      <div class="card" data-plane="org">
+        <div class="card__title mb-3">Org — terracotta</div>
+        <div class="swatch-row" data-swatches="org"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__title mb-3">Validation results</div>
+      <table class="data-table">
+        <thead><tr>
+          <th scope="col">Check</th><th scope="col">Light</th><th scope="col">Dark</th><th scope="col">Gate</th>
+        </tr></thead>
+        <tbody>
+          <tr><th scope="row" style="color:var(--text);font-weight:600">Lightness band</th><td>Pass</td><td>Pass</td><td>within band</td></tr>
+          <tr><th scope="row" style="color:var(--text);font-weight:600">Chroma floor</th><td>Pass</td><td>Pass</td><td>≥ 0.10</td></tr>
+          <tr><th scope="row" style="color:var(--text);font-weight:600">CVD separation</th><td>ΔE 9.0</td><td>ΔE 11.0</td><td>≥ 8</td></tr>
+          <tr><th scope="row" style="color:var(--text);font-weight:600">Normal vision</th><td>ΔE 23.9</td><td>ΔE 24.7</td><td>≥ 15</td></tr>
+          <tr><th scope="row" style="color:var(--text);font-weight:600">Contrast vs surface</th><td>Pass</td><td>Pass</td><td>≥ 3:1</td></tr>
+        </tbody>
+      </table>
+      <p class="chart__caption">An earlier sage <code>#3F6B4F</code> failed CVD separation
+        at ΔE 6.0 and the chroma floor. Re-stepped teal-ward to <code>#0A8560</code>.</p>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------ Buttons --- -->
+  <section class="spec">
+    <h2>Buttons</h2>
+    <p>Pill geometry, 44px minimum height for touch. Primary carries the plane accent,
+      so the same button reads differently on each plane — deliberate.</p>
+    <div class="card">
+      <div class="row mb-4">
+        <button class="btn btn--primary" type="button">Primary</button>
+        <button class="btn btn--secondary" type="button">Secondary</button>
+        <button class="btn btn--quiet" type="button">Quiet</button>
+        <button class="btn btn--ghost" type="button">Ghost</button>
+        <button class="btn btn--primary" type="button" disabled>Disabled</button>
+      </div>
+      <div class="row mb-4">
+        <button class="btn btn--primary btn--sm" type="button">Small</button>
+        <button class="btn btn--primary" type="button">Default</button>
+        <button class="btn btn--primary btn--lg" type="button">Large</button>
+        <button class="btn btn--primary" type="button"><span data-icon="send"></span> With icon</button>
+        <button class="iconbtn" type="button" aria-label="Icon only"><span data-icon="more"></span></button>
+      </div>
+      <div class="row" data-plane="org">
+        <button class="btn btn--primary" type="button">Primary on org plane</button>
+        <button class="btn btn--quiet" type="button">Quiet on org plane</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------ Inputs ---- -->
+  <section class="spec">
+    <h2>Form controls</h2>
+    <p>Every control has a visible label and a 44px minimum target. Sliders always pair
+      the numeric position with a word, so the number is never the only readout.</p>
+    <div class="grid grid--2">
+      <div class="card stack">
+        <div class="field">
+          <label class="field__label" for="c-in">Text input</label>
+          <input class="input" id="c-in" type="text" placeholder="Placeholder text">
+          <span class="field__hint">Hint text sits under the control.</span>
+        </div>
+        <div class="field">
+          <label class="field__label" for="c-sel">Select</label>
+          <select class="select" id="c-sel"><option>Option one</option><option>Option two</option></select>
+        </div>
+        <div class="field">
+          <label class="field__label" for="c-ta">Textarea</label>
+          <textarea class="textarea" id="c-ta" placeholder="Multi-line input"></textarea>
+        </div>
+      </div>
+
+      <div class="card stack">
+        <div class="field">
+          <span class="field__label">Range slider</span>
+          <input class="range" type="range" min="1" max="5" value="3" aria-label="Example slider">
+          <div class="range-scale"><span>Calm</span><span>Settled</span><span>Noticeable</span><span>High</span><span>Very high</span></div>
+        </div>
+        <div>
+          <span class="field__label">Toggle switch</span>
+          <label class="toggle">
+            <span class="toggle__text">
+              <span class="toggle__title">Setting name</span>
+              <span class="toggle__desc">What turning it on actually does.</span>
+            </span>
+            <button class="switch" type="button" role="switch" aria-checked="true" aria-label="Example"></button>
+          </label>
+        </div>
+        <div class="field">
+          <span class="field__label">Segmented control</span>
+          <div class="segmented" role="group" aria-label="Example segmented">
+            <button type="button" aria-pressed="true">One</button>
+            <button type="button" aria-pressed="false">Two</button>
+            <button type="button" aria-pressed="false">Three</button>
+          </div>
+        </div>
+        <div class="field">
+          <span class="field__label">Filter chips (multi-select)</span>
+          <div class="row" data-multi>
+            <button class="chip" type="button" aria-pressed="true">Mon</button>
+            <button class="chip" type="button" aria-pressed="true">Tue</button>
+            <button class="chip" type="button" aria-pressed="false">Wed</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mt-4">
+      <div class="card__title mb-2">Drag scale — the check-in inputs</div>
+      <p class="t-subtle mb-4" style="max-width:62ch">One component, two drawings. Drag the
+        mouth corners or the battery fill line up and down. Each is an ARIA slider first:
+        arrow keys, Home/End and the word chips set the same value, and the drawing is
+        always rendered from the value that will be recorded — never from the raw pointer
+        position. Both use a single accent colour at every level; colouring "empty" red
+        would be a verdict on the person.</p>
+      <div class="grid grid--2">
+        <div data-scale="mood" data-value="4" data-label="Mood example"></div>
+        <div data-scale="energy" data-value="2" data-label="Energy example"></div>
+        <div data-scale="pressure" data-value="4" data-label="Pressure example"></div>
+        <div data-scale="workload" data-value="3" data-label="Workload example"></div>
+      </div>
+      <p class="chart__caption">Pressure drags horizontally and maps from distance to
+        centre, so either plate works. Workload is a centred scale — the beam levels at
+        "About right", which a fill level cannot express.</p>
+    </div>
+
+    <div class="card mt-4">
+      <div class="card__title mb-3">Option picker — used for energy and workload</div>
+      <div class="optgrid" role="group" aria-label="Example option grid">
+        <button class="opt" type="button" aria-pressed="false"><span class="opt__face">😔</span><span class="opt__label">Low</span></button>
+        <button class="opt" type="button" aria-pressed="false"><span class="opt__face">😕</span><span class="opt__label">Not great</span></button>
+        <button class="opt" type="button" aria-pressed="true"><span class="opt__face">😐</span><span class="opt__label">OK</span></button>
+        <button class="opt" type="button" aria-pressed="false"><span class="opt__face">🙂</span><span class="opt__label">Good</span></button>
+        <button class="opt" type="button" aria-pressed="false"><span class="opt__face">😄</span><span class="opt__label">Great</span></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------- Cards ---- -->
+  <section class="spec">
+    <h2>Cards, chips &amp; badges</h2>
+    <div class="grid grid--3 mb-4">
+      <div class="card"><div class="card__title mb-2">Default card</div>
+        <p class="t-subtle">Surface, hairline border, soft shadow.</p></div>
+      <div class="card card--quiet"><div class="card__title mb-2">Quiet card</div>
+        <p class="t-subtle">Recessed. For settings groups and secondary content.</p></div>
+      <div class="card card--accent"><div class="card__title mb-2">Accent card</div>
+        <p class="t-subtle">Tinted with the plane accent. Used sparingly.</p></div>
+    </div>
+    <div class="card">
+      <div class="row">
+        <span class="chip">Neutral chip</span>
+        <span class="chip chip--accent"><span data-icon="lock" data-size="13"></span> Accent chip</span>
+        <button class="chip" type="button" aria-pressed="true">Pressed</button>
+        <button class="chip" type="button" aria-pressed="false">Unpressed</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- --------------------------------------------------- Privacy ------ -->
+  <section class="spec">
+    <h2>Privacy note</h2>
+    <p>Recurs wherever data provenance needs restating. Used heavily, on purpose — the
+      product's core claim is a privacy claim, and a claim made once at onboarding is a
+      claim nobody remembers.</p>
+    <div class="stack stack--tight">
+      <div class="privacy-note">
+        <span data-icon="lock"></span>
+        <span><b>Only you can see this page.</b> Nothing here is shared with your manager
+          or HR, now or in aggregate.</span>
+      </div>
+      <div class="privacy-note" data-plane="org">
+        <span data-icon="building"></span>
+        <span><b>No individual data appears on this plane.</b> Groups under 8 people are
+          hidden entirely rather than estimated.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------- Insight ----- -->
+  <section class="spec">
+    <h2>Insight card</h2>
+    <p>The plain-language annotation that replaces a score. Always names the factor that
+      changed and the window it changed over. Never a verdict, a prediction, or a rating.</p>
+    <div class="stack stack--tight">
+      <article class="insight">
+        <div class="insight__icon"><span data-icon="moon" data-size="17"></span></div>
+        <div class="insight__body">
+          <h3 class="insight__title">Your after-hours messages have risen for three weeks running</h3>
+          <p class="insight__text">You sent 19 messages after 18:30 last week, compared with
+            about 6 in a typical week for you.</p>
+          <p class="insight__meta">Based on your own last 12 weeks · Only you can see this</p>
+        </div>
+      </article>
+      <article class="insight" data-plane="org">
+        <div class="insight__icon"><span data-icon="chart" data-size="17"></span></div>
+        <div class="insight__body">
+          <h3 class="insight__title">Weekly hours in Platform have risen for 6 weeks</h3>
+          <p class="insight__text">Two people left the group in March and were not backfilled.
+            Worth reviewing headcount against committed scope.</p>
+          <p class="insight__meta">14 people · Structural signal, not individual data</p>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ----------------------------------------------------- Charts ----- -->
+  <section class="spec">
+    <h2>Charts</h2>
+    <p>Every chart is single-series or a single-hue sequential ramp — the data's job here
+      is magnitude and change over time, never identity, so the categorical palette is
+      deliberately never used. 2px lines, 8px markers, 4px rounded bar ends, a 2px gap
+      between adjacent bars, recessive grid. All ship a hover layer and a table view.</p>
+
+    <div class="grid grid--2 mb-4">
+      <div class="card">
+        <div class="card__title mb-3">Line / area with typical-range band</div>
+        <div data-demo-chart="line"></div>
+      </div>
+      <div class="card">
+        <div class="card__title mb-3">Column</div>
+        <div data-demo-chart="bars"></div>
+      </div>
+    </div>
+
+    <div class="grid grid--2">
+      <div class="card" data-plane="org">
+        <div class="card__title mb-3">Horizontal bars, with a suppressed group</div>
+        <div data-demo-chart="hbars"></div>
+      </div>
+      <div class="card" data-plane="org">
+        <div class="card__title mb-3">Sequential heatmap</div>
+        <div data-demo-chart="heat"></div>
+      </div>
+    </div>
+
+    <div class="card mt-4">
+      <div class="card__title mb-3">Stat tile &amp; meter</div>
+      <div class="grid grid--3">
+        <div class="stat">
+          <span class="stat__label">Hours worked last week</span>
+          <span class="stat__value t-num">49<span class="stat__unit">h</span></span>
+          <span class="stat__delta"><span data-icon="arrowUp" data-size="13"></span> 8h above your usual</span>
+        </div>
+        <div class="stat">
+          <span class="stat__label">Sparkline</span>
+          <div data-demo-chart="spark" class="mt-2"></div>
+        </div>
+        <div class="meter">
+          <span class="stat__label">Leave taken</span>
+          <div class="meter__track mt-2"><div class="meter__fill" style="width:38%"></div></div>
+          <div class="row row--between t-subtle"><span>2 days</span><span>14 available</span></div>
+        </div>
+      </div>
+      <p class="chart__caption">Deltas are stated in neutral ink with an arrow. There is no
+        red-bad / green-good colouring anywhere on a person's own data — that would be a
+        verdict, which the PRD rules out.</p>
+    </div>
+  </section>
+
+  <!-- ----------------------------------------------------- States ----- -->
+  <section class="spec">
+    <h2>Screen states</h2>
+    <p>Five states, each visually distinct. "Empty" and "not enough data yet" are
+      deliberately different components: empty means nothing exists, thin means data
+      exists but is too sparse to describe honestly.</p>
+
+    <div class="grid grid--2 mb-4">
+      <div class="card">
+        <div class="state state--info">
+          <div class="state__icon"><span data-icon="seedling" data-size="25"></span></div>
+          <h3 class="state__title">Empty</h3>
+          <p class="state__text">Nothing exists yet. Always offers the action that
+            creates the first thing.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="state state--error">
+          <div class="state__icon"><span data-icon="alert" data-size="25"></span></div>
+          <h3 class="state__title">Error</h3>
+          <p class="state__text">Says what failed, what is still safe, and what to do —
+            in that order.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack stack--tight mb-4">
+      <div class="thin-data">
+        <span data-icon="info"></span>
+        <div><b style="display:block;margin-bottom:4px;color:var(--text)">Not enough data yet</b>
+          Data exists but is too sparse for a trend. Never estimated, never extrapolated.</div>
+      </div>
+      <div class="banner banner--error" role="alert">
+        <span data-icon="alert"></span>
+        <div><b>Error banner.</b> For failures that don't take over the whole screen.</div>
+      </div>
+      <div class="banner banner--info" role="status">
+        <span data-icon="info"></span>
+        <div><b>Info banner.</b> For state the user should know about but needn't act on.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__title mb-3">Loading skeleton</div>
+      <div class="stack stack--tight" aria-hidden="true">
+        <div class="skel skel--title"></div>
+        <div class="skel skel--chart"></div>
+        <div class="skel skel--text w-70"></div>
+      </div>
+      <p class="chart__caption">Holds a static tone instead of shimmering when reduced
+        motion is on.</p>
+    </div>
+  </section>
+
+  <!-- --------------------------------------------------- Locked ------- -->
+  <section class="spec" data-plane="org">
+    <h2>Locked group</h2>
+    <p>The org plane's most important component. A suppressed cohort is replaced entirely
+      by its explanation — never a blurred chart, never a partial figure, never an
+      estimate. Named rather than silently dropped, so the gap can't be read as a signal.</p>
+    <div class="grid grid--3">
+      <div class="locked">
+        <div class="locked__icon"><span data-icon="lock" data-size="19"></span></div>
+        <div class="locked__title">Research</div>
+        <p class="locked__text">Not shown — fewer than 8 people in this group,
+          to protect anonymity.</p>
+        <span class="tip">
+          <span class="chip" tabindex="0" role="button" aria-describedby="demo-tip">
+            <span data-icon="info" data-size="13"></span> Why?</span>
+          <span class="tip__bubble" id="demo-tip" role="tooltip">
+            This group has 4 people contributing data in the selected window. Below 8, a
+            group average can be worked backwards toward an individual, so the metric is
+            withheld entirely rather than estimated or blurred.
+          </span>
+        </span>
+      </div>
+      <div class="card card--quiet" style="grid-column:span 2">
+        <div class="card__title mb-2">The rule in code</div>
+        <p class="t-subtle">Suppression is enforced once, where cohorts are selected —
+          <code>orgCohorts()</code> recomputes contributing headcount for the active filter
+          and sets <code>locked</code>. Every renderer downstream receives the same list and
+          must not read metric fields from a locked cohort. This is why narrowing the date
+          range re-locks groups: the threshold is applied to the filtered result, not to
+          the original group size.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------- Feed ----- -->
+  <section class="spec">
+    <h2>Feed items &amp; nudges</h2>
+    <p>Vertical rhythm follows the notification-density preference, so the same list
+      breathes differently for someone who finds dense screens hard to parse.</p>
+    <div class="grid grid--2">
+      <div class="card">
+        <div class="feed">
+          <article class="feed__item">
+            <div class="avatar">PN</div>
+            <div class="grow">
+              <div class="row row--between">
+                <span class="feed__name">Priya N.</span><span class="feed__time">2 hours ago</span>
+              </div>
+              <p class="feed__text">Thanks for picking up the migration review at short notice.</p>
+            </div>
+          </article>
+          <article class="feed__item">
+            <div class="avatar">SO</div>
+            <div class="grow">
+              <div class="row row--between">
+                <span class="feed__name">Sam O.</span><span class="feed__time">Yesterday</span>
+              </div>
+              <p class="feed__text">Sent you a virtual coffee ☕</p>
+            </div>
+          </article>
+        </div>
+      </div>
+      <div class="card">
+        <div class="nudge">
+          <div class="nudge__icon"><span data-icon="stretch" data-size="19"></span></div>
+          <div class="grow">
+            <div class="nudge__title">Fancy a two-minute stretch?</div>
+            <p class="nudge__text">This won't fix a heavy week — it just makes the next
+              hour a bit less stiff.</p>
+            <div class="nudge__actions">
+              <button class="btn btn--primary btn--sm" type="button">Okay</button>
+              <button class="btn btn--secondary btn--sm" type="button">In 20 min</button>
+              <button class="btn btn--ghost btn--sm" type="button">Not today</button>
+            </div>
+          </div>
+          <button class="iconbtn" type="button" aria-label="Dismiss"><span data-icon="x" data-size="17"></span></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------ Icons ----- -->
+  <section class="spec">
+    <h2>Icons</h2>
+    <p>24px grid, 1.8 stroke, rounded joins to match the typeface. Decorative by default;
+      pass a label to expose one to assistive technology.</p>
+    <div class="card"><div class="swatch-row" data-icon-grid></div></div>
+  </section>
+
+  <!-- -------------------------------------------------- Typography ---- -->
+  <section class="spec">
+    <h2>Typography</h2>
+    <p>Nunito, with a rounded system fallback. Headings are heavy and slightly tightened;
+      body copy runs at 1.6 line-height and is capped near 68 characters.</p>
+    <div class="card stack stack--tight">
+      <div><span class="t-subtle">3rem / hero</span><div style="font-size:var(--fs-hero);font-weight:800;letter-spacing:-.02em;line-height:1.1">49h</div></div>
+      <!-- Specimens are styled, not semantic: a sample must not add a second
+           h1 to the page or break the heading outline. -->
+      <div><span class="t-subtle">1.75rem / h1</span>
+        <p style="font-size:var(--fs-2xl);font-weight:800;letter-spacing:-.015em;line-height:1.25">Your trends</p></div>
+      <div><span class="t-subtle">1.375rem / h2</span>
+        <p style="font-size:var(--fs-xl);font-weight:800;letter-spacing:-.015em;line-height:1.25">What changed</p></div>
+      <div><span class="t-subtle">1.0625rem / lead</span><p class="t-lead">Your own patterns over the last 12 weeks.</p></div>
+      <div><span class="t-subtle">0.9375rem / body</span><p>Body copy sits at 15px with a 1.6 line-height, which is comfortable for long explanatory passages — of which this product has many, because it keeps having to explain what it does not do.</p></div>
+      <div><span class="t-subtle">0.8125rem / small</span><p class="t-subtle">Secondary and hint text.</p></div>
+    </div>
+  </section>
+
+</main>
+
+<script src="assets/js/icons.js"></script>
+<script src="assets/js/room.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/charts.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/dragscale.js"></script>
+<script src="assets/js/scales.js"></script>
+<script src="assets/js/page-components.js"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+# Microsoft Office lock files (created while a document is open)
+~$*
+
+# Local tool settings
+.claude/settings.local.json
+
+# OS cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Node (not used by the app itself, only by build tooling)
+node_modules/

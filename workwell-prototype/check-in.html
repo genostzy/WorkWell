@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daily Check-in</title>
+<meta name="description" content="A ten-second private check-in. Your employer can never see it.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/room.css">
+</head>
+<body data-plane="private" data-page="check-in" data-title="Daily Check-in">
+
+<main class="content" data-content style="max-width:760px">
+
+  <div class="page-head">
+    <h1>How's today going?</h1>
+    <p class="t-lead">Four taps, ten seconds. Skip anything.</p>
+  </div>
+
+  <div class="privacy-note mb-5">
+    <span data-icon="eyeOff"></span>
+    <span><b>Your employer cannot see these answers.</b>
+      <button class="privacy-more" type="button" data-privacy-more aria-expanded="false">What this means</button>
+      <span class="privacy-detail" hidden>Not the values, not the dates, not whether you
+        checked in at all. That's what makes an honest answer possible.</span></span>
+  </div>
+
+  <div data-state-group>
+
+    <!-- ================================================== POPULATED ==== -->
+    <section data-state-panel="populated" data-state-label="The flow" class="is-active">
+      <div class="card" data-flow>
+
+        <div class="row row--between mb-5">
+          <span class="stepper__label" data-flow-counter>Step 1 of 4</span>
+          <a class="btn btn--ghost btn--sm" href="trends.html">Skip today</a>
+        </div>
+        <div class="stepper mb-6" data-flow-progress aria-hidden="true"></div>
+
+        <!-- Step 1 — mood, set by shaping the face -->
+        <div data-step="mood">
+          <h2 class="mb-2">How's your mood?</h2>
+          <p class="t-subtle mb-5">Shape the face to match. No right answer, and
+            nothing is averaged into a score.</p>
+
+          <div data-scale="mood" data-value="3" data-label="Mood"></div>
+
+          <div class="row mt-6">
+            <button class="btn btn--primary" type="button" data-next>
+              Next <span data-icon="chevronRight"></span></button>
+            <button class="btn btn--ghost" type="button" data-next>Skip this</button>
+          </div>
+        </div>
+
+        <!-- Step 2 — energy, set by filling the battery -->
+        <div data-step="energy" hidden>
+          <h2 class="mb-2">How's your energy?</h2>
+          <p class="t-subtle mb-5">Physical or mental, whichever you notice more.</p>
+
+          <div data-scale="energy" data-value="2" data-label="Energy"></div>
+
+          <div class="row mt-6">
+            <button class="btn btn--secondary" type="button" data-back>
+              <span data-icon="chevronLeft"></span> Back</button>
+            <button class="btn btn--primary" type="button" data-next>
+              Next <span data-icon="chevronRight"></span></button>
+          </div>
+        </div>
+
+        <!-- Step 3 — pressure, set by squeezing the shape -->
+        <div data-step="stress" hidden>
+          <h2 class="mb-2">How much pressure are you under?</h2>
+          <p class="t-subtle mb-5">Squeeze the shape to match — drag either plate.</p>
+
+          <div data-scale="pressure" data-value="4" data-label="Pressure"></div>
+
+          <div class="row mt-6">
+            <button class="btn btn--secondary" type="button" data-back>
+              <span data-icon="chevronLeft"></span> Back</button>
+            <button class="btn btn--primary" type="button" data-next>
+              Next <span data-icon="chevronRight"></span></button>
+          </div>
+        </div>
+
+        <!-- Step 4 — workload, set by balancing the scales -->
+        <div data-step="workload" hidden>
+          <h2 class="mb-2">How does the workload feel?</h2>
+          <p class="t-subtle mb-5">Left is what you can take, right is what's on you.
+            This is about the amount of work — not how well you're coping.</p>
+
+          <div data-scale="workload" data-value="4" data-label="Workload"></div>
+
+          <div class="field mt-5">
+            <label class="field__label" for="note">Anything you want to note? (optional)</label>
+            <textarea class="textarea" id="note"
+              placeholder="Only you will ever read this."></textarea>
+            <span class="field__hint">Stored on your device.</span>
+          </div>
+          <div class="row mt-6">
+            <button class="btn btn--secondary" type="button" data-back>
+              <span data-icon="chevronLeft"></span> Back</button>
+            <button class="btn btn--primary" type="button" data-next>
+              <span data-icon="check"></span> Save check-in</button>
+          </div>
+        </div>
+
+        <!-- Done -->
+        <div data-step="done" hidden>
+          <div class="state state--info">
+            <div class="state__icon"><span data-icon="check" data-size="25"></span></div>
+            <h2 class="state__title">Saved. That's it.</h2>
+            <p class="state__text">It joins your own history and nothing else.</p>
+
+            <div class="row mt-2" style="justify-content:center;gap:var(--s-2)"
+                 data-checkin-summary></div>
+
+            <div class="state__actions row" style="justify-content:center">
+              <a class="btn btn--primary" href="trends.html">
+                <span data-icon="trend"></span> See your trends</a>
+              <button class="btn btn--secondary" type="button" data-jump="mood">Change an answer</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card card--quiet mt-5">
+        <div class="row row--between">
+          <div>
+            <div class="card__title">Prefer a different format?</div>
+            <p class="t-subtle mt-2">Emoji, sliders, or plain words.</p>
+          </div>
+          <a class="btn btn--secondary btn--sm nowrap" href="workspace.html">
+            <span data-icon="sliders"></span> Change format</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================== ALREADY ==== -->
+    <section data-state-panel="done" data-state-label="Already checked in">
+      <div class="card">
+        <div class="state state--info">
+          <div class="state__icon"><span data-icon="check" data-size="25"></span></div>
+          <h2 class="state__title">Already checked in today</h2>
+          <p class="state__text">Logged at 09:42. One a day is plenty.</p>
+          <div class="state__actions row" style="justify-content:center">
+            <button class="btn btn--secondary" type="button">Edit today's entry</button>
+            <a class="btn btn--primary" href="trends.html">See your trends</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================== LOADING ==== -->
+    <section data-state-panel="loading" data-state-label="Loading">
+      <div class="card" aria-hidden="true">
+        <div class="skel skel--text w-50 mb-5"></div>
+        <div class="skel" style="height:6px" ></div>
+        <div class="skel skel--title mt-6 mb-4"></div>
+        <div class="grid grid--4 mt-4">
+          <div class="skel" style="height:92px"></div>
+          <div class="skel" style="height:92px"></div>
+          <div class="skel" style="height:92px"></div>
+          <div class="skel" style="height:92px"></div>
+        </div>
+      </div>
+      <p class="sr-only" role="status">Loading your check-in.</p>
+    </section>
+
+    <!-- ====================================================== ERROR ==== -->
+    <section data-state-panel="error" data-state-label="Error">
+      <div class="banner banner--info mb-5" role="status">
+        <span data-icon="wifiOff"></span>
+        <div>
+          <b>You're offline — that's fine.</b><br>
+          Answer now; it syncs later.
+        </div>
+      </div>
+      <div class="card">
+        <div class="state state--error">
+          <div class="state__icon"><span data-icon="alert" data-size="25"></span></div>
+          <h2 class="state__title">Couldn't save to your history</h2>
+          <p class="state__text">Your answer is safe on this device and syncs automatically.</p>
+          <div class="state__actions row" style="justify-content:center">
+            <button class="btn btn--primary" type="button">
+              <span data-icon="refresh"></span> Retry now</button>
+            <a class="btn btn--secondary" href="trends.html">Carry on</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<script src="assets/js/icons.js"></script>
+<script src="assets/js/room.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/charts.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/flow.js"></script>
+<script src="assets/js/dragscale.js"></script>
+<script src="assets/js/scales.js"></script>
+<script src="assets/js/page-checkin.js"></script>
+</body>
+</html>

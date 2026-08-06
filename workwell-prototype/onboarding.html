@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Set Up Your Check-in</title>
+<meta name="description" content="First-run setup for the private mood check-in.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/room.css">
+</head>
+<body data-plane="private" data-page="check-in" data-title="Set Up Your Check-in">
+
+<main class="content" data-content style="max-width:720px">
+
+  <div class="page-head">
+    <h1>Let's set this up once</h1>
+    <p class="t-lead">Five questions. All changeable later.</p>
+  </div>
+
+  <div class="card" data-flow>
+
+    <div class="row row--between mb-5">
+      <span class="stepper__label" data-flow-counter>Step 1 of 5</span>
+      <a class="btn btn--ghost btn--sm" href="trends.html">Set up later</a>
+    </div>
+    <div class="stepper mb-6" data-flow-progress aria-hidden="true"></div>
+
+    <!-- Step 1 — the promise, stated before anything is asked for -->
+    <div data-step="promise">
+      <h2 class="mb-2">What your employer can see</h2>
+      <p class="t-lead mb-5">Most tools are vague here. We won't be.</p>
+
+      <div class="stack stack--tight mb-5">
+        <div class="insight">
+          <div class="insight__icon"><span data-icon="eyeOff" data-size="17"></span></div>
+          <div class="insight__body">
+            <h3 class="insight__title">Your check-ins: never</h3>
+            <p class="insight__text">Not the values, dates, notes, or whether you checked in.</p>
+          </div>
+        </div>
+        <div class="insight">
+          <div class="insight__icon"><span data-icon="shield" data-size="17"></span></div>
+          <div class="insight__body">
+            <h3 class="insight__title">Your score: there isn't one</h3>
+            <p class="insight__text">No rating, no ranking, no "at-risk" flag.</p>
+          </div>
+        </div>
+        <div class="insight">
+          <div class="insight__icon"><span data-icon="building" data-size="17"></span></div>
+          <div class="insight__body">
+            <h3 class="insight__title">Group patterns: only for 8+ people</h3>
+            <p class="insight__text">Hours, meetings, leave. Smaller groups are hidden,
+              not estimated.</p>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn--primary btn--lg btn--block" type="button" data-next>
+        Got it <span data-icon="chevronRight"></span></button>
+    </div>
+
+    <!-- Step 2 — what to track -->
+    <div data-step="signals" hidden>
+      <h2 class="mb-2">What would you like to check in on?</h2>
+      <p class="t-subtle mb-5">Any combination. One is enough.</p>
+
+      <div class="stack stack--tight">
+        <div class="card card--quiet">
+          <label class="toggle">
+            <span class="toggle__text">
+              <span class="toggle__title">Mood</span>
+            </span>
+            <button class="switch" type="button" role="switch" aria-checked="true"
+                    aria-label="Track mood"></button>
+          </label>
+        </div>
+        <div class="card card--quiet">
+          <label class="toggle">
+            <span class="toggle__text">
+              <span class="toggle__title">Energy</span>
+            </span>
+            <button class="switch" type="button" role="switch" aria-checked="true"
+                    aria-label="Track energy"></button>
+          </label>
+        </div>
+        <div class="card card--quiet">
+          <label class="toggle">
+            <span class="toggle__text">
+              <span class="toggle__title">Pressure</span>
+            </span>
+            <button class="switch" type="button" role="switch" aria-checked="true"
+                    aria-label="Track pressure"></button>
+          </label>
+        </div>
+        <div class="card card--quiet">
+          <label class="toggle">
+            <span class="toggle__text">
+              <span class="toggle__title">Workload</span>
+            </span>
+            <button class="switch" type="button" role="switch" aria-checked="false"
+                    aria-label="Track workload"></button>
+          </label>
+        </div>
+      </div>
+
+      <div class="row mt-6">
+        <button class="btn btn--secondary" type="button" data-back>
+          <span data-icon="chevronLeft"></span> Back</button>
+        <button class="btn btn--primary grow" type="button" data-next>
+          Next <span data-icon="chevronRight"></span></button>
+      </div>
+    </div>
+
+    <!-- Step 3 — answer format -->
+    <div data-step="format" hidden>
+      <h2 class="mb-2">How would you rather answer?</h2>
+      <p class="t-subtle mb-5">Whichever you'd answer honestly at 4pm on a bad day.</p>
+
+      <div class="optgrid optgrid--3" role="group" aria-label="Answer format">
+        <button class="opt" type="button" aria-pressed="true" data-value="emoji" style="min-height:118px">
+          <span class="opt__face">🙂</span><span class="opt__label">Faces</span></button>
+        <button class="opt" type="button" aria-pressed="false" data-value="slider" style="min-height:118px">
+          <span class="opt__face">⚖️</span><span class="opt__label">Sliders</span></button>
+        <button class="opt" type="button" aria-pressed="false" data-value="words" style="min-height:118px">
+          <span class="opt__face">Aa</span><span class="opt__label">Plain words</span></button>
+      </div>
+
+      <div class="row mt-6">
+        <button class="btn btn--secondary" type="button" data-back>
+          <span data-icon="chevronLeft"></span> Back</button>
+        <button class="btn btn--primary grow" type="button" data-next>
+          Next <span data-icon="chevronRight"></span></button>
+      </div>
+    </div>
+
+    <!-- Step 4 — reminders -->
+    <div data-step="reminder" hidden>
+      <h2 class="mb-2">Want a reminder?</h2>
+      <p class="t-subtle mb-5">Optional. A missed check-in has no consequence.</p>
+
+      <div class="card card--quiet mb-4">
+        <label class="toggle">
+          <span class="toggle__text">
+            <span class="toggle__title">Remind me once a day</span>
+            <span class="toggle__desc">Never repeated, never escalating.</span>
+          </span>
+          <button class="switch" type="button" role="switch" aria-checked="true"
+                  aria-label="Daily reminder"></button>
+        </label>
+      </div>
+
+      <div class="grid grid--2">
+        <div class="field">
+          <label class="field__label" for="rt">Reminder time</label>
+          <select class="select" id="rt">
+            <option>09:30</option>
+            <option selected>16:30</option>
+            <option>17:30</option>
+          </select>
+          <span class="field__hint">Late afternoon works well.</span>
+        </div>
+        <div class="field">
+          <label class="field__label" for="rd">Which days</label>
+          <select class="select" id="rd">
+            <option selected>My working days only</option>
+            <option>Every day</option>
+            <option>Weekdays</option>
+          </select>
+          <span class="field__hint">Never during leave or focus time.</span>
+        </div>
+      </div>
+
+      <div class="row mt-6">
+        <button class="btn btn--secondary" type="button" data-back>
+          <span data-icon="chevronLeft"></span> Back</button>
+        <button class="btn btn--primary grow" type="button" data-next>
+          Next <span data-icon="chevronRight"></span></button>
+      </div>
+    </div>
+
+    <!-- Step 5 — working window -->
+    <div data-step="hours" hidden>
+      <h2 class="mb-2">When is your working day?</h2>
+      <p class="t-subtle mb-5">You define this, not your employer. Shifts and time zones fine.</p>
+
+      <div class="grid grid--2 mb-4">
+        <div class="field">
+          <label class="field__label" for="ws">Day starts</label>
+          <select class="select" id="ws"><option>07:00</option><option selected>09:00</option><option>10:00</option></select>
+        </div>
+        <div class="field">
+          <label class="field__label" for="we">Day ends</label>
+          <select class="select" id="we"><option selected>17:30</option><option>18:00</option><option>19:00</option></select>
+        </div>
+      </div>
+
+      <div class="privacy-note">
+        <span data-icon="lock"></span>
+        <span><b>No after-hours record reaches your employer.</b> This is only used to
+          show you your own pattern.</span>
+      </div>
+
+      <div class="row mt-6">
+        <button class="btn btn--secondary" type="button" data-back>
+          <span data-icon="chevronLeft"></span> Back</button>
+        <button class="btn btn--primary grow" type="button" data-next>
+          <span data-icon="check"></span> Finish setup</button>
+      </div>
+    </div>
+
+    <!-- Done -->
+    <div data-step="done" hidden>
+      <div class="state state--info">
+        <div class="state__icon"><span data-icon="seedling" data-size="25"></span></div>
+        <h2 class="state__title">You're set up</h2>
+        <p class="state__text">Your baseline builds over the next couple of weeks. Until
+          then we'll say "not enough data yet" rather than invent a trend.</p>
+        <div class="state__actions row" style="justify-content:center">
+          <a class="btn btn--primary" href="check-in.html">
+            <span data-icon="heart"></span> Do your first check-in</a>
+          <a class="btn btn--secondary" href="trends.html">Look around first</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="assets/js/icons.js"></script>
+<script src="assets/js/room.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/charts.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/flow.js"></script>
+<script>
+/* Record that setup has been done, so the room's Journal stops pointing here
+   and starts going to the daily check-in. */
+document.addEventListener('ww:flowstep', function (e) {
+  if (e.detail && e.detail.name === 'done') {
+    try { localStorage.setItem('ww.onboarded', '1'); } catch (err) {}
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WorkWell</title>
+<meta name="description" content="Come in and start your day.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/signin.css">
+<link rel="stylesheet" href="assets/css/room.css">
+</head>
+<body data-plane="private" class="room-body">
+
+<div class="room-shell">
+
+  <header class="room-top">
+    <div class="room-top__brand">
+      <span class="sidebar__mark" data-icon-slot="seedling"></span>
+      <span class="room-top__name">WorkWell</span>
+    </div>
+    <span class="room-top__spacer"></span>
+
+    <div class="segmented" role="group" aria-label="How to navigate">
+      <button type="button" data-view="room" aria-pressed="true">Room</button>
+      <button type="button" data-view="list" aria-pressed="false">List</button>
+    </div>
+
+    <button class="iconbtn" type="button" data-theme-toggle
+            aria-label="Switch colour theme" title="Switch colour theme"></button>
+
+    <div class="account" data-account-slot hidden></div>
+  </header>
+
+  <main class="room-stage">
+
+    <!-- Room view -->
+    <div class="room-views is-on" data-view-panel="room" style="width:100%">
+      <p class="t-lead t-center mb-4" data-room-caption>
+        Click the front door to sign in.
+      </p>
+
+      <div class="room" data-room data-open="false">
+        <!-- SVG injected here -->
+        <div class="room__dim"></div>
+
+        <div class="bubble" data-bubble role="dialog" aria-label="Daily check-in">
+          <div class="bubble__title" data-bubble-title>Morning. Fancy a check-in?</div>
+          <p class="bubble__text" data-bubble-text>Four taps, about ten seconds.
+            Only you will ever see it.</p>
+          <div class="bubble__actions">
+            <a class="btn btn--primary btn--sm" href="check-in.html" data-bubble-go>Check in</a>
+            <button class="btn btn--ghost btn--sm" type="button" data-bubble-close>Not now</button>
+          </div>
+        </div>
+      </div>
+
+      <p class="t-subtle t-center mt-4" data-room-hint hidden>
+        Everything in the room is a destination. Tab to move between them.
+      </p>
+    </div>
+
+    <!-- List view — the plain equivalent, always available -->
+    <div class="room-views" data-view-panel="list" style="width:min(560px,100%)">
+      <h1 class="mb-2" style="font-size:var(--fs-xl)">Where would you like to go?</h1>
+      <p class="t-subtle mb-4" data-list-note>Sign in at the front door first.</p>
+      <div data-room-list></div>
+    </div>
+  </main>
+</div>
+
+<!-- Sign-in sheet, opened by the front door -->
+<div class="sheet-backdrop" data-signin hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-label="Sign in" style="max-width:420px">
+    <div class="auth__card" style="padding:var(--s-6)">
+
+      <div data-auth-step="choose">
+        <h2 class="auth__title">Sign in</h2>
+        <p class="auth__sub">Choose an account to come in.</p>
+        <div class="acct-list" role="list">
+          <button class="acct" type="button" role="listitem"
+                  data-account="alex" data-name="Alex Rivera"
+                  data-email="alex.rivera@northwind.example"
+                  data-role="Employee" data-initials="AR" data-plane="employee">
+            <span class="avatar">AR</span>
+            <span class="acct__text">
+              <span class="acct__name">Alex Rivera</span>
+              <span class="acct__meta">Employee</span>
+            </span>
+            <span class="acct__go" data-icon-slot="chevronRight"></span>
+          </button>
+          <button class="acct" type="button" role="listitem"
+                  data-account="dee" data-name="Dee Kaur"
+                  data-email="dee.kaur@northwind.example"
+                  data-role="People Partner" data-initials="DK" data-plane="hr">
+            <span class="avatar">DK</span>
+            <span class="acct__text">
+              <span class="acct__name">Dee Kaur</span>
+              <span class="acct__meta">People Partner — can open the meeting room</span>
+            </span>
+            <span class="acct__go" data-icon-slot="chevronRight"></span>
+          </button>
+        </div>
+        <button class="auth__alt" type="button" data-signin-close>Not now</button>
+      </div>
+
+      <div data-auth-step="working" hidden>
+        <div class="state">
+          <div class="auth__spinner" aria-hidden="true"></div>
+          <p class="state__text" role="status">Opening the door…</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="assets/js/icons.js"></script>
+<script src="assets/js/room.js"></script>
+<script src="assets/js/page-office.js"></script>
+</body>
+</html>

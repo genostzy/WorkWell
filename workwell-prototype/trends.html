@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your Trends</title>
+<meta name="description" content="Your own patterns over time. Only you can see this.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/room.css">
+</head>
+<body data-plane="private" data-page="trends" data-title="Your Trends">
+
+<main class="content" data-content>
+
+  <div class="page-head">
+    <h1>Your trends</h1>
+    <p class="t-lead">Your last 12 weeks, compared only with what's typical for you.</p>
+  </div>
+
+  <div class="privacy-note mb-5">
+    <span data-icon="lock"></span>
+    <span><b>Only you can see this.</b> No score, no ranking.
+      <button class="privacy-more" type="button" data-privacy-more aria-expanded="false">What this means</button>
+      <span class="privacy-detail" hidden>Nothing here reaches your manager or HR, now or
+        in aggregate. No risk label is attached to you.</span></span>
+  </div>
+
+  <div data-state-group>
+
+    <!-- ================================================== POPULATED ==== -->
+    <section data-state-panel="populated" data-state-label="Populated" class="is-active">
+
+      <div class="grid grid--3 mb-5">
+        <div class="card">
+          <div class="stat">
+            <span class="stat__label">Hours worked last week</span>
+            <span class="stat__value t-num">49<span class="stat__unit">h</span></span>
+            <span class="stat__delta"><span data-icon="arrowUp"></span> 8h above your usual 41h</span>
+          </div>
+          <div class="mt-3" data-spark="workingHours"></div>
+        </div>
+        <div class="card">
+          <div class="stat">
+            <span class="stat__label">Messages sent after 18:30</span>
+            <span class="stat__value t-num">19</span>
+            <span class="stat__delta"><span data-icon="arrowUp"></span> Your usual is about 6</span>
+          </div>
+          <div class="mt-3" data-spark="afterHours"></div>
+        </div>
+        <div class="card">
+          <div class="stat">
+            <span class="stat__label">Since your last full day off</span>
+            <span class="stat__value t-num">12<span class="stat__unit">days</span></span>
+            <span class="stat__delta"><span data-icon="clock"></span> You usually break every 5–7</span>
+          </div>
+          <div class="mt-3" data-spark="consecutiveDays"></div>
+        </div>
+      </div>
+
+      <div class="card mb-5">
+        <div class="card__head">
+          <div>
+            <div class="card__title">Working hours</div>
+            <div class="card__sub">Weekly total, last 12 weeks</div>
+          </div>
+          <div class="segmented" role="group" aria-label="Time range">
+            <button type="button" aria-pressed="false">6w</button>
+            <button type="button" aria-pressed="true">12w</button>
+            <button type="button" aria-pressed="false">6m</button>
+          </div>
+        </div>
+        <div data-chart="workingHours"></div>
+      </div>
+
+      <h2 class="mb-3" style="font-size:var(--fs-lg)">What changed</h2>
+      <div class="stack stack--density mb-5" data-insights></div>
+
+      <div class="grid grid--2 mb-5">
+        <div class="card">
+          <div class="card__head"><div>
+            <div class="card__title">After-hours activity</div>
+            <div class="card__sub">Messages sent after your quiet hours begin</div>
+          </div></div>
+          <div data-chart="afterHours"></div>
+        </div>
+        <div class="card">
+          <div class="card__head"><div>
+            <div class="card__title">Meeting load</div>
+            <div class="card__sub">Hours in meetings each week</div>
+          </div></div>
+          <div data-chart="meetingLoad"></div>
+        </div>
+      </div>
+
+      <div class="grid grid--2">
+        <div class="card">
+          <div class="card__head"><div>
+            <div class="card__title">How you've been feeling</div>
+            <div class="card__sub">Weekly average of your own check-ins, 1–5</div>
+          </div></div>
+          <div class="stack stack--tight" data-selfreport></div>
+        </div>
+
+        <div class="card">
+          <div class="card__head"><div>
+            <div class="card__title">Time off</div>
+            <div class="card__sub">This quarter</div>
+          </div></div>
+          <div class="stat mb-4">
+            <span class="stat__value t-num">2<span class="stat__unit">of 14 days used</span></span>
+          </div>
+          <div class="meter">
+            <div class="meter__track">
+              <div class="meter__fill" style="width:14.3%"></div>
+            </div>
+            <div class="row row--between t-subtle">
+              <span>2 days taken</span><span>12 days available</span>
+            </div>
+          </div>
+          <div class="card__foot">
+            <a class="btn btn--quiet btn--sm" href="boundary.html">
+              <span data-icon="calendar"></span> Set up quiet hours
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================== NOT ENOUGH DATA == -->
+    <section data-state-panel="thin" data-state-label="Not enough data yet">
+      <div class="card mb-5">
+        <div class="card__head"><div>
+          <div class="card__title">Working hours</div>
+          <div class="card__sub">Weekly total</div>
+        </div></div>
+        <div class="thin-data">
+          <span data-icon="info"></span>
+          <div>
+            <b style="display:block;margin-bottom:4px;color:var(--text)">Not enough data yet</b>
+            3 check-ins across 5 days. Come back after about two weeks.
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid--2 mb-5">
+        <div class="card">
+          <div class="stat">
+            <span class="stat__label">Check-ins so far</span>
+            <span class="stat__value t-num">3</span>
+            <span class="stat__delta">Started 5 days ago</span>
+          </div>
+        </div>
+        <div class="card card--accent">
+          <div class="card__title mb-2">Your baseline is forming</div>
+          <p class="t-subtle">Nothing to set up. You're only ever compared with yourself.</p>
+          <a class="btn btn--primary btn--sm mt-4" href="check-in.html">
+            <span data-icon="heart"></span> Check in
+          </a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card__title mb-3">Your check-ins so far</div>
+        <table class="data-table">
+          <thead><tr><th scope="col">Day</th><th scope="col">Mood</th><th scope="col">Energy</th><th scope="col">Workload</th></tr></thead>
+          <tbody>
+            <tr><th scope="row" style="font-weight:600;color:var(--text)">Monday</th><td>Good</td><td>Steady</td><td>About right</td></tr>
+            <tr><th scope="row" style="font-weight:600;color:var(--text)">Wednesday</th><td>OK</td><td>Low</td><td>Heavy</td></tr>
+            <tr><th scope="row" style="font-weight:600;color:var(--text)">Thursday</th><td>Good</td><td>Steady</td><td>About right</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ====================================================== EMPTY ==== -->
+    <section data-state-panel="empty" data-state-label="Empty">
+      <div class="card">
+        <div class="state state--info">
+          <div class="state__icon"><span data-icon="seedling" data-size="25"></span></div>
+          <h2 class="state__title">Nothing to reflect on yet</h2>
+          <p class="state__text">A few check-ins and your own patterns show up here.
+            Your employer never sees them.</p>
+          <div class="state__actions row" style="justify-content:center">
+            <a class="btn btn--primary" href="onboarding.html">
+              <span data-icon="sparkle"></span> Set up your check-in
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================== LOADING ==== -->
+    <section data-state-panel="loading" data-state-label="Loading">
+      <div class="grid grid--3 mb-5" aria-hidden="true">
+        <div class="card"><div class="stack stack--tight">
+          <div class="skel skel--text w-50"></div><div class="skel skel--title"></div>
+          <div class="skel skel--text w-70"></div></div></div>
+        <div class="card"><div class="stack stack--tight">
+          <div class="skel skel--text w-50"></div><div class="skel skel--title"></div>
+          <div class="skel skel--text w-70"></div></div></div>
+        <div class="card"><div class="stack stack--tight">
+          <div class="skel skel--text w-50"></div><div class="skel skel--title"></div>
+          <div class="skel skel--text w-70"></div></div></div>
+      </div>
+      <div class="card mb-5" aria-hidden="true">
+        <div class="skel skel--title mb-4"></div>
+        <div class="skel skel--chart"></div>
+      </div>
+      <div class="card" aria-hidden="true">
+        <div class="stack stack--tight">
+          <div class="skel skel--text"></div>
+          <div class="skel skel--text w-70"></div>
+          <div class="skel skel--text w-50"></div>
+        </div>
+      </div>
+      <p class="sr-only" role="status">Loading your trends.</p>
+    </section>
+
+    <!-- ====================================================== ERROR ==== -->
+    <section data-state-panel="error" data-state-label="Error">
+      <div class="banner banner--error mb-5" role="alert">
+        <span data-icon="wifiOff"></span>
+        <div>
+          <b>Couldn't load your trends.</b><br>
+          Your check-ins are safe on this device and will sync when you're back online.
+        </div>
+      </div>
+      <div class="card">
+        <div class="state state--error">
+          <div class="state__icon"><span data-icon="alert" data-size="25"></span></div>
+          <h2 class="state__title">Trends unavailable</h2>
+          <p class="state__text">Our side, not your data. Your history is intact.</p>
+          <div class="state__actions row" style="justify-content:center">
+            <button class="btn btn--primary" type="button">
+              <span data-icon="refresh"></span> Try again
+            </button>
+            <a class="btn btn--secondary" href="check-in.html">Check in anyway</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<script src="assets/js/icons.js"></script>
+<script src="assets/js/room.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/charts.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/page-trends.js"></script>
+</body>
+</html>

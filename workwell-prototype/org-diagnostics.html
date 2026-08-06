@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Structural Load</title>
+<meta name="description" content="Anonymous, structural signals for groups of at least 8 people.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/room.css">
+</head>
+<body data-plane="org" data-page="org-diagnostics" data-title="Structural Load">
+
+<main class="content" data-content>
+
+  <div class="page-head">
+    <h1>Structural load diagnostics</h1>
+    <p class="t-lead">Group signals about staffing, workload and expectations —
+      not about anyone's ability to cope.</p>
+  </div>
+
+  <!-- Key Design Rules 1 & 2, stated on the plane they govern. -->
+  <div class="privacy-note mb-5">
+    <span data-icon="building"></span>
+    <span><b>No individual data on this plane. Groups under 8 are hidden, never estimated.</b>
+      <button class="privacy-more" type="button" data-privacy-more aria-expanded="false">What this means</button>
+      <span class="privacy-detail" hidden>The threshold is re-checked every time you change a
+        filter. There is no employee list to reach and no drill-down that resolves to a person.</span></span>
+  </div>
+
+  <!-- ---------------------------------------------------- Filter row --- -->
+  <div class="card mb-5">
+    <div class="row" style="gap:var(--s-4);align-items:flex-end">
+      <div class="field" style="min-width:190px">
+        <label class="field__label" for="f-range">Date range</label>
+        <select class="select" id="f-range" data-filter="range">
+          <option value="90d" selected>Last 90 days</option>
+          <option value="30d">Last 30 days</option>
+          <option value="7d">Last 7 days</option>
+        </select>
+      </div>
+      <div class="field" style="min-width:190px">
+        <label class="field__label" for="f-dept">Department</label>
+        <select class="select" id="f-dept" data-filter="dept">
+          <option value="all" selected>All departments</option>
+          <option value="Engineering">Engineering</option>
+          <option value="Support">Support</option>
+          <option value="Sales">Sales</option>
+          <option value="Design">Design</option>
+          <option value="Product">Product</option>
+          <option value="Data">Data</option>
+          <option value="Finance">Finance</option>
+          <option value="People Ops">People Ops</option>
+        </select>
+      </div>
+      <div class="grow"></div>
+      <div class="row" style="gap:var(--s-2)">
+        <span class="chip" data-scope-chip>Loading…</span>
+        <span class="chip" data-suppressed-chip hidden></span>
+      </div>
+    </div>
+
+    <!-- Live region: the re-lock is announced, not just shown. -->
+    <p class="sr-only" role="status" data-filter-status></p>
+
+    <div class="banner banner--info mt-4" data-relock-note hidden role="status">
+      <span data-icon="lock"></span>
+      <div>
+        <b>Narrowing the filters hid more groups.</b><br>
+        Fewer people contributed in a shorter window, so some fell below 8. The threshold
+        applies to the filtered result, not the original group size.
+      </div>
+    </div>
+  </div>
+
+  <div data-state-group>
+
+    <!-- ================================================== POPULATED ==== -->
+    <section data-state-panel="populated" data-state-label="Populated" class="is-active">
+
+      <!-- Roll-up -->
+      <div class="grid grid--4 mb-5" data-rollup></div>
+
+      <!-- Metric 1 — working hours -->
+      <div class="grid grid--2 mb-5">
+        <div class="card">
+          <div class="card__head"><div>
+            <div class="card__title">1 · Working hours</div>
+            <div class="card__sub">Average weekly hours per person, by group</div>
+          </div></div>
+          <div data-chart="hours"></div>
+        </div>
+        <div class="card">
+          <div class="card__head"><div>
+            <div class="card__title">Distribution of weekly hours</div>
+            <div class="card__sub">How many people sit in each band, org-wide</div>
+          </div></div>
+          <div data-chart="distribution"></div>
+          <p class="chart__caption">Buckets, never individuals. Bands under 8 are merged.</p>
+        </div>
+      </div>
+
+      <!-- Metric 2 & 3 -->
+      <div class="grid grid--2 mb-5">
+        <div class="card">
+          <div class="card__head"><div>
+            <div class="card__title">2 · Meeting load</div>
+            <div class="card__sub">Average meeting hours per person per week</div>
+          </div></div>
+          <div data-chart="meetings"></div>
+        </div>
+        <div class="card">
+          <div class="card__head"><div>
+            <div class="card__title">3 · After-hours activity</div>
+            <div class="card__sub">Share of messages sent outside working hours</div>
+          </div></div>
+          <div data-chart="afterHours"></div>
+          <p class="chart__caption">Group rate only. The Boundary Assistant never feeds this.</p>
+        </div>
+      </div>
+
+      <!-- Metric 4 & 5 -->
+      <div class="grid grid--2 mb-5">
+        <div class="card">
+          <div class="card__head"><div>
+            <div class="card__title">4 · Time-off usage</div>
+            <div class="card__sub">Share of accrued leave taken this year</div>
+          </div></div>
+          <div data-chart="pto"></div>
+        </div>
+        <div class="card">
+          <div class="card__head"><div>
+            <div class="card__title">5 · Workload patterns</div>
+            <div class="card__sub">Share of weeks running over contracted hours</div>
+          </div></div>
+          <div data-chart="workload"></div>
+          <p class="chart__caption">"How often", never "who".</p>
+        </div>
+      </div>
+
+      <!-- Suppressed groups, shown explicitly rather than silently omitted -->
+      <h2 class="mb-2" style="font-size:var(--fs-lg)">Groups not shown</h2>
+      <p class="t-subtle mb-4" style="max-width:64ch">Named on purpose — a silent gap is
+        itself inferable.</p>
+      <div class="grid grid--3 mb-5" data-locked-grid></div>
+
+      <!-- Structural prompts -->
+      <h2 class="mb-3" style="font-size:var(--fs-lg)">What to look at</h2>
+      <div class="stack stack--density" data-org-prompts></div>
+
+      <div class="card card--quiet mt-5">
+        <div class="row" style="gap:var(--s-3);flex-wrap:nowrap;align-items:flex-start">
+          <span data-icon="shield" data-size="19"></span>
+          <div>
+            <div class="card__title mb-3" style="font-size:var(--fs-sm)">This dashboard will never</div>
+            <div class="row" style="gap:var(--s-2)">
+              <span class="chip">Name an individual</span>
+              <span class="chip">Score or rank anyone</span>
+              <span class="chip">Flag someone "at risk"</span>
+              <span class="chip">Filter down to one person</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================= ALL SUPPRESSED ==== -->
+    <section data-state-panel="suppressed" data-state-label="All groups locked">
+      <div class="card">
+        <div class="state">
+          <div class="state__icon"><span data-icon="lock" data-size="25"></span></div>
+          <h2 class="state__title">Nothing can be shown for this selection</h2>
+          <p class="state__text">Every matching group has fewer than 8 people contributing.
+            Rather than estimate or blur, we show nothing.</p>
+          <p class="state__text t-subtle">Widen the date range or pick a larger department.</p>
+          <div class="state__actions">
+            <button class="btn btn--primary" type="button" data-reset-filters>
+              <span data-icon="refresh"></span> Reset filters</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================ NOT ENOUGH DATA ==== -->
+    <section data-state-panel="thin" data-state-label="Not enough data yet">
+      <div class="card mb-5">
+        <div class="thin-data">
+          <span data-icon="info"></span>
+          <div>
+            <b style="display:block;margin-bottom:4px;color:var(--text)">Not enough data yet</b>
+            9 days in. Structural trends need about 6 weeks — before that, ordinary
+            week-to-week variation looks exactly like a trend.
+          </div>
+        </div>
+      </div>
+      <div class="grid grid--2">
+        <div class="card">
+          <div class="card__title mb-3">What is available now</div>
+          <div class="stat">
+            <span class="stat__label">Groups above the 8-person threshold</span>
+            <span class="stat__value t-num">9</span>
+            <span class="stat__delta">of 14 groups</span>
+          </div>
+          <p class="t-subtle mt-3">Current figures available. Trends are not.</p>
+        </div>
+        <div class="card card--quiet">
+          <div class="card__title mb-2">Estimated readiness</div>
+          <p class="t-subtle mb-4">Trend views unlock around <b>16 June</b>, once there
+            are six full weeks of history.</p>
+          <div class="meter">
+            <div class="meter__track"><div class="meter__fill" style="width:21%"></div></div>
+            <div class="row row--between t-subtle"><span>9 days</span><span>42 days needed</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================== LOADING ==== -->
+    <section data-state-panel="loading" data-state-label="Loading">
+      <div class="grid grid--4 mb-5" aria-hidden="true">
+        <div class="card"><div class="skel skel--text w-50 mb-3"></div><div class="skel skel--title"></div></div>
+        <div class="card"><div class="skel skel--text w-50 mb-3"></div><div class="skel skel--title"></div></div>
+        <div class="card"><div class="skel skel--text w-50 mb-3"></div><div class="skel skel--title"></div></div>
+        <div class="card"><div class="skel skel--text w-50 mb-3"></div><div class="skel skel--title"></div></div>
+      </div>
+      <div class="grid grid--2" aria-hidden="true">
+        <div class="card"><div class="skel skel--title mb-4"></div><div class="skel skel--chart"></div></div>
+        <div class="card"><div class="skel skel--title mb-4"></div><div class="skel skel--chart"></div></div>
+      </div>
+      <p class="sr-only" role="status">Loading structural load diagnostics.</p>
+    </section>
+
+    <!-- ====================================================== ERROR ==== -->
+    <section data-state-panel="error" data-state-label="Error">
+      <div class="banner banner--error mb-5" role="alert">
+        <span data-icon="alert"></span>
+        <div><b>Aggregation didn't complete.</b><br>
+          Partial results aren't shown — a half-finished aggregate can breach the
+          anonymity threshold without it being obvious.</div>
+      </div>
+      <div class="card">
+        <div class="state state--error">
+          <div class="state__icon"><span data-icon="alert" data-size="25"></span></div>
+          <h2 class="state__title">Diagnostics unavailable</h2>
+          <p class="state__text">The job stopped rather than finish with an unsafe result.</p>
+          <div class="state__actions">
+            <button class="btn btn--primary" type="button">
+              <span data-icon="refresh"></span> Run again</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<script src="assets/js/icons.js"></script>
+<script src="assets/js/room.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/charts.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/page-org.js"></script>
+</body>
+</html>

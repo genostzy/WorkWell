@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Health Nudges</title>
+<meta name="description" content="Opt-in, rate-limited reminders that never fire during leave or focus time.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/room.css">
+</head>
+<body data-plane="private" data-page="nudges" data-title="Health Nudges">
+
+<main class="content" data-content>
+
+  <div class="page-head">
+    <h1>Health nudges</h1>
+    <p class="t-lead">Opt-in, capped, and silenced for the day in one tap.</p>
+  </div>
+
+  <div class="privacy-note mb-5">
+    <span data-icon="lock"></span>
+    <span><b>Nudges run only on your device.</b>
+      <button class="privacy-more" type="button" data-privacy-more aria-expanded="false">What this means</button>
+      <span class="privacy-detail" hidden>What triggers them — desk time, last break — is
+        never sent to your employer, and nobody is told whether you acted on one.</span></span>
+  </div>
+
+  <div data-state-group>
+
+    <!-- ================================================== POPULATED ==== -->
+    <section data-state-panel="populated" data-state-label="Populated" class="is-active">
+      <div class="grid grid--sidebar-right">
+
+        <div class="stack">
+          <div class="card">
+            <div class="card__head">
+              <div>
+                <div class="card__title">Live example</div>
+                <div class="card__sub">What a nudge looks like when it arrives</div>
+              </div>
+              <span class="chip chip--accent">Preview</span>
+            </div>
+
+            <div class="nudge">
+              <div class="nudge__icon"><span data-icon="stretch" data-size="19"></span></div>
+              <div class="grow">
+                <div class="nudge__title">Fancy a two-minute stretch?</div>
+                <p class="nudge__text">At the desk since 13:15. Won't fix a heavy week.</p>
+                <div class="nudge__actions">
+                  <button class="btn btn--primary btn--sm" type="button">Okay</button>
+                  <button class="btn btn--secondary btn--sm" type="button">In 20 min</button>
+                  <button class="btn btn--ghost btn--sm" type="button">Not today</button>
+                </div>
+              </div>
+              <button class="iconbtn" type="button" aria-label="Dismiss">
+                <span data-icon="x" data-size="17"></span></button>
+            </div>
+
+            <p class="chart__caption">A reminder to drink water is not a response to
+              being understaffed, and the copy shouldn't pretend otherwise.</p>
+          </div>
+
+          <div class="card">
+            <div class="card__head"><div>
+              <div class="card__title">Which nudges you'd like</div>
+              <div class="card__sub">All off by default</div>
+            </div></div>
+            <div data-nudge-list></div>
+          </div>
+
+          <div class="card">
+            <div class="card__head"><div>
+              <div class="card__title">Today's nudges</div>
+              <div class="card__sub">You've had 2 of a maximum 4</div>
+            </div></div>
+            <div class="stack stack--density">
+              <div class="feed__item">
+                <div class="avatar" style="background:var(--accent-quiet);color:var(--accent-text)">
+                  <span data-icon="drop" data-size="17"></span></div>
+                <div class="grow">
+                  <div class="row row--between">
+                    <span class="feed__name">Drink some water</span>
+                    <span class="feed__time">14:20 · Dismissed</span>
+                  </div>
+                  <p class="feed__text">Mid-afternoon reminder.</p>
+                </div>
+              </div>
+              <div class="feed__item">
+                <div class="avatar" style="background:var(--accent-quiet);color:var(--accent-text)">
+                  <span data-icon="walk" data-size="17"></span></div>
+                <div class="grow">
+                  <div class="row row--between">
+                    <span class="feed__name">Walk in a free slot</span>
+                    <span class="feed__time">11:05 · Accepted</span>
+                  </div>
+                  <p class="feed__text">Held 30 minutes at 15:00 in your calendar.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Settings rail -->
+        <div class="stack">
+          <div class="card">
+            <div class="card__title mb-4">Frequency</div>
+            <div class="field mb-4">
+              <label class="field__label" for="cap">Most nudges per day</label>
+              <select class="select" id="cap">
+                <option>1 — barely there</option>
+                <option>2</option>
+                <option selected>4 — the default</option>
+                <option>6</option>
+              </select>
+              <span class="field__hint">Nudge fatigue is worse than no nudges.</span>
+            </div>
+            <div class="field">
+              <label class="field__label" for="gap">Minimum gap between them</label>
+              <select class="select" id="gap">
+                <option>45 minutes</option>
+                <option selected>90 minutes</option>
+                <option>3 hours</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card__title mb-3">Never interrupt <span class="t-subtle" style="font-weight:500">— enforced</span></div>
+            <div class="stack stack--tight">
+              <label class="toggle" style="padding:var(--s-2) 0">
+                <span class="toggle__text"><span class="toggle__title">Time off &amp; leave</span></span>
+                <button class="switch" type="button" role="switch" aria-checked="true"
+                        aria-label="Never nudge during time off"></button>
+              </label>
+              <label class="toggle" style="padding:var(--s-2) 0">
+                <span class="toggle__text"><span class="toggle__title">Out of office</span></span>
+                <button class="switch" type="button" role="switch" aria-checked="true"
+                        aria-label="Never nudge when out of office"></button>
+              </label>
+              <label class="toggle" style="padding:var(--s-2) 0">
+                <span class="toggle__text"><span class="toggle__title">Focus time</span></span>
+                <button class="switch" type="button" role="switch" aria-checked="true"
+                        aria-label="Never nudge during focus time"></button>
+              </label>
+              <label class="toggle" style="padding:var(--s-2) 0">
+                <span class="toggle__text"><span class="toggle__title">In a meeting</span></span>
+                <button class="switch" type="button" role="switch" aria-checked="true"
+                        aria-label="Never nudge during meetings"></button>
+              </label>
+            </div>
+          </div>
+
+          <div class="card card--accent">
+            <div class="card__title mb-2">Silence for today</div>
+            <p class="t-subtle mb-4">Back tomorrow. No streak lost.</p>
+            <button class="btn btn--primary btn--block" type="button">
+              <span data-icon="moon"></span> Mute until tomorrow</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================== EMPTY ==== -->
+    <section data-state-panel="empty" data-state-label="All off">
+      <div class="card">
+        <div class="state">
+          <div class="state__icon"><span data-icon="bell" data-size="25"></span></div>
+          <h2 class="state__title">All nudges are off</h2>
+          <p class="state__text">A perfectly good setting. Nothing about this choice is
+            reported anywhere.</p>
+          <div class="state__actions">
+            <button class="btn btn--primary" type="button">
+              <span data-icon="plus"></span> Turn on a nudge</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================== MUTED ====== -->
+    <section data-state-panel="muted" data-state-label="Muted today">
+      <div class="banner banner--info mb-5" role="status">
+        <span data-icon="moon"></span>
+        <div><b>Muted until tomorrow morning.</b><br>
+          Muted at 10:12. Settings untouched; they resume on their own.</div>
+      </div>
+      <div class="card">
+        <div class="state">
+          <div class="state__icon"><span data-icon="moon" data-size="25"></span></div>
+          <h2 class="state__title">Quiet for the rest of today</h2>
+          <p class="state__text">No reminders will fire.</p>
+          <div class="state__actions">
+            <button class="btn btn--secondary" type="button">Unmute now</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================== LOADING ==== -->
+    <section data-state-panel="loading" data-state-label="Loading">
+      <div class="grid grid--sidebar-right" aria-hidden="true">
+        <div class="stack">
+          <div class="card"><div class="skel skel--title mb-4"></div>
+            <div class="skel" style="height:104px"></div></div>
+          <div class="card"><div class="skel skel--title mb-4"></div>
+            <div class="stack stack--tight">
+              <div class="skel skel--text"></div><div class="skel skel--text w-70"></div>
+              <div class="skel skel--text w-50"></div></div></div>
+        </div>
+        <div class="card"><div class="skel skel--title mb-4"></div>
+          <div class="skel" style="height:132px"></div></div>
+      </div>
+      <p class="sr-only" role="status">Loading your nudge settings.</p>
+    </section>
+
+    <!-- ====================================================== ERROR ==== -->
+    <section data-state-panel="error" data-state-label="Error">
+      <div class="card">
+        <div class="state state--error">
+          <div class="state__icon"><span data-icon="alert" data-size="25"></span></div>
+          <h2 class="state__title">Couldn't load your nudge settings</h2>
+          <p class="state__text">Your settings are still active on this device.</p>
+          <div class="state__actions">
+            <button class="btn btn--primary" type="button">
+              <span data-icon="refresh"></span> Try again</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<script src="assets/js/icons.js"></script>
+<script src="assets/js/room.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/charts.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/page-nudges.js"></script>
+</body>
+</html>

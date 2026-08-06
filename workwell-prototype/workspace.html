@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workspace</title>
+<meta name="description" content="Focus mode, calendar protection, and accessibility settings that actually apply.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/room.css">
+</head>
+<body data-plane="private" data-page="workspace" data-title="Workspace">
+
+<main class="content" data-content>
+
+  <div class="page-head">
+    <h1>Adaptive workspace</h1>
+    <p class="t-lead">All local to your device. Changes apply straight away.</p>
+  </div>
+
+  <div class="grid grid--sidebar-right">
+
+    <div class="stack">
+
+      <!-- ---------------------------------------------- Accessibility -->
+      <div class="card">
+        <div class="card__head"><div>
+          <div class="card__title">Display &amp; accessibility</div>
+          <div class="card__sub">These apply immediately, across every screen</div>
+        </div></div>
+
+        <div class="stack">
+          <div class="field">
+            <span class="field__label">Colour theme</span>
+            <div class="segmented" role="group" aria-label="Colour theme" data-pref="theme">
+              <button type="button" data-value="system" aria-pressed="true">Match system</button>
+              <button type="button" data-value="light"  aria-pressed="false">Light</button>
+              <button type="button" data-value="dark"   aria-pressed="false">Dark</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <span class="field__label">Contrast</span>
+            <div class="segmented" role="group" aria-label="Contrast" data-pref="contrast">
+              <button type="button" data-value="normal" aria-pressed="true">Normal</button>
+              <button type="button" data-value="high"   aria-pressed="false">High contrast</button>
+            </div>
+            <span class="field__hint">Both meet WCAG AA; high contrast goes further.</span>
+          </div>
+
+          <div class="field">
+            <span class="field__label">Motion</span>
+            <div class="segmented" role="group" aria-label="Motion" data-pref="motion">
+              <button type="button" data-value="system"  aria-pressed="true">Match system</button>
+              <button type="button" data-value="full"    aria-pressed="false">Full motion</button>
+              <button type="button" data-value="reduced" aria-pressed="false">Reduced motion</button>
+            </div>
+            <span class="field__hint">Removes transitions and stops the loading shimmer.</span>
+          </div>
+
+          <div class="field">
+            <span class="field__label">Notification density</span>
+            <div class="segmented" role="group" aria-label="Notification density" data-pref="density">
+              <button type="button" data-value="compact"     aria-pressed="false">Compact</button>
+              <button type="button" data-value="comfortable" aria-pressed="true">Comfortable</button>
+              <button type="button" data-value="spacious"    aria-pressed="false">Spacious</button>
+            </div>
+            <span class="field__hint">How tightly nudges, feed items and insights pack.</span>
+          </div>
+        </div>
+
+        <div class="card__foot">
+          <div class="card__title mb-3" style="font-size:var(--fs-sm)">Preview</div>
+          <div class="stack stack--density">
+            <div class="feed__item">
+              <div class="avatar">PN</div>
+              <div class="grow"><span class="feed__name">Priya N.</span>
+                <p class="feed__text">Spacing here follows your density setting.</p></div>
+            </div>
+            <div class="feed__item">
+              <div class="avatar">SO</div>
+              <div class="grow"><span class="feed__name">Sam O.</span>
+                <p class="feed__text">Change the setting above and watch this gap change.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---------------------------------------------------- Focus mode -->
+      <div class="card">
+        <div class="card__head">
+          <div>
+            <div class="card__title">Focus mode</div>
+            <div class="card__sub">Strips the interface back to one thing at a time</div>
+          </div>
+          <button class="switch" type="button" role="switch" aria-checked="false"
+                  aria-label="Focus mode"></button>
+        </div>
+
+        <div class="stack stack--tight">
+          <label class="toggle" style="padding:var(--s-2) 0">
+            <span class="toggle__text">
+              <span class="toggle__title">Simplified dashboard</span>
+              <span class="toggle__desc">One chart at a time.</span>
+            </span>
+            <button class="switch" type="button" role="switch" aria-checked="false"
+                    aria-label="Simplified dashboard"></button>
+          </label>
+          <label class="toggle" style="padding:var(--s-2) 0">
+            <span class="toggle__text">
+              <span class="toggle__title">Hide numbers I didn't ask for</span>
+              <span class="toggle__desc">Keeps the trend shape, drops the running totals.</span>
+            </span>
+            <button class="switch" type="button" role="switch" aria-checked="false"
+                    aria-label="Hide extra numbers"></button>
+          </label>
+          <label class="toggle" style="padding:var(--s-2) 0">
+            <span class="toggle__text">
+              <span class="toggle__title">Filter notifications while focused</span>
+              <span class="toggle__desc">Only on-call alerts and direct mentions.</span>
+            </span>
+            <button class="switch" type="button" role="switch" aria-checked="true"
+                    aria-label="Filter notifications while focused"></button>
+          </label>
+          <label class="toggle" style="padding:var(--s-2) 0">
+            <span class="toggle__text">
+              <span class="toggle__title">Pomodoro timer</span>
+              <span class="toggle__desc">Optional 25/5 cycles. Off unless you want it.</span>
+            </span>
+            <button class="switch" type="button" role="switch" aria-checked="false"
+                    aria-label="Pomodoro timer"></button>
+          </label>
+        </div>
+      </div>
+
+      <!-- ------------------------------------------- Calendar protection -->
+      <div class="card">
+        <div class="card__head"><div>
+          <div class="card__title">Calendar protection</div>
+          <div class="card__sub">Holds time so the day doesn't fill up by default</div>
+        </div></div>
+
+        <div class="grid grid--2 mb-4">
+          <div class="field">
+            <label class="field__label" for="fb">Focus block length</label>
+            <select class="select" id="fb">
+              <option>60 minutes</option><option selected>90 minutes</option><option>2 hours</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field__label" for="fw">Preferred time</label>
+            <select class="select" id="fw">
+              <option selected>Morning</option><option>Afternoon</option><option>Whenever there's a gap</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field mb-4">
+          <span class="field__label">Days to protect</span>
+          <div class="row" role="group" aria-label="Days to protect" data-multi>
+            <button class="chip" type="button" aria-pressed="true"  data-value="mon">Mon</button>
+            <button class="chip" type="button" aria-pressed="true"  data-value="tue">Tue</button>
+            <button class="chip" type="button" aria-pressed="false" data-value="wed">Wed</button>
+            <button class="chip" type="button" aria-pressed="true"  data-value="thu">Thu</button>
+            <button class="chip" type="button" aria-pressed="true"  data-value="fri">Fri</button>
+          </div>
+        </div>
+
+        <div class="privacy-note">
+          <span data-icon="info"></span>
+          <span>Colleagues see only "busy" — never a reason, never that WorkWell did it.</span>
+        </div>
+      </div>
+
+      <!-- ---------------------------------------------- Check-in format -->
+      <div class="card">
+        <div class="card__head"><div>
+          <div class="card__title">Check-in format</div>
+          <div class="card__sub">Alternative input formats for the daily check-in</div>
+        </div></div>
+
+        <div class="optgrid optgrid--4" role="group" aria-label="Check-in format">
+          <button class="opt" type="button" aria-pressed="true" data-value="emoji">
+            <span class="opt__face">🙂</span><span class="opt__label">Faces</span></button>
+          <button class="opt" type="button" aria-pressed="false" data-value="slider">
+            <span class="opt__face">⚖️</span><span class="opt__label">Sliders</span></button>
+          <button class="opt" type="button" aria-pressed="false" data-value="words">
+            <span class="opt__face">Aa</span><span class="opt__label">Words</span></button>
+          <button class="opt" type="button" aria-pressed="false" data-value="both">
+            <span class="opt__face">🙂Aa</span><span class="opt__label">Both</span></button>
+        </div>
+        <p class="field__hint mt-3">Faces are quick but ambiguous for some people;
+          words are slower but unambiguous. Neither is correct.</p>
+      </div>
+    </div>
+
+    <!-- Rail -->
+    <div class="stack">
+      <div class="card card--accent">
+        <div class="card__title mb-2">Everything here is local</div>
+        <p class="t-subtle">Not part of any profile your employer holds. Changing these
+          isn't an event anyone can see.</p>
+      </div>
+
+      <div class="card">
+        <div class="card__title mb-3">Text size</div>
+        <div class="field">
+          <input class="range" type="range" min="1" max="5" value="3" step="1"
+                 aria-label="Text size" data-pref-range="scale">
+          <div class="range-scale"><span>S</span><span></span><span>M</span><span></span><span>XL</span></div>
+        </div>
+        <p class="t-subtle mt-3">Respects your browser's own zoom and font settings.</p>
+      </div>
+
+      <div class="card">
+        <div class="card__title mb-3">Reset</div>
+        <p class="t-subtle mb-4">Display settings only. Your history is untouched.</p>
+        <button class="btn btn--secondary btn--block" type="button" data-reset-prefs>
+          <span data-icon="refresh"></span> Reset display settings</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="assets/js/icons.js"></script>
+<script src="assets/js/room.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/charts.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/page-workspace.js"></script>
+</body>
+</html>

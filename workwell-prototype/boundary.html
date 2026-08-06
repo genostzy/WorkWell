@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Boundaries</title>
+<meta name="description" content="Quiet hours, delayed sending, and focus protection you control yourself.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/room.css">
+</head>
+<body data-plane="private" data-page="boundary" data-title="Boundaries">
+
+<main class="content" data-content>
+
+  <div class="page-head">
+    <h1>Boundary assistant</h1>
+    <p class="t-lead">You define your working window. Nothing here is reported to anyone.</p>
+  </div>
+
+  <!-- Key Design Rule 5, stated on the screen it applies to. -->
+  <div class="privacy-note mb-5">
+    <span data-icon="eyeOff"></span>
+    <span><b>None of this reaches an employer-facing screen.</b>
+      <button class="privacy-more" type="button" data-privacy-more aria-expanded="false">What this means</button>
+      <span class="privacy-detail" hidden>No after-hours record is created on your employer's
+        side and no manager receives an after-hours list. Using this page — or not — changes
+        nothing anyone else can see.</span></span>
+  </div>
+
+  <div data-state-group>
+
+    <!-- ================================================== POPULATED ==== -->
+    <section data-state-panel="populated" data-state-label="Populated" class="is-active">
+      <div class="grid grid--sidebar-right">
+
+        <div class="stack">
+
+          <!-- Quiet hours -->
+          <div class="card">
+            <div class="card__head">
+              <div>
+                <div class="card__title">Quiet hours</div>
+                <div class="card__sub">When you'd rather not be pulled back into work</div>
+              </div>
+              <button class="switch" type="button" role="switch" aria-checked="true"
+                      aria-label="Quiet hours enabled"></button>
+            </div>
+
+            <div class="grid grid--2 mb-4">
+              <div class="field">
+                <label class="field__label" for="qs">Quiet from</label>
+                <select class="select" id="qs">
+                  <option>17:30</option><option selected>18:30</option><option>20:00</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="field__label" for="qe">Quiet until</label>
+                <select class="select" id="qe">
+                  <option>07:00</option><option selected>08:30</option><option>09:00</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field mb-4">
+              <span class="field__label">Which days</span>
+              <div class="row" role="group" aria-label="Quiet hours days" data-multi>
+                <button class="chip" type="button" aria-pressed="true"  data-value="mon">Mon</button>
+                <button class="chip" type="button" aria-pressed="true"  data-value="tue">Tue</button>
+                <button class="chip" type="button" aria-pressed="true"  data-value="wed">Wed</button>
+                <button class="chip" type="button" aria-pressed="true"  data-value="thu">Thu</button>
+                <button class="chip" type="button" aria-pressed="true"  data-value="fri">Fri</button>
+                <button class="chip" type="button" aria-pressed="true"  data-value="sat">Sat</button>
+                <button class="chip" type="button" aria-pressed="true"  data-value="sun">Sun</button>
+              </div>
+              <span class="field__hint">Match your actual day, not the office's.</span>
+            </div>
+
+            <div class="stack stack--tight">
+              <label class="toggle" style="padding:var(--s-2) 0">
+                <span class="toggle__text">
+                  <span class="toggle__title">Mute notifications during quiet hours</span>
+                  <span class="toggle__desc">Messages still arrive; they just don't interrupt you.</span>
+                </span>
+                <button class="switch" type="button" role="switch" aria-checked="true"
+                        aria-label="Mute notifications during quiet hours"></button>
+              </label>
+              <label class="toggle" style="padding:var(--s-2) 0">
+                <span class="toggle__text">
+                  <span class="toggle__title">Let urgent on-call alerts through</span>
+                  <span class="toggle__desc">Only when you're actually on call.</span>
+                </span>
+                <button class="switch" type="button" role="switch" aria-checked="true"
+                        aria-label="Allow on-call alerts"></button>
+              </label>
+              <label class="toggle" style="padding:var(--s-2) 0">
+                <span class="toggle__text">
+                  <span class="toggle__title">Remind me to stop</span>
+                  <span class="toggle__desc">One prompt at the start of quiet hours.</span>
+                </span>
+                <button class="switch" type="button" role="switch" aria-checked="false"
+                        aria-label="Remind me to stop"></button>
+              </label>
+            </div>
+          </div>
+
+          <!-- Delayed sending -->
+          <div class="card">
+            <div class="card__head">
+              <div>
+                <div class="card__title">Delayed sending</div>
+                <div class="card__sub">Write when it suits you, deliver when it suits them</div>
+              </div>
+              <button class="switch" type="button" role="switch" aria-checked="true"
+                      aria-label="Delayed sending enabled"></button>
+            </div>
+
+            <div class="nudge mb-4">
+              <div class="nudge__icon"><span data-icon="send" data-size="19"></span></div>
+              <div class="grow">
+                <div class="nudge__title">It's 21:40 — send this in the morning?</div>
+                <p class="nudge__text">Sending at 09:00 means nobody feels they must reply tonight.</p>
+                <div class="nudge__actions">
+                  <button class="btn btn--primary btn--sm" type="button">Schedule for 09:00</button>
+                  <button class="btn btn--secondary btn--sm" type="button">Send now anyway</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="field mb-4">
+              <span class="field__label">Where this applies</span>
+              <div class="row" role="group" aria-label="Delayed sending channels" data-multi>
+                <button class="chip" type="button" aria-pressed="true"  data-value="email">
+                  <span data-icon="inbox" data-size="13"></span> Email</button>
+                <button class="chip" type="button" aria-pressed="true"  data-value="chat">
+                  <span data-icon="send" data-size="13"></span> Team chat</button>
+                <button class="chip" type="button" aria-pressed="false" data-value="tickets">
+                  <span data-icon="inbox" data-size="13"></span> Tickets</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="field__label" for="dz">Default delivery time</label>
+              <select class="select" id="dz">
+                <option selected>Start of my next working day</option>
+                <option>Start of the recipient's next working day</option>
+                <option>A fixed time — 09:00</option>
+              </select>
+              <span class="field__hint">Respects their quiet hours too, not just yours.</span>
+            </div>
+          </div>
+
+          <!-- Focus protection -->
+          <div class="card">
+            <div class="card__head">
+              <div>
+                <div class="card__title">Focus protection</div>
+                <div class="card__sub">Holds blocks in your calendar so meetings can't fill everything</div>
+              </div>
+              <button class="switch" type="button" role="switch" aria-checked="false"
+                      aria-label="Focus protection enabled"></button>
+            </div>
+
+            <div class="stack stack--tight">
+              <label class="toggle" style="padding:var(--s-2) 0">
+                <span class="toggle__text">
+                  <span class="toggle__title">Protect two hours each morning</span>
+                  <span class="toggle__desc">Marked busy, declineable by you at any time.</span>
+                </span>
+                <button class="switch" type="button" role="switch" aria-checked="false"
+                        aria-label="Protect morning focus block"></button>
+              </label>
+              <label class="toggle" style="padding:var(--s-2) 0">
+                <span class="toggle__text">
+                  <span class="toggle__title">Keep lunch clear</span>
+                  <span class="toggle__desc">A 45-minute hold that isn't labelled "focus time".</span>
+                </span>
+                <button class="switch" type="button" role="switch" aria-checked="true"
+                        aria-label="Keep lunch clear"></button>
+              </label>
+              <label class="toggle" style="padding:var(--s-2) 0">
+                <span class="toggle__text">
+                  <span class="toggle__title">No meetings after 16:30</span>
+                  <span class="toggle__desc">Soft hold — colleagues can book over it.</span>
+                </span>
+                <button class="switch" type="button" role="switch" aria-checked="false"
+                        aria-label="No meetings after 16:30"></button>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rail -->
+        <div class="stack">
+          <div class="card card--accent">
+            <div class="card__title mb-3">Right now</div>
+            <div class="stat mb-4">
+              <span class="stat__label">Quiet hours start in</span>
+              <span class="stat__value t-num">2<span class="stat__unit">h 10m</span></span>
+            </div>
+            <p class="t-subtle">Two messages queued for 09:00.</p>
+            <button class="btn btn--secondary btn--sm btn--block mt-4" type="button">
+              <span data-icon="clock"></span> Start quiet hours now</button>
+          </div>
+
+          <div class="card">
+            <div class="card__title mb-3">Queued to send</div>
+            <div class="stack stack--tight">
+              <div class="row row--between">
+                <span style="font-size:var(--fs-sm);font-weight:600">To #platform-team</span>
+                <span class="chip">09:00</span>
+              </div>
+              <div class="row row--between">
+                <span style="font-size:var(--fs-sm);font-weight:600">Reply to Priya N.</span>
+                <span class="chip">09:00</span>
+              </div>
+            </div>
+            <div class="card__foot">
+              <button class="btn btn--ghost btn--sm" type="button">Send all now</button>
+            </div>
+          </div>
+
+          <div class="card card--quiet">
+            <div class="row" style="gap:var(--s-3);flex-wrap:nowrap;align-items:flex-start">
+              <span data-icon="shield" data-size="19"></span>
+              <div>
+                <div class="card__title" style="font-size:var(--fs-sm)">Who can see this</div>
+                <p class="t-subtle mt-2">Nobody. Not your manager, not HR, not an admin.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================== EMPTY ==== -->
+    <section data-state-panel="empty" data-state-label="Not set up">
+      <div class="card">
+        <div class="state">
+          <div class="state__icon"><span data-icon="moon" data-size="25"></span></div>
+          <h2 class="state__title">No working window set yet</h2>
+          <p class="state__text">Set your hours and we can hold messages until morning and
+            mute out-of-hours pings. You define the window — not your employer.</p>
+          <div class="state__actions row" style="justify-content:center">
+            <a class="btn btn--primary" href="onboarding.html">
+              <span data-icon="clock"></span> Set my working hours</a>
+            <button class="btn btn--secondary" type="button">Use 09:00–17:30 for now</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================== LOADING ==== -->
+    <section data-state-panel="loading" data-state-label="Loading">
+      <div class="grid grid--sidebar-right" aria-hidden="true">
+        <div class="stack">
+          <div class="card"><div class="skel skel--title mb-4"></div>
+            <div class="grid grid--2 mb-4"><div class="skel" style="height:44px"></div>
+              <div class="skel" style="height:44px"></div></div>
+            <div class="skel skel--text"></div></div>
+          <div class="card"><div class="skel skel--title mb-4"></div>
+            <div class="skel" style="height:104px"></div></div>
+        </div>
+        <div class="card"><div class="skel skel--title mb-4"></div>
+          <div class="skel" style="height:96px"></div></div>
+      </div>
+      <p class="sr-only" role="status">Loading your boundary settings.</p>
+    </section>
+
+    <!-- ====================================================== ERROR ==== -->
+    <section data-state-panel="error" data-state-label="Error">
+      <div class="banner banner--error mb-5" role="alert">
+        <span data-icon="alert"></span>
+        <div><b>Your queued messages are safe.</b><br>
+          Held locally. They'll go out at 09:00 if the connection returns.</div>
+      </div>
+      <div class="card">
+        <div class="state state--error">
+          <div class="state__icon"><span data-icon="wifiOff" data-size="25"></span></div>
+          <h2 class="state__title">Boundary settings unavailable</h2>
+          <p class="state__text">Quiet hours are still enforced. You just can't change them yet.</p>
+          <div class="state__actions">
+            <button class="btn btn--primary" type="button">
+              <span data-icon="refresh"></span> Try again</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<script src="assets/js/icons.js"></script>
+<script src="assets/js/room.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/charts.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
