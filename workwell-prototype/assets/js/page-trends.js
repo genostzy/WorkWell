@@ -60,7 +60,7 @@ function renderSelfReport() {
 function renderCharts() {
   const chartFor = {
     workingHours: { label: 'Working hours', unit: 'h' },
-    afterHours:   { label: 'Messages after 18:30', unit: '' },
+    afterHours:   { label: 'Messages after 6:30 pm', unit: '' },
     meetingLoad:  { label: 'Meeting hours', unit: 'h' },
   };
 

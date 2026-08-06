@@ -29,7 +29,7 @@ const PERSONAL = {
 
   afterHours: {
     label: 'After-hours activity',
-    unit: 'messages sent after 18:30',
+    unit: 'messages sent after 6:30 pm',
     values: [4, 6, 3, 5, 8, 7, 9, 11, 14, 13, 17, 19],
     baseline: 6,
     band: [2, 9],
