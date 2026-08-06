@@ -71,7 +71,10 @@ document.addEventListener('DOMContentLoaded', function () {
   function planeRole() { return user && user.plane === 'hr' ? 'hr' : 'employee'; }
 
   function renderRoom() {
-    roomEl.insertAdjacentHTML('afterbegin', WW.room.roomSVG({ role: planeRole() }));
+    const mins = WW.room.nowMinutes();
+    roomEl.dataset.phase = WW.room.phaseAt(mins);
+    roomEl.insertAdjacentHTML('afterbegin',
+      WW.room.roomSVG({ role: planeRole(), minutes: mins }));
     listHost.innerHTML = WW.room.roomList(planeRole(), !signedIn);
     // The list is the default view on phones, so it needs its own way in.
     if (!signedIn) {
@@ -120,15 +123,37 @@ document.addEventListener('DOMContentLoaded', function () {
     const avatar = roomEl.querySelector('.room-avatar__initials');
     if (avatar && user) avatar.textContent = user.initials;
 
+    const mins = WW.room.nowMinutes();
+    const phase = WW.room.phaseAt(mins);
+    const first = user ? user.name.split(' ')[0] : 'there';
+
     caption.textContent = open
-      ? `Morning, ${user ? user.name.split(' ')[0] : 'there'}. Pick somewhere to go.`
+      ? ({
+          morning: `Morning, ${first}. Pick somewhere to go.`,
+          day:     `Afternoon, ${first}. Pick somewhere to go.`,
+          quiet:   `It's ${WW.room.formatTime(mins)}. This can wait until tomorrow.`,
+        })[phase]
       : 'Click the front door to sign in.';
     hint.hidden = !open;
     listNote.textContent = open
       ? 'Everywhere you can go from here.'
       : 'Sign in at the front door first.';
 
-    if (open && o.greet) {
+    // During quiet hours the room says its piece instead of asking for a
+    // check-in. Nothing is blocked — every destination still works.
+    const note = document.querySelector('[data-room-note]');
+    if (note) {
+      note.hidden = !(open && phase === 'quiet');
+      if (!note.hidden) {
+        const q = WW.room.quietHours();
+        note.querySelector('[data-note-text]').innerHTML =
+          `<b>Your quiet hours started at ${WW.room.formatTime(q.from)}.</b>
+           Nothing here is closed — everything still works if you need it.
+           We just stopped asking.`;
+      }
+    }
+
+    if (open && o.greet && phase !== 'quiet') {
       // First run goes to setup, not straight into the daily check-in.
       let onboarded = false;
       try { onboarded = localStorage.getItem('ww.onboarded') === '1'; } catch (e) {}

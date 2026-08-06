@@ -300,5 +300,30 @@
 <script src="assets/js/data.js"></script>
 <script src="assets/js/charts.js"></script>
 <script src="assets/js/app.js"></script>
+<script>
+/* Persist the quiet-hours window so the office can observe it: after these
+   hours the room dims and stops offering the check-in. */
+(function () {
+  const toMins = (s) => {
+    const m = /^(\d{1,2}):(\d{2})\s*(am|pm)$/i.exec((s || '').trim());
+    if (!m) return null;
+    let h = Number(m[1]) % 12;
+    if (/pm/i.test(m[3])) h += 12;
+    return h * 60 + Number(m[2]);
+  };
+  const save = () => {
+    const from = toMins(document.getElementById('qs')?.value);
+    const to = toMins(document.getElementById('qe')?.value);
+    try {
+      if (from !== null) localStorage.setItem('ww.quietFrom', String(from));
+      if (to !== null) localStorage.setItem('ww.quietTo', String(to));
+    } catch (e) { /* private browsing */ }
+  };
+  document.addEventListener('ww:ready', () => {
+    ['qs', 'qe'].forEach((id) => document.getElementById(id)?.addEventListener('change', save));
+    save();
+  });
+}());
+</script>
 </body>
 </html>

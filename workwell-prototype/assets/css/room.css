@@ -69,6 +69,68 @@
 
 .reader { fill: var(--border-strong); }
 .reader.is-open { fill: var(--accent); }
+.ink-dot { fill: var(--text); }
+
+/* -------------------------------------------------------- Time of day ---
+   The room observes the boundary the product sells. Nothing is blocked at
+   any hour — the lights just go down and it stops inviting you in. */
+
+.room::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-lg);
+  pointer-events: none;
+  transition: background var(--dur-slow) var(--ease);
+  background: transparent;
+}
+
+/* Morning: low warm light across the floor. */
+.room[data-phase="morning"]::after {
+  background: linear-gradient(115deg,
+    rgba(255, 196, 92, .16) 0%,
+    rgba(255, 196, 92, .05) 42%,
+    transparent 70%);
+}
+
+/* Quiet hours: lights out. */
+.room[data-phase="quiet"]::after {
+  background: linear-gradient(180deg,
+    rgba(24, 32, 58, .46) 0%,
+    rgba(16, 22, 42, .58) 100%);
+}
+.room[data-phase="quiet"] .screen,
+.room[data-phase="quiet"] .accent-soft { opacity: .18; }
+.room[data-phase="quiet"] .plant,
+.room[data-phase="quiet"] .plant-2 { opacity: .3; }
+.room[data-phase="quiet"] .rug { opacity: .35; }
+
+/* The clock stays legible — it is the thing you would come here to change. */
+.room[data-phase="quiet"] .spot[data-spot="clock"] .spot__tagbg {
+  fill: var(--accent); stroke: var(--accent);
+}
+.room[data-phase="quiet"] .spot[data-spot="clock"] .spot__tagtext,
+.room[data-phase="quiet"] .spot[data-spot="clock"] .spot__tagsub {
+  fill: var(--text-on-accent);
+}
+
+/* Quiet-hours notice, in place of the check-in offer. */
+.room-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  max-width: 52ch;
+  margin: 0 auto var(--s-4);
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+.room-note svg { flex: none; margin-top: 2px; color: var(--accent-text); }
+.room-note b { color: var(--text); }
 
 /* ------------------------------------------------------------------ Spots */
 

@@ -72,6 +72,33 @@ the front door.
 (`ww.onboarded`), then switches to `check-in.html` / "Check in". The arrival
 bubble follows the same rule.
 
+## The room knows what time it is
+
+The wall clock shows the real time, and the room has three phases:
+
+| Phase | When | Room |
+|---|---|---|
+| Morning | until noon | Warm light across the floor |
+| Day | noon → quiet hours | Normal |
+| Quiet | your quiet hours | Lights out. No check-in offer |
+
+During quiet hours the greeting becomes *"It's 9:40 pm. This can wait until
+tomorrow"* and the check-in bubble is replaced by a note. **Nothing is
+blocked** — every destination still works. The room just stops asking. The
+clock keeps its accent so it stays legible: it's the thing you'd come here to
+change.
+
+The window comes from the Boundary Assistant, persisted as `ww.quietFrom` /
+`ww.quietTo` (minutes past midnight), defaulting to 6:30 pm – 8:30 am.
+
+Add `?time=21:40` to any office URL to preview a given hour — otherwise the
+night state is only visible at night.
+
+> Deliberately **not** built: other people's avatars in the room. Showing who
+> is at their desk is presence surveillance, which is the thing this product
+> refuses to do. If the room ever needs to feel populated, it has to be
+> anonymous and aggregate — never *who*.
+
 ## Seeing the designed states
 
 Every screen still implements populated / empty / loading / error / not-enough-data,

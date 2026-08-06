@@ -25,6 +25,54 @@ function hasOnboarded() {
   try { return localStorage.getItem('ww.onboarded') === '1'; } catch (e) { return false; }
 }
 
+/* ------------------------------------------------------------ Time of day
+
+   The room observes the boundary the product is selling: after quiet hours
+   begin the lights are off and it stops inviting you in. Nothing is ever
+   blocked — every destination still works. It just stops asking.
+   --------------------------------------------------------------------- */
+
+const QUIET_DEFAULT = { from: 18 * 60 + 30, to: 8 * 60 + 30 };   // 6:30 pm → 8:30 am
+
+function quietHours() {
+  const read = (k, fallback) => {
+    try {
+      const v = localStorage.getItem(k);
+      return v === null ? fallback : Number(v);
+    } catch (e) { return fallback; }
+  };
+  return {
+    from: read('ww.quietFrom', QUIET_DEFAULT.from),
+    to:   read('ww.quietTo',   QUIET_DEFAULT.to),
+  };
+}
+
+/** Minutes since midnight. `?time=21:40` overrides, so the night state is demoable. */
+function nowMinutes() {
+  const q = new URLSearchParams(location.search).get('time');
+  const m = q && /^\d{1,2}:\d{2}$/.test(q) ? q.split(':') : null;
+  if (m) return (Number(m[0]) % 24) * 60 + (Number(m[1]) % 60);
+  const d = new Date();
+  return d.getHours() * 60 + d.getMinutes();
+}
+
+/** 'morning' | 'day' | 'quiet' */
+function phaseAt(mins, quiet) {
+  const q = quiet || quietHours();
+  const inQuiet = q.from > q.to
+    ? (mins >= q.from || mins < q.to)     // window crosses midnight
+    : (mins >= q.from && mins < q.to);
+  if (inQuiet) return 'quiet';
+  return mins < 12 * 60 ? 'morning' : 'day';
+}
+
+function formatTime(mins) {
+  const h24 = Math.floor(mins / 60) % 24;
+  const m = mins % 60;
+  const h = h24 % 12 === 0 ? 12 : h24 % 12;
+  return `${h}:${String(m).padStart(2, '0')} ${h24 < 12 ? 'am' : 'pm'}`;
+}
+
 /* Destinations, in tab order. `plane` decides who may enter. */
 const SPOTS = [
   { id: 'desk',    href: 'trends.html',    plane: 'private',
@@ -105,12 +153,21 @@ function roomSVG(opts) {
     <circle class="plant-2" cx="552" cy="474" r="13"/>
     <circle class="plant-2" cx="580" cy="476" r="11"/>`;
 
-  /* --- wall clock (boundaries) --- */
+  /* --- wall clock (boundaries) — hands show the actual time --- */
+  const mins = o.minutes == null ? nowMinutes() : o.minutes;
+  const hand = (lenPx, deg) => {
+    const a = (deg - 90) * Math.PI / 180;
+    return { x: 330 + lenPx * Math.cos(a), y: 66 + lenPx * Math.sin(a) };
+  };
+  const hEnd = hand(11, ((mins / 60) % 12) * 30);
+  const mEnd = hand(17, (mins % 60) * 6);
   const clock = `
     <circle class="furn" cx="330" cy="66" r="30"/>
     <circle class="furn-3" cx="330" cy="66" r="22"/>
-    <line class="ink-2" x1="330" y1="66" x2="330" y2="52"/>
-    <line class="ink-2" x1="330" y1="66" x2="342" y2="72"/>`;
+    <line class="ink-2" x1="330" y1="66" x2="${hEnd.x.toFixed(1)}" y2="${hEnd.y.toFixed(1)}"/>
+    <line class="ink-2" x1="330" y1="66" x2="${mEnd.x.toFixed(1)}" y2="${mEnd.y.toFixed(1)}"
+          stroke-width="2.5"/>
+    <circle class="ink-dot" cx="330" cy="66" r="2.5"/>`;
 
   /* --- lounge (recognition) --- */
   const lounge = `
@@ -166,7 +223,9 @@ function roomSVG(opts) {
     ${spotOpen(by('desk'), desk, 216, 530)}
     ${spotOpen(by('journal'), journal, 296, 300)}
     ${spotOpen(by('cooler'), cooler, 520, 566)}
-    ${spotOpen(by('clock'), clock, 330, 122)}
+    ${spotOpen(
+        Object.assign({}, by('clock'), { sub: formatTime(mins) }),
+        clock, 330, 122)}
     ${spotOpen(by('lounge'), lounge, 715, 624)}
     ${spotOpen(by('shelf'), shelf, 79, 300)}
 
@@ -261,6 +320,9 @@ function roomList(role, locked) {
   }).join('')}</ul>`;
 }
 
-WW.room = { SPOTS, roomSVG, wireRoom, roomList };
+WW.room = {
+  SPOTS, roomSVG, wireRoom, roomList,
+  nowMinutes, phaseAt, quietHours, formatTime,
+};
 
 })(window.WW);
