@@ -11,6 +11,15 @@
   flex-direction: column;
 }
 
+/* Room view: lock to the viewport so the plan fits without scrolling.
+   Only applied for the room — the list view must still scroll. */
+.room-shell.is-fit {
+  height: 100vh;
+  height: 100dvh;          /* excludes mobile browser chrome where supported */
+  min-height: 0;
+  overflow: hidden;
+}
+
 .room-top {
   display: flex;
   align-items: center;
@@ -36,19 +45,35 @@
 
 .room-stage {
   flex: 1;
-  display: grid;
-  place-items: center;
-  padding: 0 var(--s-5) var(--s-6);
+  min-height: 0;                /* lets the stage shrink inside the shell */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--s-5) var(--s-5);
   width: 100%;
+}
+
+/* The room panel is a centred column; the plan takes whatever height the
+   caption, note and hint leave, and its exact box is set in page-office.js
+   so the drawing fills it with no letterboxing. */
+.room-views.is-on[data-view-panel="room"] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
 }
 
 .room {
   position: relative;
   width: 100%;
-  max-width: 980px;
+  max-width: 1100px;
+  margin: 0 auto;
 }
 
-.room__svg { display: block; width: 100%; height: auto; }
+.room__svg { display: block; width: 100%; height: 100%; }
 
 /* --------------------------------------------------------------- Surfaces */
 

@@ -113,6 +113,44 @@ document.addEventListener('DOMContentLoaded', function () {
       </div>`;
   }
 
+  /* -------------------------------------------------------------- Fitting
+
+     The plan is 1000x720. Rather than guess the chrome height, measure what
+     the caption, note and hint actually leave and size the room to fill it
+     exactly — so the drawing never letterboxes and the page never scrolls. */
+
+  const ROOM_RATIO = 1000 / 720;
+  const shell = document.querySelector('.room-shell');
+  const roomPanel = document.querySelector('[data-view-panel="room"]');
+
+  function fitRoom() {
+    if (!roomPanel.classList.contains('is-on')) return;
+
+    // Clear first so the measurement is of the space available, not the last fit.
+    roomEl.style.width = '';
+    roomEl.style.height = '';
+
+    let used = 0;
+    [...roomPanel.children].forEach((c) => {
+      if (c === roomEl || c.hidden) return;
+      const cs = getComputedStyle(c);
+      used += c.offsetHeight + parseFloat(cs.marginTop) + parseFloat(cs.marginBottom);
+    });
+
+    const availH = roomPanel.clientHeight - used;
+    const availW = Math.min(roomPanel.clientWidth, 1100);
+    if (availH <= 0 || availW <= 0) return;
+
+    const w = Math.min(availW, availH * ROOM_RATIO);
+    roomEl.style.width = `${Math.floor(w)}px`;
+    roomEl.style.height = `${Math.floor(w / ROOM_RATIO)}px`;
+  }
+
+  if (window.ResizeObserver) {
+    new ResizeObserver(fitRoom).observe(roomPanel);
+  }
+  window.addEventListener('resize', fitRoom);
+
   /* ------------------------------------------------------------- States */
 
   function setOpen(open, opts) {
@@ -168,6 +206,9 @@ document.addEventListener('DOMContentLoaded', function () {
       const delay = prefersReducedMotion() ? 0 : 1100;
       window.setTimeout(() => bubble.classList.add('is-in'), delay);
     }
+
+    // The note appearing or leaving changes the space available to the plan.
+    fitRoom();
   }
 
   /* ------------------------------------------------------------ Sign in */
@@ -246,6 +287,9 @@ document.addEventListener('DOMContentLoaded', function () {
       x.setAttribute('aria-pressed', String(x.dataset.view === want)));
     document.querySelectorAll('[data-view-panel]').forEach((p) =>
       p.classList.toggle('is-on', p.dataset.viewPanel === want));
+    // Only the room locks to the viewport; the list needs to scroll.
+    shell.classList.toggle('is-fit', want === 'room');
+    if (want === 'room') fitRoom();
   }
 
   document.querySelectorAll('[data-view]').forEach((b) => {
@@ -255,7 +299,7 @@ document.addEventListener('DOMContentLoaded', function () {
   /* On a phone the plan scales down until its labels are ~13px tall and the
      tap targets are far under 44px. The list is simply the better small-screen
      experience, so start there — the room stays one tap away. */
-  if (window.matchMedia('(max-width: 760px)').matches) setView('list');
+  setView(window.matchMedia('(max-width: 760px)').matches ? 'list' : 'room');
 
   /* Theme toggle + account menu, mirroring the app shell. */
   function paintTheme() {
