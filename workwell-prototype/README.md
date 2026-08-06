@@ -25,12 +25,32 @@ pulses to say so. Clicking it opens the account chooser; picking an account
 swings both door leaves open, lights the room, walks your avatar in, and pops
 the check-in bubble.
 
-**The floor plan is the privacy model.** Private-plane destinations sit at your
-own desk. The organisation dashboard is behind a badge-locked meeting-room door
-that an employee account **genuinely cannot open** — the spot renders faded,
-`aria-disabled`, with no `data-go` to navigate to, and it is locked in the list
-view too. Signing in as Dee lights the badge reader and opens it. The rule the
-product enforces in data is the rule the room enforces in space.
+**The floor plan is the privacy model, and it cuts both ways.**
+
+*As an employee*, the organisation dashboard is behind a badge-locked
+meeting-room door you genuinely cannot open — the spot renders faded,
+`aria-disabled`, with no `data-go`, and locked in the list view too.
+
+*As an employer*, you get the meeting room and nothing else. The employee floor
+is not drawn as furniture you can't use — it is drawn as a **sealed area**,
+because an HR leader has no business seeing whose desk is whose. Per PRD §8, an
+HR Leader has "access to anonymous organisational insights only".
+
+**This is enforced, not just drawn.** `app.js` checks the page's plane against
+the account before anything renders:
+
+- An employer opening `trends.html`, `check-in.html`, `boundary.html` (etc.)
+  gets a block screen. Page scripts find no hooks, so no chart, scale or feed
+  is ever populated.
+- An employee opening `org-diagnostics.html` gets the same treatment.
+- Neither account is offered a link into the other plane — the check-in bubble
+  is removed from the document for employers, not merely faded, since an
+  `opacity: 0` link is still keyboard-focusable.
+- `components.html` is exempt via `data-access="any"`; it is documentation,
+  not a product screen.
+
+Verified: an employer has **zero** reachable links to private-plane pages, and
+blocked pages render zero data.
 
 | Object | Goes to |
 |---|---|

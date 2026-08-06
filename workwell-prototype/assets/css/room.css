@@ -96,6 +96,36 @@
 .reader.is-open { fill: var(--accent); }
 .ink-dot { fill: var(--text); }
 
+/* Sealed employee floor, shown to organisation accounts. Deliberately blank:
+   an HR leader has no business seeing whose desk is whose. */
+.sealed__fill {
+  fill: var(--surface-3);
+  stroke: var(--border-strong);
+  stroke-width: 3;
+  stroke-dasharray: 10 8;
+  opacity: .55;
+}
+.sealed__badge {
+  fill: var(--surface);
+  stroke: var(--border-strong);
+  stroke-width: 2;
+}
+.sealed__icon {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.sealed__title {
+  fill: var(--text);
+  font-size: 17px; font-weight: 800; text-anchor: middle;
+}
+.sealed__sub {
+  fill: var(--text-subtle);
+  font-size: 12px; font-weight: 600; text-anchor: middle;
+}
+
 /* -------------------------------------------------------- Time of day ---
    The room observes the boundary the product sells. Nothing is blocked at
    any hour — the lights just go down and it stops inviting you in. */

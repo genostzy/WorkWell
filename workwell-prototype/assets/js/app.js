@@ -75,7 +75,43 @@ const DEFAULT_USER = {
   email: 'alex.rivera@northwind.example',
   role: 'Employee',
   initials: 'AR',
+  plane: 'employee',
 };
+
+/**
+ * Which plane an account may open. An organisation account gets the org plane
+ * and nothing else — per the PRD, an HR leader has access to anonymous
+ * organisational insights only. This is the URL guard: without it, typing
+ * trends.html would hand an employer somebody's private screen.
+ */
+function allowedPlane(user) {
+  return user.plane === 'hr' ? 'org' : 'private';
+}
+
+function blockScreen(pagePlane, user) {
+  const mine = allowedPlane(user);
+  const home = mine === 'org' ? 'org-diagnostics.html' : 'trends.html';
+  const what = pagePlane === 'private'
+    ? 'This is an employee\'s private plane. Your account cannot open it — not this screen, and not the data behind it.'
+    : 'This is the organisation plane. It holds group data for leadership, and your account does not have it.';
+  return `
+    <div class="page-head">
+      <h1>Not available on this account</h1>
+      <p class="t-lead">${what}</p>
+    </div>
+    <div class="card">
+      <div class="state">
+        <div class="state__icon">${icon('lock', { size: 25 })}</div>
+        <h2 class="state__title">The wall is doing its job</h2>
+        <p class="state__text">Signed in as <b>${user.name}</b> — ${user.role}.
+          There is no permission level that opens both planes.</p>
+        <div class="state__actions row" style="justify-content:center">
+          <a class="btn btn--primary" href="${home}">Go to your plane</a>
+          <a class="btn btn--secondary" href="index.html">The office</a>
+        </div>
+      </div>
+    </div>`;
+}
 
 function currentUser() {
   try {
@@ -200,9 +236,10 @@ function accountBlock(user) {
       <a class="account__item" href="index.html" role="menuitem">
         ${icon('grid', { size: 17 })} The office
       </a>
+      ${user.plane === 'hr' ? '' : `
       <a class="account__item" href="workspace.html" role="menuitem">
         ${icon('sliders', { size: 17 })} Settings
-      </a>
+      </a>`}
       <button class="account__item account__item--sep" type="button"
               role="menuitem" data-sign-out>
         ${icon('arrowRight', { size: 17 })} Sign out
@@ -443,9 +480,11 @@ function initControls() {
 
 /* The room replaces the sidebar: one button that opens the office plan.
    Kept as a real dialog so it is keyboard-operable and dismissible. */
-function openHub(plane) {
+function openHub() {
   const user = currentUser();
-  const role = user.plane === 'hr' || plane === 'org' ? 'hr' : 'employee';
+  // Role comes from the account, never from the page — otherwise an employee
+  // landing on an org URL would be handed the org room.
+  const role = user.plane === 'hr' ? 'hr' : 'employee';
 
   const overlay = document.createElement('div');
   overlay.className = 'hub-overlay';
@@ -501,6 +540,18 @@ function mountShell() {
   main.innerHTML = buildTopbar(title, plane) + buildPlaneStrip(plane);
 
   const content = document.querySelector('[data-content]');
+
+  /* Enforce the plane before anything renders, so page scripts find no
+     hooks and never populate a screen this account may not see.
+     data-access="any" exempts the design-system reference, which is
+     documentation rather than a product screen. */
+  const user = currentUser();
+  const exempt = body.dataset.access === 'any';
+  if (!exempt && plane !== allowedPlane(user)) {
+    content.innerHTML = blockScreen(plane, user);
+    body.dataset.blocked = 'true';
+  }
+
   main.append(content);
   app.append(main);
 
@@ -522,7 +573,7 @@ function mountShell() {
   document.addEventListener('click', (e) => {
     if (e.target.closest('[data-theme-toggle]')) { e.preventDefault(); cycleTheme(); }
     if (e.target.closest('[data-more-tab]'))     { e.preventDefault(); openMoreSheet(plane, page); }
-    if (e.target.closest('[data-hub]'))          { e.preventDefault(); openHub(plane); }
+    if (e.target.closest('[data-hub]'))          { e.preventDefault(); openHub(); }
     if (e.target.closest('[data-sign-out]'))     { e.preventDefault(); signOut(); }
 
     const trigger = e.target.closest('[data-account-menu]');

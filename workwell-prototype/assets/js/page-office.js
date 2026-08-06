@@ -105,8 +105,9 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="account__email">${user.email}</div>
           </div>
         </div>
+        ${planeRole() === 'hr' ? '' : `
         <a class="account__item" href="workspace.html" role="menuitem">
-          ${icon('sliders', { size: 17 })} Settings</a>
+          ${icon('sliders', { size: 17 })} Settings</a>`}
         <button class="account__item account__item--sep" type="button"
                 role="menuitem" data-sign-out>
           ${icon('arrowRight', { size: 17 })} Sign out</button>
@@ -165,12 +166,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const phase = WW.room.phaseAt(mins);
     const first = user ? user.name.split(' ')[0] : 'there';
 
+    const isHr = planeRole() === 'hr';
+
     caption.textContent = open
-      ? ({
-          morning: `Morning, ${first}. Pick somewhere to go.`,
-          day:     `Afternoon, ${first}. Pick somewhere to go.`,
-          quiet:   `It's ${WW.room.formatTime(mins)}. This can wait until tomorrow.`,
-        })[phase]
+      ? (isHr
+          ? `Morning, ${first}. The meeting room is yours.`
+          : ({
+              morning: `Morning, ${first}. Pick somewhere to go.`,
+              day:     `Afternoon, ${first}. Pick somewhere to go.`,
+              quiet:   `It's ${WW.room.formatTime(mins)}. This can wait until tomorrow.`,
+            })[phase])
       : 'Click the front door to sign in.';
     hint.hidden = !open;
     listNote.textContent = open
@@ -181,7 +186,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // check-in. Nothing is blocked — every destination still works.
     const note = document.querySelector('[data-room-note]');
     if (note) {
-      note.hidden = !(open && phase === 'quiet');
+      note.hidden = !(open && phase === 'quiet' && !isHr);
       if (!note.hidden) {
         const q = WW.room.quietHours();
         note.querySelector('[data-note-text]').innerHTML =
@@ -191,7 +196,14 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     }
 
-    if (open && o.greet && phase !== 'quiet') {
+    // The check-in is a private-plane action. Take it out of the document for
+    // an employer — opacity:0 still leaves the link keyboard-focusable.
+    if (isHr) {
+      bubble.classList.remove('is-in');
+      bubble.hidden = true;
+    }
+
+    if (open && o.greet && phase !== 'quiet' && !isHr) {
       // First run goes to setup, not straight into the daily check-in.
       let onboarded = false;
       try { onboarded = localStorage.getItem('ww.onboarded') === '1'; } catch (e) {}

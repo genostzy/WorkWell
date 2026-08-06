@@ -203,6 +203,33 @@ function roomSVG(opts) {
       : s;
   };
 
+  /* An organisation account gets the meeting room and nothing else. The
+     employee floor is not drawn as furniture they cannot use — it is drawn
+     as a sealed area, because an HR leader has no business seeing whose desk
+     is whose. The wall is the point. */
+  const employeeFloor = isHr ? `
+    <g class="sealed" aria-hidden="true">
+      <rect class="sealed__fill" x="52" y="52" width="546" height="616" rx="16"/>
+      <g transform="translate(325 330)">
+        <rect class="sealed__badge" x="-118" y="-40" width="236" height="80" rx="18"/>
+        <g transform="translate(0 -12)">
+          <path class="sealed__icon" transform="translate(-11 -11) scale(0.92)"
+                d="M5 11h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1Z
+                   M7 11V7a5 5 0 0 1 10 0v4"/>
+        </g>
+        <text class="sealed__title" x="0" y="16">Private plane</text>
+        <text class="sealed__sub" x="0" y="32">Employees only — sealed from your account</text>
+      </g>
+    </g>` : `
+    ${spotOpen(by('desk'), desk, 216, 530)}
+    ${spotOpen(by('journal'), journal, 296, 300)}
+    ${spotOpen(by('cooler'), cooler, 520, 566)}
+    ${spotOpen(
+        Object.assign({}, by('clock'), { sub: formatTime(mins) }),
+        clock, 330, 122)}
+    ${spotOpen(by('lounge'), lounge, 715, 624)}
+    ${spotOpen(by('shelf'), shelf, 79, 300)}`;
+
   return `
   <svg class="room__svg" viewBox="0 0 1000 720" role="img"
        aria-label="Top-down plan of the office. Use the destination buttons, or switch to the list view.">
@@ -211,8 +238,7 @@ function roomSVG(opts) {
     <rect class="floor" x="24" y="24" width="952" height="672" rx="22"/>
     <rect class="wall"  x="24" y="24" width="952" height="672" rx="22"/>
 
-    <!-- rug, purely decorative -->
-    <rect class="rug" x="360" y="300" width="230" height="150" rx="16"/>
+    ${isHr ? '' : '<rect class="rug" x="360" y="300" width="230" height="150" rx="16"/>'}
 
     <!-- meeting room partition, with its doorway gap -->
     <path class="wall-inner" d="M626 24 L626 270 L700 270 M772 270 L976 270"/>
@@ -220,14 +246,7 @@ function roomSVG(opts) {
     <!-- badge reader beside the meeting room door -->
     <rect class="reader ${isHr ? 'is-open' : ''}" x="778" y="278" width="14" height="24" rx="4"/>
 
-    ${spotOpen(by('desk'), desk, 216, 530)}
-    ${spotOpen(by('journal'), journal, 296, 300)}
-    ${spotOpen(by('cooler'), cooler, 520, 566)}
-    ${spotOpen(
-        Object.assign({}, by('clock'), { sub: formatTime(mins) }),
-        clock, 330, 122)}
-    ${spotOpen(by('lounge'), lounge, 715, 624)}
-    ${spotOpen(by('shelf'), shelf, 79, 300)}
+    ${employeeFloor}
 
     ${isHr
       ? spotOpen(by('meeting'), meeting, 812, 250)
@@ -303,11 +322,16 @@ function wireRoom(container, opts) {
  */
 function roomList(role, locked) {
   const isHr = role === 'hr';
-  return `<ul class="roomlist">${SPOTS.map((base) => {
+
+  // An organisation account has exactly one destination. The private plane is
+  // not listed as locked — it is not theirs to know the shape of.
+  const visible = SPOTS.filter((s) => (isHr ? s.plane === 'org' : true));
+
+  const items = visible.map((base) => {
     const s = (base.altWhen && base.altWhen())
       ? Object.assign({}, base, { href: base.altHref, sub: base.altSub })
       : base;
-    const open = (s.plane === 'private' || isHr) && !locked;
+    const open = (isHr ? s.plane === 'org' : s.plane === 'private') && !locked;
     if (open) {
       return `<li><a class="roomlist__item" href="${s.href}">
            <span class="roomlist__label">${s.label}</span>
@@ -317,7 +341,16 @@ function roomList(role, locked) {
     return `<li><span class="roomlist__item is-locked" aria-disabled="true">
            <span class="roomlist__label">${s.label}</span>
            <span class="roomlist__sub">${why}</span></span></li>`;
-  }).join('')}</ul>`;
+  }).join('');
+
+  const note = isHr && !locked
+    ? `<li><span class="roomlist__item is-locked" aria-disabled="true">
+         <span class="roomlist__label">Private plane</span>
+         <span class="roomlist__sub">Employees only — sealed from your account</span>
+       </span></li>`
+    : '';
+
+  return `<ul class="roomlist">${items}${note}</ul>`;
 }
 
 WW.room = {
