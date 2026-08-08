@@ -10,7 +10,7 @@ WW.onReady(function () {
   if (!host) return;
 
   host.className = 'stack stack--tight';
-  host.innerHTML = WW.data.NUDGES.map((n) => `
+  host.innerHTML = WW.privateData.NUDGES.map((n) => `
     <div class="card card--quiet">
       <label class="toggle">
         <span class="toggle__text row" style="gap:var(--s-3);flex-wrap:nowrap;align-items:flex-start">

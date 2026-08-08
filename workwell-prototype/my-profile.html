@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Profile</title>
+<meta name="description" content="Your employment record and documents.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/room.css">
+</head>
+<body data-plane="work" data-page="my-profile" data-title="My Profile">
+
+<main class="content" data-content>
+
+  <div class="page-head">
+    <h1>My profile</h1>
+    <p class="t-lead">Your employment record, documents and what your employer holds.</p>
+  </div>
+
+  <div class="grid grid--sidebar-right">
+    <div class="stack">
+
+      <div class="card">
+        <div class="card__head"><div>
+          <div class="card__title">Employment record</div>
+          <div class="card__sub">Held by HR. Ask them to correct anything wrong.</div>
+        </div></div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <caption class="sr-only">Your employment record</caption>
+            <tbody data-profile-rows></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card card--flush">
+        <div style="padding:var(--s-5) var(--s-5) var(--s-3)">
+          <div class="card__title">Documents</div>
+          <div class="card__sub">Contracts, payslips and past reviews</div>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <caption class="sr-only">Your documents</caption>
+            <thead><tr>
+              <th scope="col">Document</th><th scope="col">Type</th>
+              <th scope="col">Date</th><th scope="col"></th>
+            </tr></thead>
+            <tbody data-documents></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack">
+      <!-- The clearest possible statement of the split, on the screen where
+           someone would come looking for it. -->
+      <div class="card card--accent">
+        <div class="card__title mb-3">What your employer holds</div>
+        <ul class="stack stack--tight" style="font-size:var(--fs-sm)">
+          <li class="row" style="gap:var(--s-2);flex-wrap:nowrap">
+            <span data-icon="check" data-size="15"></span>
+            <span>Your job, team, manager and start date</span></li>
+          <li class="row" style="gap:var(--s-2);flex-wrap:nowrap">
+            <span data-icon="check" data-size="15"></span>
+            <span>Leave dates and balance</span></li>
+          <li class="row" style="gap:var(--s-2);flex-wrap:nowrap">
+            <span data-icon="check" data-size="15"></span>
+            <span>Contracts, payslips and reviews</span></li>
+        </ul>
+        <div class="hr"></div>
+        <div class="card__title mb-3">What it never holds</div>
+        <ul class="stack stack--tight" style="font-size:var(--fs-sm)">
+          <li class="row" style="gap:var(--s-2);flex-wrap:nowrap">
+            <span data-icon="x" data-size="15"></span>
+            <span>Your check-ins, mood, energy or pressure</span></li>
+          <li class="row" style="gap:var(--s-2);flex-wrap:nowrap">
+            <span data-icon="x" data-size="15"></span>
+            <span>Your quiet hours or after-hours activity</span></li>
+          <li class="row" style="gap:var(--s-2);flex-wrap:nowrap">
+            <span data-icon="x" data-size="15"></span>
+            <span>Which nudges you use, or whether you use WorkWell at all</span></li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card__title mb-2">Your data</div>
+        <p class="t-subtle mb-4">You can take a copy of everything held about
+          you, on either plane.</p>
+        <button class="btn btn--secondary btn--block" type="button">
+          <span data-icon="inbox"></span> Request a data export</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="assets/js/icons.js"></script>
+<script src="assets/js/room.js"></script>
+<script src="assets/js/work-data.js"></script>
+<script src="assets/js/charts.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/page-my-profile.js"></script>
+</body>
+</html>

@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Onboarding</title>
+<meta name="description" content="New joiner checklists and policy acknowledgements.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/room.css">
+</head>
+<body data-plane="hr" data-page="hr-onboarding" data-title="Onboarding">
+
+<main class="content" data-content>
+
+  <div class="page-head">
+    <h1>Onboarding</h1>
+    <p class="t-lead">New joiners and what is still outstanding.</p>
+  </div>
+
+  <div data-state-group>
+
+    <section data-state-panel="populated" data-state-label="Populated" class="is-active">
+      <div class="grid grid--sidebar-right">
+        <div class="stack" data-onboarding></div>
+
+        <div class="stack">
+          <div class="card">
+            <div class="card__head"><div>
+              <div class="card__title">Policies</div>
+              <div class="card__sub">Current versions and acknowledgement</div>
+            </div></div>
+            <div class="stack stack--tight" data-policies></div>
+          </div>
+
+          <div class="card card--accent">
+            <div class="card__title mb-2">A note on the first weeks</div>
+            <p class="t-subtle">WorkWell will not ask a new joiner to check in
+              until they have been here two weeks. Nothing useful comes from a
+              baseline built in week one, and being nudged on day two is not a
+              welcome.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section data-state-panel="empty" data-state-label="No joiners">
+      <div class="card">
+        <div class="state">
+          <div class="state__icon"><span data-icon="seedling" data-size="25"></span></div>
+          <h2 class="state__title">Nobody is onboarding</h2>
+          <p class="state__text">New joiners appear here automatically once a
+            start date is set on their record.</p>
+        </div>
+      </div>
+    </section>
+
+    <section data-state-panel="error" data-state-label="Error">
+      <div class="card">
+        <div class="state state--error">
+          <div class="state__icon"><span data-icon="alert" data-size="25"></span></div>
+          <h2 class="state__title">Couldn't load onboarding</h2>
+          <p class="state__text">No checklist item was changed.</p>
+          <div class="state__actions">
+            <button class="btn btn--primary" type="button">
+              <span data-icon="refresh"></span> Try again</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script src="assets/js/icons.js"></script>
+<script src="assets/js/room.js"></script>
+<script src="assets/js/hr-data.js"></script>
+<script src="assets/js/charts.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/page-hr-onboarding.js"></script>
+</body>
+</html>

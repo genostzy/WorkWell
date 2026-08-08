@@ -5,7 +5,7 @@
 (function (WW) {
 'use strict';
 
-const D = WW.data;
+const D = WW.privateData;
 const P = D.PERSONAL;
 
 function renderInsights() {

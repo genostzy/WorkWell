@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Leave</title>
+<meta name="description" content="Request leave and see your balance.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/room.css">
+</head>
+<body data-plane="work" data-page="my-leave" data-title="My Leave">
+
+<main class="content" data-content>
+
+  <div class="page-head">
+    <h1>My leave</h1>
+    <p class="t-lead">Book time off and see what you have left.</p>
+  </div>
+
+  <!-- The plane distinction, stated where it is easy to get wrong. -->
+  <div class="privacy-note mb-5">
+    <span data-icon="building"></span>
+    <span><b>Your employer does see this one.</b> Leave has to be approved, so
+      dates and balances go to HR — that is normal employment data, and separate
+      from your wellbeing.
+      <button class="privacy-more" type="button" data-privacy-more aria-expanded="false">What this means</button>
+      <span class="privacy-detail" hidden>Your check-ins, mood, boundaries and
+        nudges stay on the private plane and are never attached to a leave
+        request. Asking for a day off says nothing about how you are.</span></span>
+  </div>
+
+  <div class="grid grid--sidebar-right">
+    <div class="stack">
+      <div class="card">
+        <div class="card__head"><div>
+          <div class="card__title">Request time off</div>
+          <div class="card__sub">Goes to your manager for approval</div>
+        </div></div>
+
+        <div class="field mb-4">
+          <label class="field__label" for="lt">Type</label>
+          <select class="select" id="lt" data-leave-type></select>
+        </div>
+        <div class="grid grid--2 mb-4">
+          <div class="field">
+            <label class="field__label" for="lf">From</label>
+            <input class="input" id="lf" type="date" value="2026-09-07">
+          </div>
+          <div class="field">
+            <label class="field__label" for="lto">To</label>
+            <input class="input" id="lto" type="date" value="2026-09-08">
+          </div>
+        </div>
+        <div class="field mb-5">
+          <label class="field__label" for="ln">Note (optional)</label>
+          <textarea class="textarea" id="ln" style="min-height:80px"
+            placeholder="Anything your manager should know."></textarea>
+        </div>
+
+        <button class="btn btn--primary" type="button">
+          <span data-icon="send"></span> Send request</button>
+      </div>
+
+      <div class="card card--flush">
+        <div style="padding:var(--s-5) var(--s-5) var(--s-3)">
+          <div class="card__title">Your requests</div>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <caption class="sr-only">Your leave requests</caption>
+            <thead><tr>
+              <th scope="col">Type</th><th scope="col">Dates</th>
+              <th scope="col">Days</th><th scope="col">Status</th>
+            </tr></thead>
+            <tbody data-my-leave></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="card">
+        <div class="card__title mb-4">Balance</div>
+        <div class="stat mb-4">
+          <span class="stat__value t-num" data-leave-left>—</span>
+          <span class="stat__label" data-leave-of>days left</span>
+        </div>
+        <div class="meter">
+          <div class="meter__track"><div class="meter__fill" data-leave-bar style="width:0%"></div></div>
+          <div class="row row--between t-subtle" data-leave-split></div>
+        </div>
+      </div>
+
+      <div class="card card--quiet">
+        <div class="card__title mb-2" style="font-size:var(--fs-sm)">Carrying a lot over?</div>
+        <p class="t-subtle">Unused leave is usually a staffing problem rather
+          than a personal preference. It is worth raising.</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="assets/js/icons.js"></script>
+<script src="assets/js/room.js"></script>
+<script src="assets/js/work-data.js"></script>
+<script src="assets/js/charts.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/page-my-leave.js"></script>
+</body>
+</html>

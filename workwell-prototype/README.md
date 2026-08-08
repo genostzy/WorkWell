@@ -36,8 +36,40 @@ is not drawn as furniture you can't use — it is drawn as a **sealed area**,
 because an HR leader has no business seeing whose desk is whose. Per PRD §8, an
 HR Leader has "access to anonymous organisational insights only".
 
-**This is enforced, not just drawn.** `app.js` checks the page's plane against
-the account before anything renders:
+## Four planes
+
+Adding an HR system of record does not soften the wall — it needs a plane of
+its own, because employment data and wellbeing data are different categories.
+
+| Plane | Holds | Data file | Who |
+|---|---|---|---|
+| `private` | wellbeing — mood, trends, boundaries, nudges | `private-data.js` | employee, only ever |
+| `work` | own employment record — leave, payslips, profile | `work-data.js` | employee (own row only) |
+| `hr` | the directory — everyone's job, leave, reviews | `hr-data.js` | HR |
+| `org` | anonymous cohort aggregates, N≥8 | `data.js` | HR |
+
+An HR manager legitimately sees that Celine has 10 days of leave left. They
+never see how her week felt.
+
+**Two layers, because a UI guard is not a data guarantee.** `app.js` blanks the
+page for the wrong plane — but a `<script>` tag still runs, so blanking alone
+would leave the other plane's data sitting in that browser. Each dataset
+therefore refuses to populate for the wrong account:
+
+- Opening `trends.html` as HR → blocked screen **and** `WW.privateData` is
+  `undefined`.
+- Opening `hr-people.html` as an employee → blocked screen **and** `WW.hr` is
+  `undefined`.
+
+Self-service is a separate file from the directory for the same reason: opening
+My Leave must not download everyone else's balances.
+
+> These checks are client-side, which is right for a prototype and wrong for
+> production. In a real deployment the API refuses the request and this is the
+> second line, not the only one.
+
+**The page guard.** `app.js` checks the page's plane against the account before
+anything renders:
 
 - An employer opening `trends.html`, `check-in.html`, `boundary.html` (etc.)
   gets a block screen. Page scripts find no hooks, so no chart, scale or feed

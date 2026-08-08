@@ -10,7 +10,7 @@ WW.onReady(function () {
   if (!host) return;
 
   host.className = 'feed';
-  host.innerHTML = WW.data.RECOGNITION.map((r) => `
+  host.innerHTML = WW.privateData.RECOGNITION.map((r) => `
     <article class="feed__item">
       <div class="avatar">${r.initials}</div>
       <div class="grow">

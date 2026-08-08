@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Directory</title>
+<meta name="description" content="Employee records — employment data only.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/room.css">
+</head>
+<body data-plane="hr" data-page="hr-people" data-title="Directory">
+
+<main class="content" data-content>
+
+  <div class="page-head">
+    <h1>People</h1>
+    <p class="t-lead">Employment records for everyone at Northwind.</p>
+  </div>
+
+  <!-- The rule that makes an HR system of record compatible with the
+       private plane, stated on the screen that most needs it. -->
+  <div class="privacy-note mb-5">
+    <span data-icon="shield"></span>
+    <span><b>Employment data only.</b> No mood, check-ins, stress, boundary
+      activity or nudge history appears here — those live on the employee's
+      private plane and are not queryable from this side.
+      <button class="privacy-more" type="button" data-privacy-more aria-expanded="false">What this means</button>
+      <span class="privacy-detail" hidden>A directory is individual by nature and
+        that is legitimate: you need to know who works here, their job, and their
+        leave balance. Wellbeing is a different category of data and stays behind
+        the wall regardless of your permission level.</span></span>
+  </div>
+
+  <div class="grid grid--4 mb-5" data-hr-summary></div>
+
+  <div class="card mb-5">
+    <div class="row" style="gap:var(--s-4);align-items:flex-end">
+      <div class="field grow" style="min-width:200px">
+        <label class="field__label" for="q">Search</label>
+        <input class="input" id="q" type="search" placeholder="Name, title or team…"
+               data-people-search>
+      </div>
+      <div class="field" style="min-width:180px">
+        <label class="field__label" for="dept">Department</label>
+        <select class="select" id="dept" data-people-dept></select>
+      </div>
+      <span class="chip" data-people-count></span>
+    </div>
+    <p class="sr-only" role="status" data-people-status></p>
+  </div>
+
+  <div class="card card--flush">
+    <div class="table-scroll">
+      <table class="data-table">
+        <caption class="sr-only">Employee directory</caption>
+        <thead><tr>
+          <th scope="col">Name</th><th scope="col">Title</th><th scope="col">Team</th>
+          <th scope="col">Manager</th><th scope="col">Started</th><th scope="col">Status</th>
+        </tr></thead>
+        <tbody data-people-rows></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="state" data-people-empty hidden>
+    <div class="state__icon"><span data-icon="users" data-size="25"></span></div>
+    <h2 class="state__title">Nobody matches that</h2>
+    <p class="state__text">Try a different name, or clear the department filter.</p>
+  </div>
+</main>
+
+<script src="assets/js/icons.js"></script>
+<script src="assets/js/room.js"></script>
+<script src="assets/js/hr-data.js"></script>
+<script src="assets/js/charts.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/page-hr-people.js"></script>
+</body>
+</html>

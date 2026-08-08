@@ -45,6 +45,13 @@ const NAV = {
           { id: 'workspace',   href: 'workspace.html',   label: 'Workspace',      icon: 'sliders' },
         ],
       },
+      {
+        heading: 'Employment',
+        items: [
+          { id: 'my-leave',    href: 'my-leave.html',    label: 'My Leave',       icon: 'calendar' },
+          { id: 'my-profile',  href: 'my-profile.html',  label: 'My Profile',     icon: 'inbox' },
+        ],
+      },
     ],
     /* Bottom tab bar: four highest-frequency destinations, rest behind More. */
     tabs: ['trends', 'check-in', 'recognition'],
@@ -55,9 +62,18 @@ const NAV = {
     badge: {
       icon: 'building',
       label: 'Organization Plane',
-      sub: 'Anonymous group patterns only. Never individuals, never groups under 8.',
+      sub: 'Group patterns are anonymous. Employment records are individual, by design.',
     },
     groups: [
+      {
+        heading: 'People',
+        items: [
+          { id: 'hr-people',      href: 'hr-people.html',      label: 'Directory',   icon: 'users' },
+          { id: 'hr-leave',       href: 'hr-leave.html',       label: 'Leave',       icon: 'calendar' },
+          { id: 'hr-performance', href: 'hr-performance.html', label: 'Performance', icon: 'target' },
+          { id: 'hr-onboarding',  href: 'hr-onboarding.html',  label: 'Onboarding',  icon: 'seedling' },
+        ],
+      },
       {
         heading: 'Diagnose',
         items: [
@@ -65,9 +81,15 @@ const NAV = {
         ],
       },
     ],
-    tabs: ['org-diagnostics'],
+    tabs: ['hr-people', 'hr-leave', 'org-diagnostics'],
   },
 };
+
+/* Pages carry four plane values but navigation has two sides: `private` and
+   `work` are both the employee's, `hr` and `org` are both the employer's. */
+function navFor(plane) {
+  return (plane === 'hr' || plane === 'org') ? NAV.org : NAV.private;
+}
 
 /* Signed-in identity. Display only — set at sign-in, never a credential. */
 const DEFAULT_USER = {
@@ -79,21 +101,38 @@ const DEFAULT_USER = {
 };
 
 /**
- * Which plane an account may open. An organisation account gets the org plane
- * and nothing else — per the PRD, an HR leader has access to anonymous
- * organisational insights only. This is the URL guard: without it, typing
- * trends.html would hand an employer somebody's private screen.
+ * Which planes an account may open.
+ *
+ *   private  wellbeing — mood, trends, boundaries, nudges. Employee only, ever.
+ *   work     the employee's own employment data — leave, payslips, profile.
+ *   hr       the employment system of record — directory, leave, reviews.
+ *   org      anonymous group aggregates, N>=8.
+ *
+ * An HR manager legitimately sees that someone has 12 days of leave left.
+ * They never see how that person's week felt: `private` is not in their list
+ * and no permission level adds it. That is the whole product.
  */
+const PLANES = {
+  employee: ['private', 'work'],
+  hr:       ['hr', 'org'],
+};
+
+function allowedPlanes(user) {
+  return PLANES[user.plane === 'hr' ? 'hr' : 'employee'];
+}
+
 function allowedPlane(user) {
-  return user.plane === 'hr' ? 'org' : 'private';
+  return allowedPlanes(user)[0];   // where "go to your plane" lands
 }
 
 function blockScreen(pagePlane, user) {
-  const mine = allowedPlane(user);
-  const home = mine === 'org' ? 'org-diagnostics.html' : 'trends.html';
-  const what = pagePlane === 'private'
-    ? 'This is an employee\'s private plane. Your account cannot open it — not this screen, and not the data behind it.'
-    : 'This is the organisation plane. It holds group data for leadership, and your account does not have it.';
+  const home = user.plane === 'hr' ? 'hr-people.html' : 'trends.html';
+  const what = {
+    private: 'This is an employee\'s private plane — wellbeing data. Your account cannot open it, and no permission level adds it.',
+    work:    'This is an employee\'s own employment self-service. Manage people from the HR directory instead.',
+    hr:      'This is the HR system of record. Your account does not have it.',
+    org:     'This is the organisation plane. It holds group data for leadership, and your account does not have it.',
+  }[pagePlane] || 'Your account cannot open this screen.';
   return `
     <div class="page-head">
       <h1>Not available on this account</h1>
@@ -178,7 +217,7 @@ function navLink(item, currentId, cls = 'navlink') {
 }
 
 function buildSidebar(plane, currentId) {
-  const cfg = NAV[plane];
+  const cfg = navFor(plane);
   const user = currentUser();
   const home = cfg.groups[0].items[0].href;
 
@@ -248,7 +287,7 @@ function accountBlock(user) {
 }
 
 function buildTopbar(title, plane) {
-  const cfg = NAV[plane];
+  const cfg = navFor(plane);
   const user = currentUser();
   return `
     <header class="topbar">
@@ -269,7 +308,7 @@ function buildTopbar(title, plane) {
 }
 
 function buildTabbar(plane, currentId) {
-  const cfg = NAV[plane];
+  const cfg = navFor(plane);
   const all = cfg.groups.flatMap((g) => g.items);
   const primary = cfg.tabs.map((id) => all.find((i) => i.id === id)).filter(Boolean);
   const overflow = all.filter((i) => !cfg.tabs.includes(i.id));
@@ -284,14 +323,14 @@ function buildTabbar(plane, currentId) {
 }
 
 function buildPlaneStrip(plane) {
-  const cfg = NAV[plane];
+  const cfg = navFor(plane);
   return `<div class="plane-strip">${icon(cfg.badge.icon, { size: 14 })}<span>${cfg.badge.label} — ${cfg.badge.sub}</span></div>`;
 }
 
 /* ------------------------------------------------------------ More sheet */
 
 function openMoreSheet(plane, currentId) {
-  const cfg = NAV[plane];
+  const cfg = navFor(plane);
   const user = currentUser();
   const all = cfg.groups.flatMap((g) => g.items);
   const overflow = all.filter((i) => !cfg.tabs.includes(i.id));
@@ -547,7 +586,7 @@ function mountShell() {
      documentation rather than a product screen. */
   const user = currentUser();
   const exempt = body.dataset.access === 'any';
-  if (!exempt && plane !== allowedPlane(user)) {
+  if (!exempt && allowedPlanes(user).indexOf(plane) === -1) {
     content.innerHTML = blockScreen(plane, user);
     body.dataset.blocked = 'true';
   }

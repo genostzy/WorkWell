@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Performance</title>
+<meta name="description" content="Review cycle progress.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/room.css">
+</head>
+<body data-plane="hr" data-page="hr-performance" data-title="Performance">
+
+<main class="content" data-content>
+
+  <div class="page-head">
+    <h1>Performance</h1>
+    <p class="t-lead" data-cycle-line>Review cycle</p>
+  </div>
+
+  <!-- The most important guardrail on this screen. -->
+  <div class="privacy-note mb-5">
+    <span data-icon="eyeOff"></span>
+    <span><b>Wellbeing is not an input to performance.</b> Mood, energy,
+      check-in frequency and leave taken are not available here and must never
+      inform a review. Reviews are about work.</span>
+  </div>
+
+  <div class="grid grid--3 mb-5" data-review-summary></div>
+
+  <div class="card card--flush mb-5">
+    <div style="padding:var(--s-5) var(--s-5) var(--s-3)">
+      <div class="card__title">Cycle progress</div>
+      <div class="card__sub">Self-assessment and manager review, per person</div>
+    </div>
+    <div class="table-scroll">
+      <table class="data-table">
+        <caption class="sr-only">Review status by person</caption>
+        <thead><tr>
+          <th scope="col">Person</th><th scope="col">Self-assessment</th>
+          <th scope="col">Manager review</th><th scope="col">Due</th>
+        </tr></thead>
+        <tbody data-review-rows></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__head"><div>
+      <div class="card__title">Goals — Celine Nolasco</div>
+      <div class="card__sub">Objectives for this cycle</div>
+    </div></div>
+    <div class="stack stack--tight" data-goals></div>
+  </div>
+</main>
+
+<script src="assets/js/icons.js"></script>
+<script src="assets/js/room.js"></script>
+<script src="assets/js/hr-data.js"></script>
+<script src="assets/js/charts.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/page-hr-performance.js"></script>
+</body>
+</html>

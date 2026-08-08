@@ -90,6 +90,10 @@ const SPOTS = [
     label: 'Your shelf',     sub: 'Workspace' },
   { id: 'meeting', href: 'org-diagnostics.html', plane: 'org',
     label: 'Meeting room',   sub: 'Structural load' },
+  { id: 'locker',  href: 'my-leave.html',   plane: 'private',
+    label: 'Your locker',    sub: 'Leave & profile' },
+  { id: 'files',   href: 'hr-people.html',  plane: 'org',
+    label: 'HR office',      sub: 'People & records' },
 ];
 
 /* ------------------------------------------------------------------- Art */
@@ -184,6 +188,22 @@ function roomSVG(opts) {
     <line class="ink" x1="62" y1="230" x2="96" y2="230"/>
     <circle class="accent-soft" cx="79" cy="170" r="9"/>`;
 
+  /* --- locker: the employee's own employment self-service --- */
+  const locker = `
+    <rect class="furn" x="404" y="452" width="46" height="88" rx="8"/>
+    <line class="ink" x1="412" y1="480" x2="442" y2="480"/>
+    <circle class="accent-soft" cx="441" cy="498" r="5"/>`;
+
+  /* --- filing cabinet: the HR system of record.
+         Sits below the meeting-room partition, in the space an organisation
+         account has to itself — clear of the meeting table above. --- */
+  const files = `
+    <rect class="furn" x="736" y="392" width="96" height="126" rx="10"/>
+    <line class="ink" x1="750" y1="428" x2="818" y2="428"/>
+    <line class="ink" x1="750" y1="462" x2="818" y2="462"/>
+    <line class="ink" x1="750" y1="496" x2="818" y2="496"/>
+    <circle class="accent-soft" cx="784" cy="410" r="6"/>`;
+
   /* --- meeting room contents (org) --- */
   const meeting = `
     <ellipse class="furn" cx="812" cy="150" rx="104" ry="58"/>
@@ -228,7 +248,8 @@ function roomSVG(opts) {
         Object.assign({}, by('clock'), { sub: formatTime(mins) }),
         clock, 330, 122)}
     ${spotOpen(by('lounge'), lounge, 715, 624)}
-    ${spotOpen(by('shelf'), shelf, 79, 300)}`;
+    ${spotOpen(by('shelf'), shelf, 79, 300)}
+    ${spotOpen(by('locker'), locker, 427, 578)}`;
 
   return `
   <svg class="room__svg" viewBox="0 0 1000 720" role="img"
@@ -247,6 +268,8 @@ function roomSVG(opts) {
     <rect class="reader ${isHr ? 'is-open' : ''}" x="778" y="278" width="14" height="24" rx="4"/>
 
     ${employeeFloor}
+
+    ${isHr ? spotOpen(by('files'), files, 784, 556) : ''}
 
     ${isHr
       ? spotOpen(by('meeting'), meeting, 812, 250)

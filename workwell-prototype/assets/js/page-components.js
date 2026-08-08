@@ -44,7 +44,7 @@ function renderIconGrid() {
 }
 
 function renderDemoCharts() {
-  const P = WW.data.PERSONAL;
+  const P = WW.privateData.PERSONAL;
 
   const line = document.querySelector('[data-demo-chart="line"]');
   if (line) {

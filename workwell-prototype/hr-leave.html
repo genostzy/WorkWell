@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leave</title>
+<meta name="description" content="Leave requests, approvals and balances.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/room.css">
+</head>
+<body data-plane="hr" data-page="hr-leave" data-title="Leave">
+
+<main class="content" data-content>
+
+  <div class="page-head">
+    <h1>Leave</h1>
+    <p class="t-lead">Requests, approvals and balances.</p>
+  </div>
+
+  <div data-state-group>
+
+    <section data-state-panel="populated" data-state-label="Populated" class="is-active">
+
+      <h2 class="mb-3" style="font-size:var(--fs-lg)">Waiting on you</h2>
+      <div class="stack stack--density mb-6" data-leave-pending></div>
+
+      <div class="grid grid--sidebar-right">
+        <div class="card card--flush">
+          <div style="padding:var(--s-5) var(--s-5) var(--s-3)">
+            <div class="card__title">All requests</div>
+            <div class="card__sub">This year</div>
+          </div>
+          <div class="table-scroll">
+            <table class="data-table">
+              <caption class="sr-only">All leave requests</caption>
+              <thead><tr>
+                <th scope="col">Person</th><th scope="col">Type</th>
+                <th scope="col">Dates</th><th scope="col">Days</th><th scope="col">Status</th>
+              </tr></thead>
+              <tbody data-leave-all></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card__head"><div>
+            <div class="card__title">Balances</div>
+            <div class="card__sub">Entitlement used this year</div>
+          </div></div>
+          <div class="stack stack--tight" data-leave-balances></div>
+          <p class="chart__caption">Low uptake is a staffing signal, not a
+            performance one. Someone taking no leave usually cannot, rather
+            than will not.</p>
+        </div>
+      </div>
+    </section>
+
+    <section data-state-panel="empty" data-state-label="Nothing pending">
+      <div class="card">
+        <div class="state">
+          <div class="state__icon"><span data-icon="check" data-size="25"></span></div>
+          <h2 class="state__title">Nothing waiting on you</h2>
+          <p class="state__text">Every request has been answered. New ones will
+            appear here as they come in.</p>
+        </div>
+      </div>
+    </section>
+
+    <section data-state-panel="loading" data-state-label="Loading">
+      <div class="stack stack--tight" aria-hidden="true">
+        <div class="card"><div class="skel skel--text w-50 mb-3"></div><div class="skel skel--text"></div></div>
+        <div class="card"><div class="skel skel--text w-50 mb-3"></div><div class="skel skel--text"></div></div>
+      </div>
+      <p class="sr-only" role="status">Loading leave requests.</p>
+    </section>
+
+    <section data-state-panel="error" data-state-label="Error">
+      <div class="card">
+        <div class="state state--error">
+          <div class="state__icon"><span data-icon="alert" data-size="25"></span></div>
+          <h2 class="state__title">Couldn't load leave</h2>
+          <p class="state__text">No request was approved or declined while this failed.</p>
+          <div class="state__actions">
+            <button class="btn btn--primary" type="button">
+              <span data-icon="refresh"></span> Try again</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script src="assets/js/icons.js"></script>
+<script src="assets/js/room.js"></script>
+<script src="assets/js/hr-data.js"></script>
+<script src="assets/js/charts.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/page-hr-leave.js"></script>
+</body>
+</html>
