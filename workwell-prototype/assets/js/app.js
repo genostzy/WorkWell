@@ -71,10 +71,10 @@ const NAV = {
 
 /* Signed-in identity. Display only — set at sign-in, never a credential. */
 const DEFAULT_USER = {
-  name: 'Alex Rivera',
-  email: 'alex.rivera@northwind.example',
+  name: 'Celine Nolasco',
+  email: 'celine.nolasco@northwind.example',
   role: 'Employee',
-  initials: 'AR',
+  initials: 'CN',
   plane: 'employee',
 };
 

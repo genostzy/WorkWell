@@ -110,7 +110,7 @@ const NUDGES = [
 const RECOGNITION = [
   { from: 'Priya N.', initials: 'PN', time: '2 hours ago', text: 'Thanks for picking up the migration review at short notice — that unblocked the whole release.', kind: 'appreciation' },
   { from: 'Sam O.',   initials: 'SO', time: 'Yesterday',   text: 'Sent you a virtual coffee ☕ — free Thursday morning if you fancy a catch-up.', kind: 'coffee' },
-  { from: 'Dee K.',   initials: 'DK', time: '3 days ago',  text: 'Your notes on the incident write-up were genuinely the clearest I have read here.', kind: 'appreciation' },
+  { from: 'Marco R.', initials: 'MR', time: '3 days ago',  text: 'Your notes on the incident write-up were genuinely the clearest I have read here.', kind: 'appreciation' },
 ];
 
 /* ---------------------------------------------------------------------------
