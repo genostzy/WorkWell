@@ -12,17 +12,39 @@ window.WW = window.WW || {};
 'use strict';
 
 const icon = WW.icon;
+const brandmark = WW.brandmark;
 
 /* ---------------------------------------------------------------- Config */
+
+/* The badge is per-plane, the navigation is per-side. Keeping them in one
+   object made `work` inherit the private badge, so My Leave promised that the
+   employer could never see it directly above a card saying they do. */
+const BADGES = {
+  private: {
+    icon: 'lock',
+    label: 'Private Plane',
+    sub: 'Only you can see anything here. Your employer never can.',
+  },
+  work: {
+    icon: 'inbox',
+    label: 'Work Plane',
+    sub: 'Your own employment record. HR sees this too.',
+  },
+  hr: {
+    icon: 'users',
+    label: 'HR Plane',
+    sub: 'Employment records only. Never wellbeing data.',
+  },
+  org: {
+    icon: 'building',
+    label: 'Organization Plane',
+    sub: 'Group patterns are anonymous. Employment records are individual, by design.',
+  },
+};
 
 const NAV = {
   private: {
     name: 'Private',
-    badge: {
-      icon: 'lock',
-      label: 'Private Plane',
-      sub: 'Only you can see anything here. Your employer never can.',
-    },
     groups: [
       {
         heading: 'Reflect',
@@ -59,11 +81,6 @@ const NAV = {
 
   org: {
     name: 'Organization',
-    badge: {
-      icon: 'building',
-      label: 'Organization Plane',
-      sub: 'Group patterns are anonymous. Employment records are individual, by design.',
-    },
     groups: [
       {
         heading: 'People',
@@ -89,6 +106,11 @@ const NAV = {
    `work` are both the employee's, `hr` and `org` are both the employer's. */
 function navFor(plane) {
   return (plane === 'hr' || plane === 'org') ? NAV.org : NAV.private;
+}
+
+/** The badge, unlike the navigation, is specific to the page's own plane. */
+function badgeFor(plane) {
+  return BADGES[plane] || BADGES.private;
 }
 
 /* Signed-in identity. Display only — set at sign-in, never a credential. */
@@ -218,6 +240,7 @@ function navLink(item, currentId, cls = 'navlink') {
 
 function buildSidebar(plane, currentId) {
   const cfg = navFor(plane);
+  const badge = badgeFor(plane);
   const user = currentUser();
   const home = cfg.groups[0].items[0].href;
 
@@ -230,15 +253,15 @@ function buildSidebar(plane, currentId) {
   return `
     <aside class="sidebar">
       <a class="sidebar__brand" href="${home}">
-        <span class="sidebar__mark">${icon('seedling', { size: 19 })}</span>
+        <span class="sidebar__mark">${brandmark({ size: 34 })}</span>
         <span class="sidebar__name">WorkWell</span>
       </a>
 
       <div class="plane-badge">
-        ${icon(cfg.badge.icon, { size: 17 })}
+        ${icon(badge.icon, { size: 17 })}
         <div>
-          <div class="plane-badge__label">${cfg.badge.label}</div>
-          <div class="plane-badge__sub">${cfg.badge.sub}</div>
+          <div class="plane-badge__label">${badge.label}</div>
+          <div class="plane-badge__sub">${badge.sub}</div>
         </div>
       </div>
 
@@ -287,18 +310,18 @@ function accountBlock(user) {
 }
 
 function buildTopbar(title, plane) {
-  const cfg = navFor(plane);
+  const badge = badgeFor(plane);
   const user = currentUser();
   return `
     <header class="topbar">
       <a class="topbar__home" href="index.html" aria-label="Back to the office">
-        <span class="sidebar__mark">${icon('seedling', { size: 17 })}</span>
+        <span class="sidebar__mark">${brandmark({ size: 30 })}</span>
       </a>
       <span class="topbar__title">${title}</span>
       <span class="topbar__spacer"></span>
       <div class="topbar__actions">
-        <span class="chip chip--accent" title="${cfg.badge.sub}">
-          ${icon(cfg.badge.icon, { size: 13 })}${cfg.badge.label}
+        <span class="chip chip--accent" title="${badge.sub}">
+          ${icon(badge.icon, { size: 13 })}${badge.label}
         </span>
         <button class="iconbtn" type="button" data-theme-toggle
                 aria-label="Switch colour theme" title="Switch colour theme"></button>
@@ -323,8 +346,8 @@ function buildTabbar(plane, currentId) {
 }
 
 function buildPlaneStrip(plane) {
-  const cfg = navFor(plane);
-  return `<div class="plane-strip">${icon(cfg.badge.icon, { size: 14 })}<span>${cfg.badge.label} — ${cfg.badge.sub}</span></div>`;
+  const badge = badgeFor(plane);
+  return `<div class="plane-strip">${icon(badge.icon, { size: 14 })}<span>${badge.label} — ${badge.sub}</span></div>`;
 }
 
 /* ------------------------------------------------------------ More sheet */

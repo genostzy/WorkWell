@@ -53,7 +53,10 @@ WW.onReady(function () {
           <span class="row" style="gap:var(--s-3);flex-wrap:nowrap">
             <span class="avatar avatar--sm">${p.initials}</span>
             <span>
-              <a href="my-profile.html?id=${p.id}" style="font-weight:700">${p.name}</a>
+              <!-- Not a link: my-profile.html is a work-plane page, which an
+                   HR account cannot open, and it renders the signed-in user
+                   rather than ?id. There is no HR person-detail view yet. -->
+              <span style="font-weight:700">${p.name}</span>
               <span class="t-subtle" style="display:block;font-weight:500">${p.email}</span>
             </span>
           </span>

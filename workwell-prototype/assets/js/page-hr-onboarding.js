@@ -54,13 +54,15 @@ WW.onReady(function () {
     WW.hydrateIcons(host);
   }
 
-  // The shell's generic switch handler flips aria-checked; this keeps the
-  // model and the progress meter in step with it.
+  // This listener is on `host`, so it runs while the click is still bubbling
+  // toward the shell's document-level switch handler — aria-checked has not
+  // flipped yet. Reading it here would assign the model its own current value
+  // and nothing would move. Flip the model instead and let render() redraw.
   host.addEventListener('click', (e) => {
     const sw = e.target.closest('[data-task]');
     if (!sw) return;
     const [oi, ti] = sw.dataset.task.split(':').map(Number);
-    state[oi].tasks[ti].done = sw.getAttribute('aria-checked') === 'true';
+    state[oi].tasks[ti].done = !state[oi].tasks[ti].done;
     render();
   });
 
