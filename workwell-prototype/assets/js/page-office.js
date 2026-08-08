@@ -14,6 +14,7 @@ window.WW = window.WW || {};
 'use strict';
 
 const icon = WW.icon;
+const brandmark = WW.brandmark;
 const KEY = 'ww.user';
 
 /* Apply stored display prefs before paint, matching the rest of the app. */
@@ -39,9 +40,14 @@ function readUser() {
 }
 
 function hydrate(root) {
-  (root || document).querySelectorAll('[data-icon-slot]').forEach((el) => {
+  const scope = root || document;
+  scope.querySelectorAll('[data-icon-slot]').forEach((el) => {
     el.insertAdjacentHTML('afterbegin', icon(el.dataset.iconSlot, { size: 18 }));
     el.removeAttribute('data-icon-slot');
+  });
+  scope.querySelectorAll('[data-brandmark]').forEach((el) => {
+    el.insertAdjacentHTML('afterbegin', brandmark({ size: 34 }));
+    el.removeAttribute('data-brandmark');
   });
 }
 

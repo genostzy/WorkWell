@@ -81,7 +81,43 @@ function icon(name, opts) {
     stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
 }
 
+/**
+ * The WorkWell mark — a filled tile carrying the W-and-heart glyph.
+ *
+ * Deliberately not in ICONS: those are 24x24 currentColor strokes, and this is
+ * a two-tone filled shape whose strokes bleed off the tile edge, so it needs
+ * its own clip and its own fills. The tile takes --accent, which means the
+ * mark carries plane colour like the rest of the chrome does.
+ *
+ * The clip path needs a document-unique id — the mark appears twice on a page
+ * (sidebar and mobile topbar) and duplicate ids would collapse to one clip.
+ */
+let markSeq = 0;
+
+function brandmark(opts) {
+  const { size = 34, label = null } = opts || {};
+  const clip = `ww-mark-${++markSeq}`;
+  const a11y = label
+    ? `role="img" aria-label="${label}"`
+    : 'aria-hidden="true" focusable="false"';
+  /* Tokens go in `style` rather than the fill/stroke attributes. Chrome
+     resolves var() in a presentation attribute, but support is not uniform
+     and a failure there is silent — the shape just paints black. */
+  return `<svg ${a11y} width="${size}" height="${size}" viewBox="0 0 32 32">
+    <defs><clipPath id="${clip}"><rect width="32" height="32" rx="3.4"/></clipPath></defs>
+    <rect width="32" height="32" rx="3.4" style="fill:var(--accent)"/>
+    <g clip-path="url(#${clip})" stroke-width="3.3"
+       style="fill:none;stroke:var(--text-on-accent)">
+      <path d="M-2 6.6 L 7.6 19.2 L 15.6 8.4 L 28.8 34"/>
+      <path d="M21.5 10.5 L 25.9 5.8 L 34 16.7"/>
+    </g>
+    <path style="fill:var(--text-on-accent)"
+      d="M7.4 7.35C5.15 5.75 4.85 4.3 5.55 3.4c.73-.92 1.57-.5 1.85.15.28-.65 1.12-1.07 1.85-.15.7.9.4 2.35-1.85 3.95Z"/>
+  </svg>`;
+}
+
 WW.ICONS = ICONS;
 WW.icon = icon;
+WW.brandmark = brandmark;
 
 })(window.WW);

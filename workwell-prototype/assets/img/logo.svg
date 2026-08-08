@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="WorkWell">
+  <defs>
+    <clipPath id="tile"><rect width="32" height="32" rx="3.4"/></clipPath>
+  </defs>
+  <rect width="32" height="32" rx="3.4" fill="#0A8560"/>
+  <g clip-path="url(#tile)" fill="none" stroke="#FFFFFF" stroke-width="3.3">
+    <path d="M-2 6.6 L 7.6 19.2 L 15.6 8.4 L 28.8 34"/>
+    <path d="M21.5 10.5 L 25.9 5.8 L 34 16.7"/>
+  </g>
+  <path fill="#FFFFFF" d="M7.4 7.35C5.15 5.75 4.85 4.3 5.55 3.4c.73-.92 1.57-.5 1.85.15.28-.65 1.12-1.07 1.85-.15.7.9.4 2.35-1.85 3.95Z"/>
+</svg>
