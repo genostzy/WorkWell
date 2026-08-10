@@ -804,7 +804,7 @@ Apply through `apply_migration` with name `0005_signin_trigger`.
 
 - [ ] **Step 4: Run the test and verify it passes**
 
-Expected: 5 assertions, all `ok`.
+Expected: 6 assertions, all `ok`.
 
 - [ ] **Step 5: Commit**
 
@@ -1249,7 +1249,7 @@ Create `workwell-app/supabase/tests/10_boundary.sql`:
 
 ```sql
 begin;
-select plan(5);
+select plan(6);
 
 -- Two orgs, one person each, to prove tenancy holds.
 insert into identity.orgs (id, name) values
@@ -1286,8 +1286,20 @@ select is((select count(*)::int from identity.people), 0,
 
 reset role;
 
--- The private schema stays shut. This assertion is the one that must
--- never be deleted: slice B adds tables behind it.
+-- The private schema stays shut, checked at two levels because they bite
+-- at different times.
+--
+-- Schema level: meaningful right now. Without usage on the schema, no API
+-- role can reach anything inside it regardless of table grants.
+select ok(
+  not has_schema_privilege('authenticated', 'private', 'usage')
+  and not has_schema_privilege('anon', 'private', 'usage'),
+  'no API role can enter the private schema'
+);
+
+-- Table level: vacuous while private is empty, because role_table_grants
+-- only lists real tables. It is here so that the moment slice B adds its
+-- first table, a stray grant on it fails this suite rather than shipping.
 select is(
   (select count(*)::int
      from information_schema.role_table_grants
@@ -1303,7 +1315,7 @@ rollback;
 
 - [ ] **Step 2: Run it and verify every assertion passes**
 
-Expected: 5 assertions, all `ok`.
+Expected: 6 assertions, all `ok`.
 
 - [ ] **Step 3: Prove the tests can actually fail**
 
@@ -1324,7 +1336,7 @@ alter policy people_read_own_org on identity.people
 ```
 
 Re-run `10_boundary.sql`.
-Expected: 5 assertions, all `ok`.
+Expected: 6 assertions, all `ok`.
 
 - [ ] **Step 5: Confirm no service-role key reached the app**
 
