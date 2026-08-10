@@ -681,7 +681,7 @@ Create `workwell-app/supabase/tests/05_signin_link.sql`:
 
 ```sql
 begin;
-select plan(3);
+select plan(5);
 
 insert into identity.orgs (id, name)
   values ('44444444-4444-4444-4444-444444444444', 'Link Test');
@@ -717,13 +717,36 @@ select is(
   'an uninvited sign-in links to no person'
 );
 
+-- The same address invited by two orgs is a legal shape, because email is
+-- unique per org rather than globally. Linking both rows would violate the
+-- unique constraint on auth_user_id and abort the auth.users insert that
+-- fired the trigger, leaving that person unable to sign in at all.
+insert into identity.orgs (id, name) values
+  ('77777777-7777-7777-7777-777777777777', 'Org One'),
+  ('88888888-8888-8888-8888-888888888888', 'Org Two');
+insert into identity.people (org_id, email, full_name, status) values
+  ('77777777-7777-7777-7777-777777777777', 'both@two.example', 'Both One', 'invited'),
+  ('88888888-8888-8888-8888-888888888888', 'BOTH@two.example', 'Both Two', 'invited');
+
+select lives_ok(
+  $$ insert into auth.users (id, email)
+       values ('99999999-9999-9999-9999-999999999999', 'both@two.example') $$,
+  'an ambiguous invitation still allows the account to be created'
+);
+select is(
+  (select count(*)::int from identity.people
+    where auth_user_id = '99999999-9999-9999-9999-999999999999'),
+  0,
+  'an ambiguous invitation links to no person'
+);
+
 select * from finish();
 rollback;
 ```
 
 - [ ] **Step 2: Run it and verify it fails**
 
-Expected: the first two assertions fail (`auth_user_id` still null, status still `invited`). The third passes already — nothing links anyone yet — which is fine; it guards a behaviour the trigger must not break.
+Expected: assertions 1 and 2 fail (`auth_user_id` still null, status still `invited`). Assertions 3, 4 and 5 pass already, because with no trigger nothing links anyone and nothing can crash. They guard behaviours the trigger must not break.
 
 - [ ] **Step 3: Write the migration**
 
@@ -733,17 +756,39 @@ Create `workwell-app/supabase/migrations/0005_signin_trigger.sql`:
 -- Runs as definer because it writes to identity.people, which grants no
 -- write policy to authenticated. Matching is on lowercased email, since
 -- people type their address however they like.
+--
+-- The count guard is load-bearing. Email is unique per org, not globally,
+-- so one address can be invited by two orgs. A bare UPDATE would match
+-- both rows, and the second assignment would violate the unique
+-- constraint on auth_user_id — aborting the auth.users insert that fired
+-- this trigger, so that person could never sign in at all.
+--
+-- Link only when the match is unambiguous. Otherwise link nobody: the
+-- account resolves to no person and sees nothing, which is already the
+-- designed outcome for an uninvited sign-in. Picking one org by timing
+-- would silently place someone in an employer's tenant by coincidence,
+-- which this product must never do.
 create or replace function identity.link_auth_user() returns trigger
   language plpgsql
   security definer
   set search_path = ''
 as $$
+declare
+  matches int;
 begin
-  update identity.people
-     set auth_user_id = new.id,
-         status       = 'active'
+  select count(*) into matches
+    from identity.people
    where auth_user_id is null
      and lower(email) = lower(new.email);
+
+  if matches = 1 then
+    update identity.people
+       set auth_user_id = new.id,
+           status       = 'active'
+     where auth_user_id is null
+       and lower(email) = lower(new.email);
+  end if;
+
   return new;
 end;
 $$;
@@ -759,7 +804,7 @@ Apply through `apply_migration` with name `0005_signin_trigger`.
 
 - [ ] **Step 4: Run the test and verify it passes**
 
-Expected: 3 assertions, all `ok`.
+Expected: 5 assertions, all `ok`.
 
 - [ ] **Step 5: Commit**
 
