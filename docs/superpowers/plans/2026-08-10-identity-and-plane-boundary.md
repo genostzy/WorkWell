@@ -1114,15 +1114,14 @@ export default async function Home() {
 
   if (!claims) return <Link href="/sign-in">Sign in</Link>
 
-  // Every read below is governed by RLS. An account with no people row
-  // sees nothing, which is the intended failure mode.
+  // Reads go through the public views, which carry security_invoker so the
+  // identity policies still apply. An account with no people row sees
+  // nothing, which is the intended failure mode.
   const { data: people } = await supabase
-    .schema('identity')
     .from('people')
     .select('id, full_name, status')
 
   const { data: roles } = await supabase
-    .schema('identity')
     .from('person_roles')
     .select('role')
 
@@ -1143,9 +1142,61 @@ export default async function Home() {
 }
 ```
 
-- [ ] **Step 9: Expose the identity schema to the API**
+- [ ] **Step 9: Add the public read views**
 
-PostgREST only serves schemas on its exposed list, and `identity` is not on it by default. In the Supabase dashboard: Project Settings → API → Exposed schemas → add `identity`. Leave `private`, `work`, and `org_agg` off the list — they are served through the Next.js server only, never directly.
+PostgREST serves only the schemas on its exposed list, which by default is
+`public` alone. Rather than adding `identity` to that list — which would put
+the raw tables on the API surface and needs a dashboard setting no migration
+can reach — expose two thin views instead. `identity` stays off the API
+entirely, and `private`, `work` and `org_agg` never go near it.
+
+Create `workwell-app/supabase/migrations/0007_public_read_views.sql`:
+
+```sql
+-- The app reads through these, never the identity tables directly.
+--
+-- security_invoker is load-bearing. A Postgres view is security definer by
+-- default, so without it these views would run as their owner and return
+-- every row in the table — a hole straight through the RLS this plan just
+-- built. With it, the underlying policies apply to the querying user.
+create view public.people
+  with (security_invoker = true)
+  as select id, org_id, full_name, status
+       from identity.people;
+
+create view public.person_roles
+  with (security_invoker = true)
+  as select person_id, role
+       from identity.person_roles;
+
+grant select on public.people, public.person_roles to authenticated;
+```
+
+Apply through `apply_migration` with name `0007_public_read_views`.
+
+Then verify the views did not become a bypass. Run through `execute_sql`:
+
+```sql
+begin;
+insert into identity.orgs (id, name)
+  values ('12121212-1212-1212-1212-121212121212', 'View Check');
+insert into auth.users (id, email)
+  values ('13131313-1313-1313-1313-131313131313', 'v@c.example');
+insert into identity.people (org_id, auth_user_id, email, full_name, status)
+  values ('12121212-1212-1212-1212-121212121212',
+          '13131313-1313-1313-1313-131313131313',
+          'v@c.example', 'View Check', 'active');
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"13131313-1313-1313-1313-131313131313"}';
+select count(*) as visible_through_view from public.people;
+reset role;
+rollback;
+```
+
+Expected: `visible_through_view = 1` — that user's own org only, not the
+seeded Northwind rows. Any higher number means `security_invoker` did not
+take effect and the view is bypassing RLS.
 
 - [ ] **Step 10: Verify sign-in end to end**
 
