@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "workwell",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8123", "--directory", "workwell-prototype"],
+      "port": 8123
+    },
+    {
+      "name": "workwell-app",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "workwell-app"],
+      "port": 3000
+    }
+  ]
+}
