@@ -1,5 +1,5 @@
 begin;
-select plan(5);
+select plan(6);
 
 -- Two orgs, one person each, to prove tenancy holds.
 insert into identity.orgs (id, name) values
@@ -36,8 +36,20 @@ select is((select count(*)::int from identity.people), 0,
 
 reset role;
 
--- The private schema stays shut. This assertion is the one that must
--- never be deleted: slice B adds tables behind it.
+-- The private schema stays shut, checked at two levels because they bite
+-- at different times.
+--
+-- Schema level: meaningful right now. Without usage on the schema, no API
+-- role can reach anything inside it regardless of table grants.
+select ok(
+  not has_schema_privilege('authenticated', 'private', 'usage')
+  and not has_schema_privilege('anon', 'private', 'usage'),
+  'no API role can enter the private schema'
+);
+
+-- Table level: vacuous while private is empty, because role_table_grants
+-- only lists real tables. It is here so that the moment slice B adds its
+-- first table, a stray grant on it fails this suite rather than shipping.
 select is(
   (select count(*)::int
      from information_schema.role_table_grants
