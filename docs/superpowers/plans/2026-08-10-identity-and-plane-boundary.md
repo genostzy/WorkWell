@@ -1460,6 +1460,36 @@ git commit -m "Deploy the v0 app to its own Vercel project"
 
 ---
 
+## Known limitation: the seeded accounts cannot sign in
+
+Supabase Auth rejects `@northwind.example` with `400 email_address_invalid` —
+GoTrue refuses the reserved `.example` TLD. Both seeded people therefore cannot
+request a magic link, on any environment. This is not a bug in the code; the
+sign-in path is proven at the database level by `05_signin_link.sql`, which
+drives the trigger directly.
+
+The seed keeps `.example` addresses deliberately: they are realistic directory
+data and they commit no real inbox to git history.
+
+To sign in for real, add one person with a deliverable address **directly to
+the database**, not to a migration:
+
+```sql
+insert into identity.people (org_id, email, full_name, status)
+values ('a0000000-0000-0000-0000-000000000001',
+        'you@example-real-domain.com', 'Your Name', 'invited');
+
+insert into identity.person_roles (person_id, role)
+select id, 'employee' from identity.people
+ where lower(email) = 'you@example-real-domain.com';
+```
+
+Then request a magic link for that address. The trigger links it on first
+sign-in. Keeping it out of the migration keeps a personal address out of the
+repository permanently.
+
+Slice D's invitation flow is where real addresses enter the system properly.
+
 ## Done when
 
 - All eleven tasks are checked off.
