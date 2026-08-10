@@ -29,12 +29,14 @@ select policies_are('identity', 'orgs',
 
 -- Bare auth.uid() is evaluated per row. Supabase measures 179ms vs 9ms
 -- against the wrapped form, so this is a correctness-of-performance rule.
+-- Checked across with_check as well as qual, and across every schema, not
+-- just identity, since the rule applies everywhere.
 select is(
   (select count(*)::int from pg_policies
-    where schemaname = 'identity'
-      and (qual like '%auth.uid()%' and qual not like '%( SELECT auth.uid()%')),
+    where coalesce(qual,'') || coalesce(with_check,'') like '%auth.uid()%'
+      and coalesce(qual,'') || coalesce(with_check,'') not like '%( SELECT auth.uid()%'),
   0,
-  'no policy calls auth.uid() unwrapped'
+  'no policy anywhere calls auth.uid() unwrapped'
 );
 
 select * from finish();

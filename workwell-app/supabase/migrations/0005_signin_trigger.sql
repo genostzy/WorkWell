@@ -40,6 +40,7 @@ $$;
 
 revoke all on function identity.link_auth_user() from public;
 
+drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function identity.link_auth_user();
