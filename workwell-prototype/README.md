@@ -95,6 +95,7 @@ blocked pages render zero data.
 | The clock | `boundary.html` |
 | The sofa | `recognition.html` |
 | Your shelf | `workspace.html` |
+| Your locker | `my-leave.html` — and on to `my-profile.html` |
 | Meeting room | `org-diagnostics.html` — HR only |
 
 **Sign-in is for show.** Nothing authenticates. Signing in records a display
@@ -108,6 +109,11 @@ name and role in `localStorage` so the room knows which doors you may open.
 The sidebar is gone. Every screen carries a floating **The office** button that
 opens the room as a dialog; the brand mark in the topbar returns home, and the
 account menu moved into the topbar.
+
+The account menu carries **My Profile** alongside Settings. Both are dropped
+for an HR account, whose plane cannot open either page. The locker is labelled
+"Leave & profile" but can only land on one of them, so My Leave and My Profile
+link to each other.
 
 A picture cannot be the only way to navigate, so the room always ships beside a
 plain **List** view — on the home screen as a view toggle, and inside the nav

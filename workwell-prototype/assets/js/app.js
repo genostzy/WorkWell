@@ -299,6 +299,9 @@ function accountBlock(user) {
         ${icon('grid', { size: 17 })} The office
       </a>
       ${user.plane === 'hr' ? '' : `
+      <a class="account__item" href="my-profile.html" role="menuitem">
+        ${icon('inbox', { size: 17 })} My Profile
+      </a>
       <a class="account__item" href="workspace.html" role="menuitem">
         ${icon('sliders', { size: 17 })} Settings
       </a>`}
