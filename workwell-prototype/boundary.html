@@ -126,9 +126,11 @@
               <div class="grow">
                 <div class="nudge__title">It's 9:40 pm — send this in the morning?</div>
                 <p class="nudge__text">Sending at 9:00 am means nobody feels they must reply tonight.</p>
-                <div class="nudge__actions">
-                  <button class="btn btn--primary btn--sm" type="button">Schedule for 9:00 am</button>
-                  <button class="btn btn--secondary btn--sm" type="button">Send now anyway</button>
+                <div class="nudge__actions" data-hold-actions>
+                  <button class="btn btn--primary btn--sm" type="button"
+                          data-hold="schedule">Schedule for 9:00 am</button>
+                  <button class="btn btn--secondary btn--sm" type="button"
+                          data-hold="now">Send now anyway</button>
                 </div>
               </div>
             </div>
@@ -211,7 +213,7 @@
 
           <div class="card">
             <div class="card__title mb-3">Queued to send</div>
-            <div class="stack stack--tight">
+            <div class="stack stack--tight" data-queue-list>
               <div class="row row--between">
                 <span style="font-size:var(--fs-sm);font-weight:600">To #platform-team</span>
                 <span class="chip">9:00 am</span>
@@ -221,8 +223,8 @@
                 <span class="chip">9:00 am</span>
               </div>
             </div>
-            <div class="card__foot">
-              <button class="btn btn--ghost btn--sm" type="button">Send all now</button>
+            <div class="card__foot" data-queue-actions>
+              <button class="btn btn--ghost btn--sm" type="button" data-send-all>Send all now</button>
             </div>
           </div>
 
@@ -301,6 +303,7 @@
 <script src="assets/js/private-data.js"></script>
 <script src="assets/js/charts.js"></script>
 <script src="assets/js/app.js"></script>
+<script src="assets/js/page-boundary.js"></script>
 <script>
 /* Persist the quiet-hours window so the office can observe it: after these
    hours the room dims and stops offering the check-in. */

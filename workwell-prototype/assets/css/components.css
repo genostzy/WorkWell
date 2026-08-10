@@ -865,6 +865,45 @@ details.table-view summary:hover { color: var(--text); }
 [data-state-panel] { display: none; }
 [data-state-panel].is-active { display: block; }
 
+/* --------------------------------------------------- Completion feedback */
+
+/* Replaces an action once it has been taken. Motion needs no media query:
+   the duration tokens already collapse to 0.01ms under reduced motion. */
+.confirmed {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-4);
+  border-radius: var(--r-md);
+  background: var(--accent-quiet);
+  border: 1px solid var(--accent-border);
+  color: var(--accent-text);
+}
+.confirmed:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 var(--focus-ring-w) var(--accent-ring);
+}
+.confirmed__mark { flex: none; }
+.confirmed__mark path {
+  stroke-dasharray: 23;      /* the check path is ~22.6 units long */
+  stroke-dashoffset: 23;
+  animation: confirmed-draw var(--dur-med) var(--ease) forwards;
+}
+.confirmed__text {
+  font-size: var(--fs-md);
+  font-weight: 700;
+  animation: confirmed-in var(--dur-med) var(--ease) var(--dur-med) both;
+}
+@keyframes confirmed-draw { to { stroke-dashoffset: 0; } }
+@keyframes confirmed-in { from { opacity: 0 } to { opacity: 1 } }
+
+/* A row inserted into a table settles in rather than appearing abruptly. */
+.settle { animation: settle var(--dur-med) var(--ease) both; }
+@keyframes settle {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
 /* ------------------------------------------------------------ Utilities */
 
 .hr { height: 1px; background: var(--border); border: none; margin: var(--s-5) 0; }

@@ -32,4 +32,32 @@ WW.onReady(function () {
   WW.hydrateIcons(host);
 });
 
+WW.onReady(function () {
+  if (document.body.dataset.blocked === 'true') return;
+
+  /* Appreciation: both buttons resolve the same composer, so the row goes
+     together and the form it belongs to is disabled behind it. */
+  const actions = document.querySelector('[data-appreciate-actions]');
+  actions?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-appreciate]');
+    if (!btn) return;
+    disableFieldsIn(actions.closest('.card'));
+    WW.confirmAction(actions, btn.dataset.appreciate === 'coffee'
+      ? 'Coffee offered. They can decline without a word to anyone.'
+      : 'Appreciation sent.');
+  });
+
+  const priv = document.querySelector('[data-send-private]');
+  priv?.addEventListener('click', () => {
+    disableFieldsIn(priv.closest('.card'));
+    WW.confirmAction(priv, 'Sent privately. Your manager is not copied.');
+  });
+});
+
+/** Stop the composer accepting edits once its message has gone. */
+function disableFieldsIn(card) {
+  card?.querySelectorAll('input, select, textarea, button')
+    .forEach((el) => { el.disabled = true; });
+}
+
 })(window.WW);

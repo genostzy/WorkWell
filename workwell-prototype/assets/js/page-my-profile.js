@@ -32,6 +32,11 @@ WW.onReady(function () {
       <td>${W.fmtDate(d.date)}</td>
       <td><button class="btn btn--ghost btn--sm" type="button">Download</button></td>
     </tr>`).join('');
+
+  const exportBtn = document.querySelector('[data-export]');
+  exportBtn?.addEventListener('click', () => {
+    WW.confirmAction(exportBtn, 'Export requested. We\'ll email you when it\'s ready.');
+  });
 });
 
 })(window.WW);

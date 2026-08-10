@@ -248,6 +248,22 @@ shout: it uses progressive disclosure. One line by default, full detail behind
 a **What this means** toggle. A promise repeated at paragraph length on every
 screen stops being read.
 
+## Completion feedback
+
+Single-shot actions confirm inline. `WW.confirmAction(host, message)` replaces
+the element holding the action — usually the whole button row, so a spent
+choice never sits beside a live one — with a `role="status"` panel: a check
+mark that draws in, then the message. Focus follows the panel when the button
+that was clicked had it.
+
+Wired on: send a leave request (validates the dates and inserts a Pending row),
+release a held message or the whole queue, the three recognition sends, and the
+data export.
+
+Nothing is transmitted or persisted — there is no backend. The confirmations
+are written as product copy rather than as disclaimers, because no rendered
+text in this app breaks the fourth wall.
+
 ## Accessibility
 
 WCAG AA floor throughout, plus the four toggles the PRD's target users need —
@@ -297,7 +313,8 @@ assets/js/   icons.js        inline SVG icon set
              page-signin.js  sign-in screen (mock, no real auth)
              data.js         mock data + the suppression rule
              charts.js       SVG chart renderers
-             app.js          shell, nav, preferences, state switcher
+             app.js          shell, nav, preferences, state switcher,
+                             WW.confirmAction
              flow.js         multi-step flow engine
              page-*.js       per-screen wiring
 ```

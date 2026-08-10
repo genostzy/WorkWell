@@ -683,11 +683,61 @@ function onReady(fn) {
   else document.addEventListener('ww:ready', fn, { once: true });
 }
 
+/* ----------------------------------------------------- Completion feedback */
+
+/**
+ * Replace an action with an inline confirmation, and return the panel.
+ *
+ * `host` is the element holding the action — usually the button row, so the
+ * whole row of choices resolves together rather than leaving a live button
+ * beside a spent one.
+ *
+ * Inline rather than a toast: the confirmation stays where the action
+ * happened and does not time out, which extends the pattern flow.js already
+ * ends check-in with instead of introducing a competing one.
+ *
+ * Nothing is sent anywhere — there is no backend. Messages must be worded so
+ * they do not imply a request was transmitted.
+ */
+function confirmAction(host, message) {
+  if (!host) return null;
+
+  const hadFocus = host.contains(document.activeElement);
+
+  const panel = document.createElement('div');
+  panel.className = 'confirmed';
+  panel.setAttribute('role', 'status');
+  panel.tabIndex = -1;
+  panel.innerHTML =
+    '<svg class="confirmed__mark" width="22" height="22" viewBox="0 0 24 24"'
+    + ' aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4"'
+    + ' stroke-linecap="round" stroke-linejoin="round">'
+    + '<path d="m4 12 5 5L20 6"/></svg>'
+    + '<span class="confirmed__text"></span>';
+
+  host.replaceWith(panel);
+
+  // A live region that arrives with its text already in place is not
+  // reliably announced — the region has to be in the document before the
+  // text changes. A timer rather than requestAnimationFrame, which does not
+  // run in a hidden or backgrounded tab and would leave the panel blank.
+  setTimeout(() => {
+    panel.querySelector('.confirmed__text').textContent = message;
+  }, 0);
+
+  // Replacing the host destroys whatever had focus, which would drop a
+  // keyboard user back to the top of the document.
+  if (hadFocus) panel.focus({ preventScroll: true });
+
+  return panel;
+}
+
 WW.getPref = getPref;
 WW.setPref = setPref;
 WW.mountShell = mountShell;
 WW.hydrateIcons = hydrateIcons;
 WW.onReady = onReady;
+WW.confirmAction = confirmAction;
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', mountShell);

@@ -315,6 +315,24 @@
 
   <!-- ----------------------------------------------------- States ----- -->
   <section class="spec">
+    <h2>Completion feedback</h2>
+    <p>Inline rather than a toast: the confirmation appears where the action was
+      taken and does not time out. <code>WW.confirmAction(host, message)</code>
+      replaces the host — usually the whole button row — with a
+      <code>role="status"</code> panel. The check draws in, then the message.</p>
+
+    <div class="card mb-4">
+      <div class="confirmed">
+        <svg class="confirmed__mark" width="22" height="22" viewBox="0 0 24 24"
+             aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="m4 12 5 5L20 6"/></svg>
+        <span class="confirmed__text">Request sent to your manager.</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="spec">
     <h2>Screen states</h2>
     <p>Five states, each visually distinct. "Empty" and "not enough data yet" are
       deliberately different components: empty means nothing exists, thin means data
