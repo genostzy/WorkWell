@@ -1198,23 +1198,31 @@ Expected: `visible_through_view = 1` — that user's own org only, not the
 seeded Northwind rows. Any higher number means `security_invoker` did not
 take effect and the view is bypassing RLS.
 
-- [ ] **Step 10: Verify sign-in end to end**
+- [ ] **Step 10: Verify as far as an inbox allows**
 
-Restart the dev server, then `preview_start` with `{name: "workwell-app"}` and navigate to `/sign-in`.
+The seeded addresses use `@northwind.example`. `.example` is a reserved
+domain that cannot receive mail, so the magic-link round trip **cannot** be
+completed here. Verify everything up to the inbox, and do not pretend the
+rest.
 
-Enter `wilson.dayrit@northwind.example`. Expected: the status message appears. Open the link from the inbox.
+Restart the dev server, then `preview_start` with `{name: "workwell-app"}`.
 
-Expected after following the link: the landing page lists **two people** (Celine and Wilson) and roles `employee, hr`. Confirm with `read_page`, and `read_console_messages` for errors.
+1. Navigate to `/`. Expected: a "Sign in" link, because there is no session.
+2. Navigate to `/sign-in`. Expected: the email field and submit button render.
+3. Enter `wilson.dayrit@northwind.example` and submit. Expected: the
+   "Check your email for a sign-in link" status appears and **no error** is
+   shown. That proves the browser client is constructed, the environment
+   variables resolve, and Supabase accepted the request — which is the part
+   the app is responsible for.
+4. `read_console_messages` and `preview_logs` at error level. Expected: no
+   errors.
 
-Then verify the link actually happened:
+Record explicitly in your report that the round trip was not completed and
+why. Completing it needs a person row whose email is a real deliverable
+address; that is a decision for the human partner, not something to invent.
 
-```sql
-select email, status, auth_user_id is not null as linked
-  from identity.people
- where org_id = 'a0000000-0000-0000-0000-000000000001';
-```
-
-Expected: Wilson `active` and linked; Celine still `invited` and unlinked.
+The database half of sign-in is already proven independently by
+`05_signin_link.sql`, which drives the trigger directly.
 
 - [ ] **Step 11: Commit**
 
