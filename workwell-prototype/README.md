@@ -79,7 +79,10 @@ anything renders:
   is removed from the document for employers, not merely faded, since an
   `opacity: 0` link is still keyboard-focusable.
 - `components.html` is exempt via `data-access="any"`; it is documentation,
-  not a product screen.
+  not a product screen. Being reachable on any account, it loads neither
+  plane's real data — its chart demos carry their own invented series. It
+  used to read `privateData`, which crashed the page for HR and put an
+  employee's mood data in a page about swatches.
 
 Verified: an employer has **zero** reachable links to private-plane pages, and
 blocked pages render zero data.
