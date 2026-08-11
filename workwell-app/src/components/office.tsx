@@ -63,6 +63,16 @@ export function Office({ isHr, name }: { isHr: boolean; name: string }) {
     // The scripts may already be present on a client-side navigation back
     // to this page, in which case onReady never fires again.
     if (window.WW?.room) build()
+
+    // sky.js appends its element straight to document.body and never takes
+    // it away. React does not own that node, so navigating to another
+    // screen used to leave a fixed, full-viewport sky painting over it —
+    // the page was there, buried. The sky belongs to the office; it leaves
+    // when the office does.
+    return () => {
+      document.querySelectorAll('.sky').forEach((el) => el.remove())
+      document.body.classList.remove('has-sky')
+    }
   }, [build])
 
   // Keep the room in step with the clock the way the prototype does: the

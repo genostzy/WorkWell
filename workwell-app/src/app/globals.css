@@ -132,3 +132,11 @@
 
 /* The room needs its own full-bleed stage, not the article column. */
 .room-shell { min-height: 100vh; }
+
+/* Defence in depth against the sky.
+   sky.css lifts only .room-shell above the fixed sky layer, because in the
+   prototype the sky existed on one page. Here the sky is torn down when the
+   office unmounts, but a stale or re-added .sky must never be able to bury
+   an ordinary screen again — the symptom is a page that renders perfectly
+   and shows nothing but background. */
+body.has-sky .app { position: relative; z-index: 1; }
