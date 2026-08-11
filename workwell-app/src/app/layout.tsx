@@ -1,27 +1,34 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+import type { Metadata } from 'next'
+import { Nunito } from 'next/font/google'
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+// Order matters: tokens define the variables everything else reads, base
+// resets and sets typography, layout builds the shell, components sit on
+// top. globals.css last so its overrides win.
+import '@/styles/tokens.css'
+import '@/styles/base.css'
+import '@/styles/layout.css'
+import '@/styles/components.css'
+import './globals.css'
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+// The prototype's typeface. Loaded through next/font so it is self-hosted
+// and does not block on a third-party request.
+const nunito = Nunito({
+  subsets: ['latin'],
+  weight: ['400', '600', '700', '800'],
+  variable: '--font-nunito',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
-  title: "WorkWell",
+  title: 'WorkWell',
   description:
-    "Employee wellbeing, with the boundary between you and your employer enforced in the database.",
-};
+    'Employee wellbeing, with the boundary between you and your employer enforced in the database.',
+}
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="en" className={nunito.variable}>
       <body>{children}</body>
     </html>
-  );
+  )
 }

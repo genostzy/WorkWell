@@ -27,20 +27,63 @@ export default function SignIn() {
     else setSent(true)
   }
 
-  if (sent) return <p role="status">Check your email for a sign-in link.</p>
+  if (sent)
+    return (
+      <div className="app" data-plane="private">
+        <div className="main">
+          <main className="content">
+            <div className="card">
+              <div className="state state--info">
+                <div className="state__icon" aria-hidden="true">✉️</div>
+                <h1 className="state__title">Check your email</h1>
+                <p className="state__text" role="status">
+                  We sent a sign-in link to {email}. It opens WorkWell directly —
+                  there is no password to remember.
+                </p>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    )
 
   return (
-    <form onSubmit={send}>
-      <label htmlFor="email">Work email</label>
-      <input
-        id="email"
-        type="email"
-        required
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      <button type="submit">Send me a link</button>
-      {error && <p role="alert">{error}</p>}
-    </form>
+    <div className="app" data-plane="private">
+      <div className="main">
+        <main className="content">
+          <div className="page-head">
+            <h1>Sign in</h1>
+            <p className="t-lead">
+              We will email you a link. Nothing to remember, nothing to leak.
+            </p>
+          </div>
+
+          {error && (
+            <div className="banner banner--error" role="alert">
+              {error}
+            </div>
+          )}
+
+          <form className="card" onSubmit={send}>
+            <div className="field">
+              <label className="field__label" htmlFor="email">
+                Work email
+              </label>
+              <input
+                className="input"
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <button className="btn btn--primary btn--block mt-4" type="submit">
+              Send me a link
+            </button>
+          </form>
+        </main>
+      </div>
+    </div>
   )
 }

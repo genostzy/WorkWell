@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { PrivacyNote, Shell } from '@/components/chrome'
+import { PageHead, PlaneBadge, PrivacyNote, Shell } from '@/components/chrome'
 
 type Answers = {
   mood: number | null
@@ -14,7 +15,7 @@ type Answers = {
 
 /** Three questions, all skippable per the PRD. A null answer is a real
  *  answer — "I would rather not say" must not be indistinguishable from
- *  the middle of the scale. */
+ *  the middle of the scale, which is why clearing is offered explicitly. */
 const SCALES = [
   {
     key: 'mood' as const,
@@ -33,7 +34,7 @@ const SCALES = [
   {
     key: 'pressure' as const,
     label: 'How much pressure were you under?',
-    hint: 'Workload and deadlines, not how well you coped.',
+    hint: 'Workload and deadlines — not how well you coped.',
     low: 'None',
     high: 'A lot',
   },
@@ -52,8 +53,8 @@ export default function CheckIn() {
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Load today's entry if there is one, so returning to this page amends
-  // rather than silently starting blank over the top of existing answers.
+  // Load today's entry so returning here amends rather than silently
+  // starting blank over the top of existing answers.
   useEffect(() => {
     const supabase = createClient()
     const today = new Date().toISOString().slice(0, 10)
@@ -100,7 +101,12 @@ export default function CheckIn() {
   if (loading) {
     return (
       <Shell current="check-in">
-        <p className="state">Loading today’s entry…</p>
+        <PageHead title="How was today?" />
+        <div className="card">
+          <div className="skel skel--title" />
+          <div className="skel skel--text" />
+          <div className="skel skel--text" />
+        </div>
       </Shell>
     )
   }
@@ -108,16 +114,29 @@ export default function CheckIn() {
   if (saved) {
     return (
       <Shell current="check-in">
-        <h1>Saved</h1>
-        <p className="lead">That is all it takes. It joins your own history and nothing else.</p>
-        <div className="confirmed" role="status">
-          <span aria-hidden="true">✓</span>
-          <span>Today’s check-in is recorded.</span>
-        </div>
-        <div className="mt">
-          <button className="btn btn--quiet" onClick={() => setSaved(false)}>
-            Change an answer
-          </button>
+        <PageHead title="Saved" />
+        <div className="card">
+          <div className="state state--info">
+            <div className="state__icon" aria-hidden="true">
+              ✓
+            </div>
+            <h2 className="state__title">That’s it.</h2>
+            <p className="state__text">
+              It joins your own history and nothing else.
+            </p>
+            <div className="state__actions">
+              <Link className="btn btn--primary" href="/trends">
+                See your trends
+              </Link>
+              <button
+                className="btn btn--secondary"
+                type="button"
+                onClick={() => setSaved(false)}
+              >
+                Change an answer
+              </button>
+            </div>
+          </div>
         </div>
       </Shell>
     )
@@ -125,21 +144,31 @@ export default function CheckIn() {
 
   return (
     <Shell current="check-in">
-      <h1>How was today?</h1>
-      <p className="lead">Skip anything you would rather not answer.</p>
+      <PageHead
+        title="How was today?"
+        lead="Skip anything you would rather not answer."
+      />
 
-      <PrivacyNote />
+      <PlaneBadge plane="private" />
 
-      {error && <p className="error" role="alert">{error}</p>}
+      <PrivacyNote detail="This is stored on the private plane. HR can query group patterns for eight or more people, and your leave dates. They cannot query this table at all — not your row, not anyone's.">
+        <b>Nobody else will ever read this.</b>{' '}
+      </PrivacyNote>
 
-      <form onSubmit={save}>
+      {error && (
+        <div className="banner banner--error" role="alert">
+          {error}
+        </div>
+      )}
+
+      <form className="card" onSubmit={save}>
         {SCALES.map((scale) => (
           <fieldset className="scale" key={scale.key}>
-            <legend className="scale__label">{scale.label}</legend>
+            <legend className="scale__legend">{scale.label}</legend>
             <span className="scale__hint">{scale.hint}</span>
             <div className="scale__row">
               {[1, 2, 3, 4, 5].map((n) => (
-                <div key={n} style={{ flex: 1, display: 'flex' }}>
+                <div className="scale__opt" key={n}>
                   <input
                     type="radio"
                     id={`${scale.key}-${n}`}
@@ -160,16 +189,7 @@ export default function CheckIn() {
             {answers[scale.key] !== null && (
               <button
                 type="button"
-                className="muted"
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  padding: '6px 0 0',
-                  cursor: 'pointer',
-                  font: 'inherit',
-                  color: 'var(--text-muted)',
-                  textDecoration: 'underline',
-                }}
+                className="linkish"
                 onClick={() => setAnswers((a) => ({ ...a, [scale.key]: null }))}
               >
                 Clear this answer
@@ -178,22 +198,26 @@ export default function CheckIn() {
           </fieldset>
         ))}
 
-        <label className="field" htmlFor="note">
-          Anything you want to note? (optional)
-        </label>
-        <textarea
-          id="note"
-          className="input"
-          value={answers.note}
-          placeholder="Only you will ever read this."
-          onChange={(e) => setAnswers((a) => ({ ...a, note: e.target.value }))}
-        />
-
-        <div className="mt">
-          <button className="btn btn--block" type="submit" disabled={saving}>
-            {saving ? 'Saving…' : 'Save today’s check-in'}
-          </button>
+        <div className="field mt-6">
+          <label className="field__label" htmlFor="note">
+            Anything you want to note? (optional)
+          </label>
+          <textarea
+            id="note"
+            className="textarea"
+            value={answers.note}
+            placeholder="Only you will ever read this."
+            onChange={(e) => setAnswers((a) => ({ ...a, note: e.target.value }))}
+          />
         </div>
+
+        <button
+          className="btn btn--primary btn--block mt-5"
+          type="submit"
+          disabled={saving}
+        >
+          {saving ? 'Saving…' : 'Save today’s check-in'}
+        </button>
       </form>
     </Shell>
   )

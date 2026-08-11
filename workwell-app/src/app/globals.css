@@ -1,170 +1,122 @@
+/* App-level overrides on top of the prototype's design system.
+   Everything else lives in src/styles/, copied from workwell-prototype so
+   the two stay recognisably the same product. */
+
 :root {
-  --bg: #f7f8f7;
-  --surface: #ffffff;
-  --text: #14201b;
-  --text-muted: #5a6b63;
-  --border: #dde5e0;
-  /* The private plane's accent, carried over from the prototype where it
-     was validated for colour-vision separation against the org plane. */
-  --accent: #0a8560;
-  --accent-text: #076b4c;
-  --accent-quiet: #e8f5ef;
-  --accent-border: #a8e0cd;
-  --radius: 14px;
+  /* next/font self-hosts Nunito and exposes it as --font-nunito. The
+     prototype's token named it directly and fell back to a system stack;
+     keep that fallback chain behind the hosted face. */
+  --font-sans: var(--font-nunito), "Quicksand", "Segoe UI Variable Text",
+    "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0d1310;
-    --surface: #141d18;
-    --text: #e8efea;
-    --text-muted: #9bab a3;
-    --text-muted: #9baba3;
-    --border: #24332b;
-    --accent: #1bab91;
-    --accent-text: #1bab91;
-    --accent-quiet: #12302a;
-    --accent-border: #1f5a4b;
-  }
-  html { color-scheme: dark; }
-}
-
-* { box-sizing: border-box; margin: 0; padding: 0; }
-
-html, body { max-width: 100vw; }
-
-body {
+/* The prototype is a multi-page app whose shell is injected by app.js.
+   Here the shell is a React component, so a couple of its layout rules
+   need restating for a single-column app with no sidebar. */
+.app {
   min-height: 100vh;
-  color: var(--text);
-  background: var(--bg);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  line-height: 1.55;
-}
-
-a { color: inherit; text-decoration: none; }
-
-.shell {
-  max-width: 640px;
-  margin: 0 auto;
-  padding: 32px 20px 72px;
-}
-
-.topbar {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 28px;
+  flex-direction: column;
 }
 
-.brand {
+.main {
+  flex: 1;
+  display: block;
+}
+
+.content {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: var(--s-6) var(--s-5) var(--s-10);
+  width: 100%;
+}
+
+.topbar__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
   font-weight: 800;
-  font-size: 18px;
+  font-size: var(--fs-lg);
   letter-spacing: -0.01em;
   color: var(--accent-text);
 }
 
-.nav { display: flex; gap: 6px; }
+.topbar__nav {
+  display: flex;
+  gap: var(--s-1);
+  flex-wrap: wrap;
+}
 
-.nav a {
-  padding: 8px 12px;
-  border-radius: 999px;
-  font-size: 14px;
+.topbar__nav a {
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-muted);
-}
-
-.nav a:hover { background: var(--surface); color: var(--text); }
-.nav a[aria-current='page'] { background: var(--accent-quiet); color: var(--accent-text); }
-
-h1 { font-size: 26px; letter-spacing: -0.02em; margin-bottom: 6px; }
-h2 { font-size: 17px; margin-bottom: 12px; }
-
-.lead { color: var(--text-muted); margin-bottom: 24px; }
-
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 20px;
-  margin-bottom: 16px;
-}
-
-.card__title { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
-.card__sub { color: var(--text-muted); font-size: 14px; }
-
-.privacy {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  background: var(--accent-quiet);
-  border: 1px solid var(--accent-border);
-  color: var(--accent-text);
-  border-radius: var(--radius);
-  padding: 14px 16px;
-  font-size: 14px;
-  margin-bottom: 24px;
-}
-
-.btn {
+  min-height: 40px;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 0 18px;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  font: inherit;
-  font-weight: 600;
-  font-size: 15px;
-  cursor: pointer;
-  background: var(--accent);
-  color: #fff;
 }
 
-.btn:hover { filter: brightness(1.06); }
-.btn:disabled { opacity: 0.55; cursor: not-allowed; }
-
-.btn--quiet {
-  background: transparent;
-  border-color: var(--border);
+.topbar__nav a:hover {
+  background: var(--surface-2);
   color: var(--text);
 }
 
-.btn--block { width: 100%; }
+.topbar__nav a[aria-current="page"] {
+  background: var(--accent-quiet);
+  color: var(--accent-text);
+}
 
-/* The 1–5 scale. Radios styled as a row of buttons so the whole control
-   stays keyboard operable and screen-reader correct. */
-.scale { margin-bottom: 22px; }
-.scale__label { display: block; font-weight: 600; font-size: 15px; margin-bottom: 2px; }
-.scale__hint { display: block; color: var(--text-muted); font-size: 13px; margin-bottom: 10px; }
-.scale__row { display: flex; gap: 8px; }
+/* The 1–5 scale. The prototype's dragscale is a bespoke SVG control; this
+   is the plain radio-group equivalent, styled to match the token set. */
+.scale + .scale { margin-top: var(--s-6); }
 
-.scale__row input { position: absolute; opacity: 0; width: 0; height: 0; }
+.scale__legend {
+  font-weight: 700;
+  font-size: var(--fs-md);
+  display: block;
+}
 
-.scale__row label {
+.scale__hint {
+  display: block;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  margin-bottom: var(--s-3);
+}
+
+.scale__row { display: flex; gap: var(--s-2); }
+
+.scale__opt { flex: 1; display: flex; }
+
+.scale__opt input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.scale__opt label {
   flex: 1;
   min-height: 48px;
   display: grid;
   place-items: center;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--r-sm);
   background: var(--surface);
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   user-select: none;
 }
 
-.scale__row input:checked + label {
+.scale__opt input:checked + label {
   background: var(--accent-quiet);
   border-color: var(--accent);
   color: var(--accent-text);
 }
 
-.scale__row input:focus-visible + label {
-  outline: 3px solid var(--accent);
+.scale__opt input:focus-visible + label {
+  outline: var(--focus-ring-w) solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -172,98 +124,31 @@ h2 { font-size: 17px; margin-bottom: 12px; }
   display: flex;
   justify-content: space-between;
   color: var(--text-muted);
-  font-size: 12px;
-  margin-top: 6px;
+  font-size: var(--fs-xs);
+  margin-top: var(--s-2);
 }
 
-textarea.input {
-  width: 100%;
-  min-height: 88px;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
-  color: var(--text);
+.linkish {
+  background: none;
+  border: none;
+  padding: var(--s-2) 0 0;
   font: inherit;
-  resize: vertical;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  text-decoration: underline;
+  cursor: pointer;
 }
 
-input.input {
-  width: 100%;
-  min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-}
-
-label.field { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; }
-
-.confirmed {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: var(--accent-quiet);
-  border: 1px solid var(--accent-border);
-  color: var(--accent-text);
-  border-radius: var(--radius);
-  padding: 16px;
-  font-weight: 600;
-}
-
-.error {
-  background: #fdecea;
-  border: 1px solid #f5c2bd;
-  color: #8c2318;
-  border-radius: var(--radius);
-  padding: 14px 16px;
-  font-size: 14px;
-  margin-bottom: 16px;
-}
-
-@media (prefers-color-scheme: dark) {
-  .error { background: #2b1512; border-color: #5b2a23; color: #f3b5ad; }
-}
-
-/* Trends */
-.rows { display: flex; flex-direction: column; gap: 10px; }
-
-.row {
+/* A compact labelled bar, used for cohort and personal averages. */
+.metric {
   display: grid;
-  grid-template-columns: 76px 1fr;
+  grid-template-columns: 84px 1fr 34px;
   align-items: center;
-  gap: 12px;
-}
-
-.row__day { color: var(--text-muted); font-size: 13px; }
-
-.bars { display: flex; flex-direction: column; gap: 4px; }
-
-.bar {
-  display: grid;
-  grid-template-columns: 62px 1fr 22px;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
+  gap: var(--s-3);
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 
-.bar__track {
-  height: 8px;
-  border-radius: 999px;
-  background: var(--border);
-  overflow: hidden;
-}
+.metric + .metric { margin-top: var(--s-2); }
 
-.bar__fill { height: 100%; border-radius: 999px; background: var(--accent); }
-
-.state {
-  text-align: center;
-  padding: 32px 16px;
-  color: var(--text-muted);
-}
-
-.muted { color: var(--text-muted); font-size: 14px; }
-.mt { margin-top: 16px; }
+.metric b { color: var(--text); }

@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { Shell } from '@/components/chrome'
+import { PageHead, PlaneBadge, PrivacyNote, Shell } from '@/components/chrome'
 import { Decide } from './decide'
 
 function fmt(iso: string) {
@@ -12,19 +12,25 @@ function fmt(iso: string) {
 export default async function Hr() {
   const supabase = await createClient()
 
-  // Role gate. RLS would return nothing useful to a non-HR account anyway,
-  // but an empty page reads like a bug — say why instead.
   const { data: roles } = await supabase.from('person_roles').select('role')
   const isHr = (roles ?? []).some((r) => r.role === 'hr')
 
   if (!isHr) {
     return (
-      <Shell>
-        <h1>Not available on this account</h1>
-        <p className="lead">
-          This area is for HR. Your own data lives on the private plane, which
-          nobody here can read.
-        </p>
+      <Shell current="hr" plane="private">
+        <PageHead title="Not available on this account" />
+        <div className="card">
+          <div className="state">
+            <div className="state__icon" aria-hidden="true">
+              🔒
+            </div>
+            <h2 className="state__title">This area is for HR</h2>
+            <p className="state__text">
+              Your own data lives on the private plane, which nobody here can
+              read.
+            </p>
+          </div>
+        </div>
       </Shell>
     )
   }
@@ -48,36 +54,57 @@ export default async function Hr() {
   const pending = (leave ?? []).filter((l) => l.status === 'pending')
 
   return (
-    <Shell current="hr" isHr>
-      <h1>People</h1>
-      <p className="lead">
-        Employment records for everyone at your organisation.
-      </p>
+    <Shell current="hr" plane="org" isHr>
+      <PageHead
+        title="People"
+        lead="Employment records for everyone at your organisation."
+      />
 
-      <p className="privacy" style={{ background: 'transparent' }}>
-        <span aria-hidden="true">🏢</span>
-        <span>
-          <b>Employment data only.</b> No mood, check-ins or pressure appears
-          here. Those live on each person&rsquo;s private plane and are not
-          queryable from this side.
-        </span>
-      </p>
+      <PlaneBadge plane="work" />
+
+      <PrivacyNote
+        plane="work"
+        detail="Mood, energy, pressure, notes and check-in history live on each person's private plane. There is no policy anywhere granting this account access to them — not a filtered view, no access at all. Asking for a day off says nothing about how someone is."
+      >
+        <b>Employment data only.</b>{' '}
+      </PrivacyNote>
+
+      <div className="grid grid--3 mb-5">
+        <div className="stat">
+          <span className="stat__label">Headcount</span>
+          <span className="stat__value t-num">{(people ?? []).length}</span>
+        </div>
+        <div className="stat">
+          <span className="stat__label">Leave to approve</span>
+          <span className="stat__value t-num">{pending.length}</span>
+        </div>
+        <div className="stat">
+          <span className="stat__label">Wellbeing records visible</span>
+          <span className="stat__value t-num">0</span>
+        </div>
+      </div>
 
       <div className="card">
-        <div className="card__title">Leave to approve</div>
+        <div className="card__head">
+          <div>
+            <div className="card__title">Leave to approve</div>
+            <div className="card__sub">Awaiting a decision from you</div>
+          </div>
+        </div>
         {pending.length === 0 ? (
-          <p className="card__sub">Nothing waiting on you.</p>
+          <p className="t-subtle">Nothing waiting on you.</p>
         ) : (
-          <div className="rows mt">
+          <div className="stack">
             {pending.map((l) => (
-              <div key={l.id} className="card" style={{ margin: 0, padding: 14 }}>
-                <div className="card__title">
-                  {names.get(l.person_id) ?? 'Someone'} · {l.kind}
+              <div className="card card--quiet" key={l.id} style={{ margin: 0 }}>
+                <div className="row row--between">
+                  <b>{names.get(l.person_id) ?? 'Someone'}</b>
+                  <span className="chip">{l.kind}</span>
                 </div>
-                <p className="card__sub">
+                <p className="t-subtle mt-2">
                   {fmt(l.starts_on)} – {fmt(l.ends_on)}
                 </p>
-                {l.note && <p className="muted">{l.note}</p>}
+                {l.note && <p className="t-subtle">{l.note}</p>}
                 <Decide id={l.id} />
               </div>
             ))}
@@ -85,20 +112,46 @@ export default async function Hr() {
         )}
       </div>
 
-      <div className="card">
-        <div className="card__title">Directory</div>
-        <p className="card__sub">{(people ?? []).length} people</p>
-        <div className="rows mt">
-          {(people ?? []).map((p) => {
-            const e = byPerson.get(p.id)
-            return (
-              <div className="bar" key={p.id}>
-                <b style={{ color: 'var(--text)' }}>{p.full_name}</b>
-                <span>{e ? `${e.job_title} · ${e.department}` : '—'}</span>
-                <span>{p.status}</span>
-              </div>
-            )
-          })}
+      <div className="card card--flush mt-5">
+        <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
+          <div className="card__title">Directory</div>
+          <div className="card__sub">{(people ?? []).length} people</div>
+        </div>
+        <div className="table-scroll">
+          <table className="data-table">
+            <caption className="sr-only">Employee directory</caption>
+            <thead>
+              <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Title</th>
+                <th scope="col">Department</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(people ?? []).map((p) => {
+                const e = byPerson.get(p.id)
+                return (
+                  <tr key={p.id}>
+                    <th scope="row" style={{ fontWeight: 600 }}>
+                      {p.full_name}
+                    </th>
+                    <td>{e?.job_title ?? '—'}</td>
+                    <td>{e?.department ?? '—'}</td>
+                    <td>
+                      <span
+                        className={
+                          p.status === 'active' ? 'chip chip--accent' : 'chip'
+                        }
+                      >
+                        {p.status}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
     </Shell>

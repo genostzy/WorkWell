@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { Shell } from '@/components/chrome'
+import { PageHead, PlaneBadge, PrivacyNote, Shell } from '@/components/chrome'
 import { LeaveForm } from './form'
 
 function fmt(iso: string) {
@@ -19,9 +19,12 @@ export default async function Leave() {
   const supabase = await createClient()
 
   const { data: me } = await supabase.from('me').select('id').maybeSingle()
+
   const { data: employment } = await supabase
     .from('employment')
-    .select('job_title, department, team, manager_name, contract_type, location, started_on, entitlement')
+    .select(
+      'job_title, department, team, manager_name, contract_type, location, started_on, entitlement'
+    )
     .eq('person_id', me?.id ?? '')
     .maybeSingle()
 
@@ -38,86 +41,149 @@ export default async function Leave() {
     .filter((r) => r.status === 'approved')
     .reduce((sum, r) => sum + days(r.starts_on, r.ends_on), 0)
   const entitlement = employment?.entitlement ?? 20
+  const left = entitlement - taken
 
   return (
-    <Shell current="leave" isHr={isHr}>
-      <h1>Leave and profile</h1>
-      <p className="lead">
-        The one part of WorkWell your employer does see — and only this part.
-      </p>
+    <Shell current="leave" plane="work" isHr={isHr}>
+      <PageHead
+        title="Leave and profile"
+        lead="The one part of WorkWell your employer does see — and only this part."
+      />
 
-      <p className="privacy" style={{ background: 'transparent' }}>
-        <span aria-hidden="true">🏢</span>
-        <span>
-          <b>Your employer sees this.</b> Leave has to be approved, so dates and
-          balances go to HR. Your check-ins never travel with them.
-        </span>
-      </p>
+      <PlaneBadge plane="work" />
 
-      <div className="card">
-        <div className="card__title">Balance</div>
-        <p className="card__sub">
-          {entitlement - taken} of {entitlement} days left
-        </p>
-        <div className="bar mt">
-          <span>Used</span>
-          <span className="bar__track">
-            <span
-              className="bar__fill"
-              style={{ width: `${Math.min(100, (taken / entitlement) * 100)}%` }}
-            />
-          </span>
-          <span>{taken}</span>
+      <PrivacyNote
+        plane="work"
+        detail="Your check-ins, mood, notes and trends stay on the private plane and are never attached to a leave request. Asking for a day off says nothing about how you are."
+      >
+        <b>Your employer does see this one.</b>{' '}
+      </PrivacyNote>
+
+      <div className="grid grid--sidebar-right">
+        <div className="stack">
+          <LeaveForm personId={me?.id ?? null} />
+
+          <div className="card card--flush">
+            <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
+              <div className="card__title">Your requests</div>
+            </div>
+            {rows.length === 0 ? (
+              <p className="t-subtle" style={{ padding: '0 var(--s-5) var(--s-5)' }}>
+                Nothing booked yet.
+              </p>
+            ) : (
+              <div className="table-scroll">
+                <table className="data-table">
+                  <caption className="sr-only">Your leave requests</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Type</th>
+                      <th scope="col">Dates</th>
+                      <th scope="col">Days</th>
+                      <th scope="col">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((r) => (
+                      <tr key={r.id}>
+                        <th scope="row" style={{ fontWeight: 600 }}>
+                          {r.kind}
+                        </th>
+                        <td>
+                          {fmt(r.starts_on)} – {fmt(r.ends_on)}
+                        </td>
+                        <td className="t-num">
+                          {days(r.starts_on, r.ends_on)}
+                        </td>
+                        <td>
+                          <span
+                            className={
+                              r.status === 'approved'
+                                ? 'chip chip--accent'
+                                : 'chip'
+                            }
+                          >
+                            {r.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
 
-      <LeaveForm personId={me?.id ?? null} />
+        <div className="stack">
+          <div className="card">
+            <div className="card__title mb-4">Balance</div>
+            <div className="stat mb-4">
+              <span className="stat__value t-num">{left}</span>
+              <span className="stat__label">
+                days left of {entitlement}
+              </span>
+            </div>
+            <div className="meter">
+              <div className="meter__track">
+                <div
+                  className="meter__fill"
+                  style={{
+                    width: `${Math.min(100, (taken / entitlement) * 100)}%`,
+                  }}
+                />
+              </div>
+              <div className="row row--between t-subtle">
+                <span>{taken} taken</span>
+                <span>{left} left</span>
+              </div>
+            </div>
+          </div>
 
-      <div className="card">
-        <div className="card__title">Your requests</div>
-        {rows.length === 0 ? (
-          <p className="card__sub">Nothing booked yet.</p>
-        ) : (
-          <div className="rows mt">
-            {rows.map((r) => (
-              <div key={r.id} className="card" style={{ margin: 0, padding: 14 }}>
-                <div className="card__title">
-                  {r.kind} · {days(r.starts_on, r.ends_on)} day
-                  {days(r.starts_on, r.ends_on) === 1 ? '' : 's'}
+          {employment && (
+            <div className="card card--flush">
+              <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
+                <div className="card__title">Employment record</div>
+                <div className="card__sub">
+                  Held by HR. Ask them to correct anything wrong.
                 </div>
-                <p className="card__sub">
-                  {fmt(r.starts_on)} – {fmt(r.ends_on)} · <b>{r.status}</b>
-                </p>
-                {r.note && <p className="muted">{r.note}</p>}
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {employment && (
-        <div className="card">
-          <div className="card__title">Employment record</div>
-          <p className="card__sub">Held by HR. Ask them to correct anything wrong.</p>
-          <div className="rows mt">
-            {[
-              ['Job title', employment.job_title],
-              ['Department', employment.department],
-              ['Team', employment.team],
-              ['Manager', employment.manager_name],
-              ['Contract', employment.contract_type],
-              ['Location', employment.location],
-              ['Started', fmt(employment.started_on)],
-            ].map(([k, v]) => (
-              <div className="bar" key={k as string}>
-                <span style={{ width: 100 }}>{k}</span>
-                <b style={{ color: 'var(--text)' }}>{v || '—'}</b>
-                <span />
+              <div className="table-scroll">
+                <table className="data-table">
+                  <caption className="sr-only">Your employment record</caption>
+                  <tbody>
+                    {[
+                      ['Job title', employment.job_title],
+                      ['Department', employment.department],
+                      ['Team', employment.team],
+                      ['Manager', employment.manager_name],
+                      ['Contract', employment.contract_type],
+                      ['Location', employment.location],
+                      ['Started', fmt(employment.started_on)],
+                    ].map(([k, v]) => (
+                      <tr key={k as string}>
+                        <th
+                          scope="row"
+                          style={{
+                            fontWeight: 600,
+                            color: 'var(--text-muted)',
+                            width: '42%',
+                          }}
+                        >
+                          {k}
+                        </th>
+                        <td style={{ fontWeight: 600, color: 'var(--text)' }}>
+                          {v || '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </Shell>
   )
 }

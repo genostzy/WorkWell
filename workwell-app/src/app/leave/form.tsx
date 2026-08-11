@@ -51,8 +51,8 @@ export function LeaveForm({ personId }: { personId: string | null }) {
           <span aria-hidden="true">✓</span>
           <span>Request sent to your manager.</span>
         </div>
-        <div className="mt">
-          <button className="btn btn--quiet" onClick={() => setSent(false)}>
+        <div className="mt-4">
+          <button className="btn btn--secondary" onClick={() => setSent(false)}>
             Book more time
           </button>
         </div>
@@ -66,21 +66,21 @@ export function LeaveForm({ personId }: { personId: string | null }) {
       <p className="card__sub">Goes to your manager for approval.</p>
 
       {error && (
-        <p className="error mt" role="alert">
+        <div className="banner banner--error" role="alert">
           {error}
-        </p>
+        </div>
       )}
 
-      <div className="mt">
-        <label className="field" htmlFor="kind">
+      <div className="mt-4">
+        <label className="field__label" htmlFor="kind">
           Type
         </label>
         <select
           id="kind"
-          className="input"
+          className="select"
           value={kind}
           onChange={(e) => setKind(e.target.value)}
-          style={{ minHeight: 44, borderRadius: 12 }}
+          
         >
           {KINDS.map((k) => (
             <option key={k}>{k}</option>
@@ -88,9 +88,9 @@ export function LeaveForm({ personId }: { personId: string | null }) {
         </select>
       </div>
 
-      <div className="mt" style={{ display: 'flex', gap: 12 }}>
+      <div className="mt-4" style={{ display: 'flex', gap: 12 }}>
         <div style={{ flex: 1 }}>
-          <label className="field" htmlFor="from">
+          <label className="field__label" htmlFor="from">
             From
           </label>
           <input
@@ -102,7 +102,7 @@ export function LeaveForm({ personId }: { personId: string | null }) {
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label className="field" htmlFor="to">
+          <label className="field__label" htmlFor="to">
             To
           </label>
           <input
@@ -115,21 +115,21 @@ export function LeaveForm({ personId }: { personId: string | null }) {
         </div>
       </div>
 
-      <div className="mt">
-        <label className="field" htmlFor="lnote">
+      <div className="mt-4">
+        <label className="field__label" htmlFor="lnote">
           Note (optional)
         </label>
         <textarea
           id="lnote"
-          className="input"
+          className="textarea"
           value={note}
           placeholder="Anything your manager should know."
           onChange={(e) => setNote(e.target.value)}
         />
       </div>
 
-      <div className="mt">
-        <button className="btn" type="submit" disabled={saving}>
+      <div className="mt-4">
+        <button className="btn btn--primary" type="submit" disabled={saving}>
           {saving ? 'Sending…' : 'Send request'}
         </button>
       </div>

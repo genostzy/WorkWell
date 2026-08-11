@@ -1,0 +1,358 @@
+/* ==========================================================================
+   WorkWell — Design Tokens
+   --------------------------------------------------------------------------
+   Shared neutral base across both planes. Two accents distinguish plane
+   context ONLY as a secondary cue — plane identity is always also carried by
+   an icon + text label (see Key Design Rule: privacy is never colour-alone).
+
+   Accent hexes validated with the dataviz palette validator:
+     light  #0A8560 / #BA4A1D  — CVD dE 9.0, normal-vision dE 23.9, all pass
+     dark   #1BAB91 / #DE7145  — CVD dE 11.0, normal-vision dE 24.7, all pass
+   ========================================================================== */
+
+:root {
+  color-scheme: light;
+
+  /* ---- Neutral surfaces (shared by both planes) ---- */
+  --bg:              #FAFAF8;
+  --surface:         #FFFFFF;
+  --surface-2:       #F4F4F1;
+  --surface-3:       #ECECE7;
+  --surface-inset:   #F7F7F4;
+
+  --border:          #E3E3DE;
+  --border-strong:   #CBCBC4;
+
+  /* ---- Ink ---- */
+  --text:            #1C1F1D;   /* 15.8:1 on --bg */
+  --text-muted:      #5A605C;   /*  6.2:1 on --bg */
+  --text-subtle:     #6B716D;   /*  4.8:1 on --bg */
+  --text-on-accent:  #FFFFFF;
+
+  /* ---- Focus ---- */
+  --focus-ring:      #1A6FD4;
+  --focus-ring-w:    3px;
+
+  /* ---- System status (technical states ONLY) ------------------------------
+     Deliberately NEVER applied to wellbeing data. The PRD forbids scores,
+     rankings and risk labels, so no green/amber/red ever judges a person.
+     These exist for load failures, offline banners and form validation. */
+  --sys-error:       #B3261E;
+  --sys-error-bg:    #FCEEED;
+  --sys-info:        #1A5FA8;
+  --sys-info-bg:     #EDF3FA;
+
+  /* ---- Chart chrome ---- */
+  --chart-surface:   #FFFFFF;
+  --chart-grid:      #EAEAE6;
+  --chart-axis:      #C9CCC9;
+  --chart-ink:       #6B716D;
+  --chart-context:   #B8BCB9;   /* de-emphasis gray for "rest of the data" */
+  --chart-band:      #F2F2EE;   /* your-typical-range band fill */
+
+  /* ---- Radii ---- */
+  --r-xs: 6px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+  --r-pill: 999px;
+
+  /* ---- Elevation (soft, low-anxiety) ---- */
+  --shadow-1: 0 1px 2px rgba(28,31,29,.05), 0 1px 3px rgba(28,31,29,.04);
+  --shadow-2: 0 2px 4px rgba(28,31,29,.05), 0 6px 16px rgba(28,31,29,.06);
+  --shadow-3: 0 8px 24px rgba(28,31,29,.10), 0 2px 6px rgba(28,31,29,.06);
+
+  /* ---- Spacing scale ---- */
+  --s-1: 4px;   --s-2: 8px;   --s-3: 12px;  --s-4: 16px;
+  --s-5: 20px;  --s-6: 24px;  --s-7: 32px;  --s-8: 40px;
+  --s-9: 48px;  --s-10: 64px;
+
+  /* ---- Typography ---- */
+  --font-sans: "Nunito", "Quicksand", "Segoe UI Variable Text", "Segoe UI",
+               system-ui, -apple-system, sans-serif;
+
+  --fs-xs:  0.75rem;    /* 12 */
+  --fs-sm:  0.8125rem;  /* 13 */
+  --fs-md:  0.9375rem;  /* 15 — body */
+  --fs-lg:  1.0625rem;  /* 17 */
+  --fs-xl:  1.375rem;   /* 22 */
+  --fs-2xl: 1.75rem;    /* 28 */
+  --fs-3xl: 2.25rem;    /* 36 */
+  --fs-hero:3rem;       /* 48 */
+
+  --lh-tight: 1.25;
+  --lh-snug:  1.4;
+  --lh-body:  1.6;
+
+  --fw-normal: 400;
+  --fw-med:    600;
+  --fw-bold:   700;
+  --fw-heavy:  800;
+
+  /* ---- Motion (overridden by the reduced-motion preference) ---- */
+  --dur-fast: 120ms;
+  --dur-med:  220ms;
+  --dur-slow: 380ms;
+  --ease: cubic-bezier(.32, .72, .35, 1);
+
+  /* ---- Layout ---- */
+  --sidebar-w: 264px;
+  --topbar-h:  64px;
+  --tabbar-h:  64px;
+  --content-max: 1180px;
+
+  /* ---- Notification density (set by the a11y preference) ---- */
+  --density-gap: var(--s-5);
+}
+
+/* ==========================================================================
+   Plane accents
+   Applied by [data-plane] on <body>. Every screen belongs to exactly one
+   plane, so the accent is scoped rather than toggled per component.
+   ========================================================================== */
+
+:root,
+[data-plane="private"] {
+  --accent:          #0A8560;
+  --accent-text:     #076B4C;   /* 6.3:1 on --bg — the text-safe step */
+  --accent-hover:    #076B4C;
+  --accent-quiet:    #E8F5EF;   /* tinted fill */
+  --accent-quiet-2:  #D3F0E5;
+  --accent-border:   #A8E0CD;
+  --accent-ring:     rgba(10,133,96,.22);
+
+  /* single-hue sequential ramp, light -> dark */
+  --seq-100: #D3F0E5;
+  --seq-200: #A8E0CD;
+  --seq-300: #71CBAF;
+  --seq-400: #33B18D;
+  --seq-500: #0A8560;
+  --seq-600: #076B4C;
+  --seq-700: #05513A;
+}
+
+[data-plane="org"] {
+  --accent:          #BA4A1D;
+  --accent-text:     #9A3A13;
+  --accent-hover:    #9A3A13;
+  --accent-quiet:    #FBEFE8;
+  --accent-quiet-2:  #FAE0D3;
+  --accent-border:   #F3C0A5;
+  --accent-ring:     rgba(186,74,29,.22);
+
+  --seq-100: #FAE0D3;
+  --seq-200: #F3C0A5;
+  --seq-300: #EA9B72;
+  --seq-400: #DC6E3E;
+  --seq-500: #BA4A1D;
+  --seq-600: #973A14;
+  --seq-700: #742C0F;
+}
+
+/* ==========================================================================
+   Dark theme
+   Selected steps for the dark surface — not an automatic inversion.
+   Declared under both the OS media query and the explicit toggle, so the
+   toggle wins in both directions.
+   ========================================================================== */
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) { color-scheme: dark; }
+}
+
+:root[data-theme="dark"] { color-scheme: dark; }
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    --bg:            #141816;
+    --surface:       #1C211E;
+    --surface-2:     #242A26;
+    --surface-3:     #2D342F;
+    --surface-inset: #191E1B;
+
+    --border:        #313832;
+    --border-strong: #434C45;
+
+    --text:          #ECEFEC;
+    --text-muted:    #A9B2AC;
+    --text-subtle:   #98A19B;
+    --text-on-accent:#0B0F0D;
+
+    --focus-ring:    #7FB4F5;
+
+    --sys-error:     #F2938C;
+    --sys-error-bg:  #33201F;
+    --sys-info:      #8FBEF0;
+    --sys-info-bg:   #1B2733;
+
+    --chart-surface: #1C211E;
+    --chart-grid:    #262C28;
+    --chart-axis:    #3A423C;
+    --chart-ink:     #A9B2AC;
+    --chart-context: #4A524D;
+    --chart-band:    #232925;
+
+    --shadow-1: 0 1px 2px rgba(0,0,0,.4);
+    --shadow-2: 0 2px 4px rgba(0,0,0,.4), 0 6px 16px rgba(0,0,0,.34);
+    --shadow-3: 0 8px 24px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.4);
+  }
+
+  :root:where(:not([data-theme="light"])),
+  :root:where(:not([data-theme="light"])) [data-plane="private"] {
+    --accent:         #1BAB91;
+    --accent-text:    #1BAB91;   /* 6.2:1 on dark --bg */
+    --accent-hover:   #4FC7AD;
+    --accent-quiet:   #12302A;
+    --accent-quiet-2: #164036;
+    --accent-border:  #1F5A4B;
+    --accent-ring:    rgba(27,171,145,.28);
+
+    --seq-100: #0A3B2C;
+    --seq-200: #0D5240;
+    --seq-300: #106B54;
+    --seq-400: #148A6D;
+    --seq-500: #1BAB91;
+    --seq-600: #4FC7AD;
+    --seq-700: #86DCC8;
+  }
+
+  :root:where(:not([data-theme="light"])) [data-plane="org"] {
+    --accent:         #DE7145;
+    --accent-text:    #DE7145;   /* 5.6:1 on dark --bg */
+    --accent-hover:   #EA9370;
+    --accent-quiet:   #331E14;
+    --accent-quiet-2: #42261A;
+    --accent-border:  #6B3B24;
+    --accent-ring:    rgba(222,113,69,.28);
+
+    --seq-100: #4A1D0C;
+    --seq-200: #642713;
+    --seq-300: #8A381A;
+    --seq-400: #B24E25;
+    --seq-500: #DE7145;
+    --seq-600: #EA9370;
+    --seq-700: #F3B79C;
+  }
+}
+
+/* --- Same values under the explicit toggle so it beats the OS setting --- */
+:root[data-theme="dark"] {
+  --bg:            #141816;
+  --surface:       #1C211E;
+  --surface-2:     #242A26;
+  --surface-3:     #2D342F;
+  --surface-inset: #191E1B;
+
+  --border:        #313832;
+  --border-strong: #434C45;
+
+  --text:          #ECEFEC;
+  --text-muted:    #A9B2AC;
+  --text-subtle:   #98A19B;
+  --text-on-accent:#0B0F0D;
+
+  --focus-ring:    #7FB4F5;
+
+  --sys-error:     #F2938C;
+  --sys-error-bg:  #33201F;
+  --sys-info:      #8FBEF0;
+  --sys-info-bg:   #1B2733;
+
+  --chart-surface: #1C211E;
+  --chart-grid:    #262C28;
+  --chart-axis:    #3A423C;
+  --chart-ink:     #A9B2AC;
+  --chart-context: #4A524D;
+  --chart-band:    #232925;
+
+  --shadow-1: 0 1px 2px rgba(0,0,0,.4);
+  --shadow-2: 0 2px 4px rgba(0,0,0,.4), 0 6px 16px rgba(0,0,0,.34);
+  --shadow-3: 0 8px 24px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.4);
+}
+
+:root[data-theme="dark"],
+:root[data-theme="dark"] [data-plane="private"] {
+  --accent:         #1BAB91;
+  --accent-text:    #1BAB91;
+  --accent-hover:   #4FC7AD;
+  --accent-quiet:   #12302A;
+  --accent-quiet-2: #164036;
+  --accent-border:  #1F5A4B;
+  --accent-ring:    rgba(27,171,145,.28);
+
+  --seq-100: #0A3B2C;
+  --seq-200: #0D5240;
+  --seq-300: #106B54;
+  --seq-400: #148A6D;
+  --seq-500: #1BAB91;
+  --seq-600: #4FC7AD;
+  --seq-700: #86DCC8;
+}
+
+:root[data-theme="dark"] [data-plane="org"] {
+  --accent:         #DE7145;
+  --accent-text:    #DE7145;
+  --accent-hover:   #EA9370;
+  --accent-quiet:   #331E14;
+  --accent-quiet-2: #42261A;
+  --accent-border:  #6B3B24;
+  --accent-ring:    rgba(222,113,69,.28);
+
+  --seq-100: #4A1D0C;
+  --seq-200: #642713;
+  --seq-300: #8A381A;
+  --seq-400: #B24E25;
+  --seq-500: #DE7145;
+  --seq-600: #EA9370;
+  --seq-700: #F3B79C;
+}
+
+/* ==========================================================================
+   Accessibility preferences (toggled from Adaptive Workspace)
+   ========================================================================== */
+
+/* High contrast — strengthens borders and ink, keeps the same hues. */
+:root[data-contrast="high"] {
+  --border:        #8E948F;
+  --border-strong: #5A605C;
+  --text-muted:    #3A403C;
+  --text-subtle:   #3A403C;
+  --chart-grid:    #C9CCC9;
+  --chart-axis:    #6B716D;
+  --chart-ink:     #1C1F1D;
+  --shadow-1: 0 0 0 1px #5A605C;
+  --shadow-2: 0 0 0 1px #5A605C;
+  --shadow-3: 0 0 0 2px #3A403C;
+}
+
+:root[data-theme="dark"][data-contrast="high"],
+:root[data-contrast="high"]:where(:not([data-theme="light"])) {
+  --border:        #7E877F;
+  --border-strong: #A9B2AC;
+  --text-muted:    #DDE3DE;
+  --text-subtle:   #DDE3DE;
+  --chart-grid:    #4A524D;
+  --chart-axis:    #98A19B;
+  --chart-ink:     #ECEFEC;
+}
+
+/* Notification density — controls vertical rhythm of feed/nudge lists. */
+:root[data-density="compact"]     { --density-gap: var(--s-2); }
+:root[data-density="comfortable"] { --density-gap: var(--s-5); }
+:root[data-density="spacious"]    { --density-gap: var(--s-8); }
+
+/* Reduced motion — user toggle, plus the OS setting. */
+:root[data-motion="reduced"] {
+  --dur-fast: 0.01ms;
+  --dur-med:  0.01ms;
+  --dur-slow: 0.01ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:where(:not([data-motion="full"])) {
+    --dur-fast: 0.01ms;
+    --dur-med:  0.01ms;
+    --dur-slow: 0.01ms;
+  }
+}

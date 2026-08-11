@@ -33,7 +33,7 @@ export function Decide({ id }: { id: string }) {
 
   if (done) {
     return (
-      <p className="confirmed mt" role="status">
+      <p className="confirmed mt-3" role="status">
         <span aria-hidden="true">✓</span>
         <span>{done === 'approved' ? 'Approved.' : 'Declined.'}</span>
       </p>
@@ -43,16 +43,16 @@ export function Decide({ id }: { id: string }) {
   return (
     <>
       {error && (
-        <p className="error mt" role="alert">
+        <div className="banner banner--error" role="alert">
           {error}
-        </p>
+        </div>
       )}
-      <div className="mt" style={{ display: 'flex', gap: 8 }}>
-        <button className="btn" disabled={busy} onClick={() => decide('approved')}>
+      <div className="row mt-3">
+        <button className="btn btn--primary btn--sm" disabled={busy} onClick={() => decide('approved')}>
           Approve
         </button>
         <button
-          className="btn btn--quiet"
+          className="btn btn--secondary btn--sm"
           disabled={busy}
           onClick={() => decide('declined')}
         >

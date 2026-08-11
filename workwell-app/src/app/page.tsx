@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { PrivacyNote, Shell } from '@/components/chrome'
+import { PageHead, PlaneBadge, PrivacyNote, Shell } from '@/components/chrome'
 
 export default async function Home() {
   const supabase = await createClient()
@@ -8,33 +8,43 @@ export default async function Home() {
 
   if (!claims) {
     return (
-      <div className="shell">
-        <h1>WorkWell</h1>
-        <p className="lead">
-          Notice your own patterns early. Your employer sees group trends, never
-          you.
-        </p>
-        <Link className="btn" href="/sign-in">
-          Sign in
-        </Link>
+      <div className="app" data-plane="private">
+        <div className="main">
+          <main className="content">
+            <div className="page-head">
+              <h1>WorkWell</h1>
+              <p className="t-lead">
+                Notice your own strain early. Your employer sees where workload
+                sits heavy — never who.
+              </p>
+            </div>
+            <Link className="btn btn--primary btn--lg" href="/sign-in">
+              Sign in
+            </Link>
+          </main>
+        </div>
       </div>
     )
   }
 
-  // `me` is the signed-in person's own row, or nothing at all if this
-  // account was never invited. That empty case is a designed outcome, not
-  // an error — say so plainly rather than showing a broken page.
   const { data: me } = await supabase.from('me').select('full_name').maybeSingle()
 
   if (!me) {
     return (
       <Shell current="home">
-        <h1>You are signed in, but not set up yet</h1>
-        <p className="lead">
-          This account is not linked to anyone at an organisation, so there is
-          nothing to show. Ask whoever runs WorkWell where you work to invite
-          this email address.
-        </p>
+        <PageHead title="Signed in, but not set up yet" />
+        <div className="card">
+          <div className="state state--info">
+            <div className="state__icon" aria-hidden="true">
+              ✉️
+            </div>
+            <h2 className="state__title">This account is not linked to anyone</h2>
+            <p className="state__text">
+              Ask whoever runs WorkWell where you work to invite this email
+              address. Until then there is nothing here to show you.
+            </p>
+          </div>
+        </div>
       </Shell>
     )
   }
@@ -53,38 +63,71 @@ export default async function Home() {
 
   return (
     <Shell current="home" isHr={isHr}>
-      <h1>Hello, {firstName}</h1>
-      <p className="lead">
-        {todays
-          ? 'You checked in today. You can change it any time before midnight.'
-          : 'Thirty seconds, three questions. Skip anything you would rather not answer.'}
-      </p>
+      <PageHead
+        title={`Hello, ${firstName}`}
+        lead={
+          todays
+            ? 'You checked in today. You can change it any time before midnight.'
+            : 'Three questions, ten seconds. Skip anything you would rather not answer.'
+        }
+      />
 
-      <PrivacyNote />
+      <PlaneBadge plane="private" />
 
-      <div className="card">
-        <div className="card__title">Today</div>
-        <p className="card__sub">
-          {todays
-            ? 'Recorded. Changing it replaces today’s entry rather than adding another.'
-            : 'Not checked in yet.'}
-        </p>
-        <div className="mt">
-          <Link className="btn" href="/check-in">
-            {todays ? 'Change today’s answer' : 'Check in'}
-          </Link>
+      <PrivacyNote detail="Your check-ins, notes and trends are stored on a separate plane from anything your employer can query. HR sees group patterns for eight or more people, and your leave dates. Never your mood, and never your name attached to a number.">
+        <b>Only you can see your check-ins.</b>{' '}
+      </PrivacyNote>
+
+      <div className="grid grid--2">
+        <div className="card">
+          <div className="card__head">
+            <div>
+              <div className="card__title">Today</div>
+              <div className="card__sub">
+                {todays ? 'Recorded' : 'Not checked in yet'}
+              </div>
+            </div>
+          </div>
+          <p className="t-subtle">
+            {todays
+              ? 'Changing it replaces today’s entry rather than adding another.'
+              : 'Mood, energy and pressure. Every question is skippable.'}
+          </p>
+          <div className="mt-4">
+            <Link className="btn btn--primary" href="/check-in">
+              {todays ? 'Change today’s answer' : 'Check in'}
+            </Link>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card__head">
+            <div>
+              <div className="card__title">Your trends</div>
+              <div className="card__sub">Against your own baseline</div>
+            </div>
+          </div>
+          <p className="t-subtle">
+            Measured against how your own weeks usually go — never against a
+            colleague, and never as a score.
+          </p>
+          <div className="mt-4">
+            <Link className="btn btn--secondary" href="/trends">
+              See trends
+            </Link>
+          </div>
         </div>
       </div>
 
-      <div className="card">
-        <div className="card__title">Your trends</div>
-        <p className="card__sub">
-          How the last couple of weeks have gone, measured against your own
-          baseline — never against anybody else’s.
+      <div className="card card--quiet mt-5">
+        <div className="card__title mb-2">Leave and profile</div>
+        <p className="t-subtle">
+          The one part your employer does see. Booking a day off says nothing
+          about how you are.
         </p>
-        <div className="mt">
-          <Link className="btn btn--quiet" href="/trends">
-            See trends
+        <div className="mt-4">
+          <Link className="btn btn--ghost" href="/leave">
+            Open
           </Link>
         </div>
       </div>
