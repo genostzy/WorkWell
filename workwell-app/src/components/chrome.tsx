@@ -15,13 +15,34 @@ export function PrivacyNote() {
   )
 }
 
+type Page = 'home' | 'check-in' | 'trends' | 'leave' | 'hr' | 'org'
+
+const LINKS: { href: string; label: string; id: Page }[] = [
+  { href: '/', label: 'Home', id: 'home' },
+  { href: '/check-in', label: 'Check in', id: 'check-in' },
+  { href: '/trends', label: 'Trends', id: 'trends' },
+  { href: '/leave', label: 'Leave', id: 'leave' },
+]
+
+/** HR links are shown only to HR. This is presentation, not protection —
+ *  the pages themselves gate on the role and RLS gates the data. Hiding
+ *  them just stops an employee clicking into a wall. */
+const HR_LINKS: { href: string; label: string; id: Page }[] = [
+  { href: '/hr', label: 'People', id: 'hr' },
+  { href: '/org', label: 'Org', id: 'org' },
+]
+
 export function Shell({
   children,
   current,
+  isHr = false,
 }: {
   children: React.ReactNode
-  current?: 'home' | 'check-in' | 'trends'
+  current?: Page
+  isHr?: boolean
 }) {
+  const links = isHr ? [...LINKS, ...HR_LINKS] : LINKS
+
   return (
     <div className="shell">
       <header className="topbar">
@@ -29,21 +50,15 @@ export function Shell({
           WorkWell
         </Link>
         <nav className="nav">
-          <Link href="/" aria-current={current === 'home' ? 'page' : undefined}>
-            Home
-          </Link>
-          <Link
-            href="/check-in"
-            aria-current={current === 'check-in' ? 'page' : undefined}
-          >
-            Check in
-          </Link>
-          <Link
-            href="/trends"
-            aria-current={current === 'trends' ? 'page' : undefined}
-          >
-            Trends
-          </Link>
+          {links.map((l) => (
+            <Link
+              key={l.id}
+              href={l.href}
+              aria-current={current === l.id ? 'page' : undefined}
+            >
+              {l.label}
+            </Link>
+          ))}
         </nav>
       </header>
       <main>{children}</main>

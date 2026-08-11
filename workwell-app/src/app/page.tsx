@@ -46,10 +46,13 @@ export default async function Home() {
     .eq('day', today)
     .maybeSingle()
 
+  const { data: roles } = await supabase.from('person_roles').select('role')
+  const isHr = (roles ?? []).some((r) => r.role === 'hr')
+
   const firstName = me.full_name.split(' ')[0]
 
   return (
-    <Shell current="home">
+    <Shell current="home" isHr={isHr}>
       <h1>Hello, {firstName}</h1>
       <p className="lead">
         {todays
