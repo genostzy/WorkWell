@@ -28,7 +28,35 @@ export default async function Home() {
     )
   }
 
-  const { data: me } = await supabase.from('me').select('full_name').maybeSingle()
+  const { data: me, error: meError } = await supabase
+    .from('me')
+    .select('full_name')
+    .maybeSingle()
+
+  // A query that FAILED and a query that found nothing are different
+  // things, and conflating them sent us hunting for a missing invitation
+  // when the real cause was a permission error on the view.
+  if (meError) {
+    return (
+      <Shell current="home">
+        <PageHead title="Something went wrong reading your account" />
+        <div className="card">
+          <div className="state state--error">
+            <div className="state__icon" aria-hidden="true">
+              ⚠️
+            </div>
+            <h2 className="state__title">Your record could not be loaded</h2>
+            <p className="state__text">
+              Your history is safe — this is a read failing, not data missing.
+            </p>
+            <p className="t-subtle mt-3">
+              <code>{meError.message}</code>
+            </p>
+          </div>
+        </div>
+      </Shell>
+    )
+  }
 
   if (!me) {
     return (
