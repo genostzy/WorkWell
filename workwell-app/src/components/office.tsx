@@ -14,6 +14,10 @@ const ROUTES: Record<string, string> = {
   'check-in.html': '/check-in',
   'onboarding.html': '/check-in',
   'my-leave.html': '/leave',
+  'nudges.html': '/nudges',
+  'boundary.html': '/boundaries',
+  'recognition.html': '/recognition',
+  'workspace.html': '/workspace',
   'hr-people.html': '/hr',
   'org-diagnostics.html': '/org',
 }
@@ -95,9 +99,9 @@ export function Office({ isHr, name }: { isHr: boolean; name: string }) {
 
       e.preventDefault()
 
+      // Every spot in the room now has a screen behind it. If that ever
+      // stops being true, say so rather than navigating somewhere wrong.
       if (!route) {
-        // A spot whose screen is not built yet. Say so rather than
-        // navigating somewhere misleading.
         el.setAttribute('data-unbuilt', 'true')
         window.setTimeout(() => el.removeAttribute('data-unbuilt'), 1600)
         return
