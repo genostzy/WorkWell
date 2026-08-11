@@ -11,10 +11,17 @@ export default function SignIn() {
   async function send(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    // Read `next` from the URL directly rather than with useSearchParams,
+    // which would force this page dynamic or need a Suspense boundary for
+    // no benefit — it is only needed at submit time, on the client.
+    const next = new URLSearchParams(location.search).get('next')
+    const callback = new URL('/auth/callback', location.origin)
+    if (next) callback.searchParams.set('next', next)
+
     const supabase = createClient()
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${location.origin}/auth/callback` },
+      options: { emailRedirectTo: callback.toString() },
     })
     if (error) setError(error.message)
     else setSent(true)

@@ -27,7 +27,22 @@ export async function middleware(request: NextRequest) {
 
   // Refreshes the auth token. Do not remove: without it, server components
   // see an expired session and every page looks signed out.
-  await supabase.auth.getClaims()
+  const { data } = await supabase.auth.getClaims()
+
+  // Guard every route here rather than page by page. A client page that
+  // fetches before checking sits on a loading state forever when signed
+  // out, and each new page would have to remember its own guard.
+  const path = request.nextUrl.pathname
+  const isPublic =
+    path === '/' || path.startsWith('/sign-in') || path.startsWith('/auth')
+
+  if (!data && !isPublic) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/sign-in'
+    // Come back to where they were headed once they are signed in.
+    url.searchParams.set('next', path)
+    return NextResponse.redirect(url)
+  }
 
   return response
 }
