@@ -1,7 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "//": "outputDirectory is set explicitly to counteract the repo-root vercel.json, which points at workwell-prototype for the old static site. Next.js builds to .next; without this the build looks for workwell-app/workwell-prototype and fails.",
   "outputDirectory": ".next",
   "headers": [
     {
