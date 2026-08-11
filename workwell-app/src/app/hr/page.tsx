@@ -54,7 +54,7 @@ export default async function Hr() {
   const pending = (leave ?? []).filter((l) => l.status === 'pending')
 
   return (
-    <Shell current="hr" plane="org" isHr>
+    <Shell current="hr" plane="org">
       <PageHead
         title="People"
         lead="Employment records for everyone at your organisation."

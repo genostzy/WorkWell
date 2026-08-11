@@ -48,5 +48,11 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  // Anything with a file extension is a static asset and must be excluded,
+  // not just the _next ones. Without the extension clause every file under
+  // public/ — including the vendored room and sky scripts — is answered
+  // with a 307 to /sign-in, and the office silently never loads.
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:js|css|svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf)$).*)',
+  ],
 }

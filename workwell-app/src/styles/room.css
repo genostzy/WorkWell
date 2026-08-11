@@ -1,0 +1,461 @@
+/* ==========================================================================
+   WorkWell — The room
+   Top-down office used as the home screen and as the nav overlay.
+   ========================================================================== */
+
+.room-body { background: var(--bg); }
+
+.room-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Room view: lock to the viewport so the plan fits without scrolling.
+   Only applied for the room — the list view must still scroll. */
+.room-shell.is-fit {
+  height: 100vh;
+  height: 100dvh;          /* excludes mobile browser chrome where supported */
+  min-height: 0;
+  overflow: hidden;
+}
+
+.room-top {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-6);
+}
+.room-top__brand { display: flex; align-items: center; gap: var(--s-3); }
+.room-top__name { font-size: var(--fs-lg); font-weight: var(--fw-heavy); letter-spacing: -0.02em; }
+.room-top__spacer { margin-left: auto; }
+
+/* The header sits at the top, so the account menu must drop downward and
+   align right rather than use the sidebar's upward default. */
+.room-top .account { flex: none; min-width: 0; }
+.room-top .account__btn { width: auto; }
+.room-top .account__menu {
+  top: calc(100% + 10px);
+  bottom: auto;
+  left: auto; right: 0;
+  width: 264px;
+}
+.room-top .account__name,
+.room-top .account__role { max-width: 22ch; }
+
+.room-stage {
+  flex: 1;
+  min-height: 0;                /* lets the stage shrink inside the shell */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--s-5) var(--s-5);
+  width: 100%;
+}
+
+/* The room panel is a centred column; the plan takes whatever height the
+   caption, note and hint leave, and its exact box is set in page-office.js
+   so the drawing fills it with no letterboxing. */
+.room-views.is-on[data-view-panel="room"] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.room {
+  position: relative;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.room__svg { display: block; width: 100%; height: 100%; }
+
+/* --------------------------------------------------------------- Surfaces */
+
+.floor      { fill: var(--surface-2); }
+.wall       { fill: none; stroke: var(--border-strong); stroke-width: 14; }
+.wall-inner { fill: none; stroke: var(--border-strong); stroke-width: 12; stroke-linecap: round; }
+.rug        { fill: var(--accent-quiet); opacity: .7; }
+
+.furn    { fill: var(--surface); stroke: var(--border-strong); stroke-width: 3; }
+.furn-2  { fill: var(--surface-3); stroke: var(--border-strong); stroke-width: 2.5; }
+.furn-3  { fill: var(--surface); stroke: var(--border-strong); stroke-width: 2.5; }
+.screen  { fill: var(--accent); }
+.ink     { stroke: var(--border-strong); stroke-width: 3; stroke-linecap: round; }
+.ink-2   { stroke: var(--text); stroke-width: 3.5; stroke-linecap: round; }
+.plant   { fill: var(--accent); opacity: .5; }
+.plant-2 { fill: var(--accent); opacity: .8; }
+.accent-soft { fill: var(--accent); opacity: .35; }
+
+.reader { fill: var(--border-strong); }
+.reader.is-open { fill: var(--accent); }
+.ink-dot { fill: var(--text); }
+
+/* Sealed employee floor, shown to organisation accounts. Deliberately blank:
+   an HR leader has no business seeing whose desk is whose. */
+.sealed__fill {
+  fill: var(--surface-3);
+  stroke: var(--border-strong);
+  stroke-width: 3;
+  stroke-dasharray: 10 8;
+  opacity: .55;
+}
+.sealed__badge {
+  fill: var(--surface);
+  stroke: var(--border-strong);
+  stroke-width: 2;
+}
+.sealed__icon {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.sealed__title {
+  fill: var(--text);
+  font-size: 17px; font-weight: 800; text-anchor: middle;
+}
+.sealed__sub {
+  fill: var(--text-subtle);
+  font-size: 12px; font-weight: 600; text-anchor: middle;
+}
+
+/* -------------------------------------------------------- Time of day ---
+   The room observes the boundary the product sells. Nothing is blocked at
+   any hour — the lights just go down and it stops inviting you in. */
+
+.room::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-lg);
+  pointer-events: none;
+  transition: background var(--dur-slow) var(--ease);
+  background: transparent;
+}
+
+/* Morning: low warm light across the floor. */
+.room[data-phase="morning"]::after {
+  background: linear-gradient(115deg,
+    rgba(255, 196, 92, .16) 0%,
+    rgba(255, 196, 92, .05) 42%,
+    transparent 70%);
+}
+
+/* Quiet hours: lights out. */
+.room[data-phase="quiet"]::after {
+  background: linear-gradient(180deg,
+    rgba(24, 32, 58, .46) 0%,
+    rgba(16, 22, 42, .58) 100%);
+}
+.room[data-phase="quiet"] .screen,
+.room[data-phase="quiet"] .accent-soft { opacity: .18; }
+.room[data-phase="quiet"] .plant,
+.room[data-phase="quiet"] .plant-2 { opacity: .3; }
+.room[data-phase="quiet"] .rug { opacity: .35; }
+
+/* The clock stays legible — it is the thing you would come here to change. */
+.room[data-phase="quiet"] .spot[data-spot="clock"] .spot__tagbg {
+  fill: var(--accent); stroke: var(--accent);
+}
+.room[data-phase="quiet"] .spot[data-spot="clock"] .spot__tagtext,
+.room[data-phase="quiet"] .spot[data-spot="clock"] .spot__tagsub {
+  fill: var(--text-on-accent);
+}
+
+/* Quiet-hours notice, in place of the check-in offer. */
+.room-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  max-width: 52ch;
+  margin: 0 auto var(--s-4);
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+.room-note svg { flex: none; margin-top: 2px; color: var(--accent-text); }
+.room-note b { color: var(--text); }
+
+/* ------------------------------------------------------------------ Spots */
+
+.spot { cursor: pointer; outline: none; }
+.spot__art { transition: transform var(--dur-med) var(--ease); transform-box: fill-box; transform-origin: center; }
+.spot:hover .spot__art,
+.spot:focus-visible .spot__art { transform: scale(1.045); }
+
+.spot__tagbg {
+  fill: var(--surface);
+  stroke: var(--border-strong);
+  stroke-width: 2;
+  transition: fill var(--dur-fast) var(--ease), stroke var(--dur-fast) var(--ease);
+}
+.spot__tagtext {
+  fill: var(--text);
+  font-size: 15px;
+  font-weight: 800;
+  text-anchor: middle;
+}
+.spot__tagsub {
+  fill: var(--text-subtle);
+  font-size: 11px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+.spot:hover .spot__tagbg,
+.spot:focus-visible .spot__tagbg { fill: var(--accent); stroke: var(--accent); }
+.spot:hover .spot__tagtext, .spot:focus-visible .spot__tagtext,
+.spot:hover .spot__tagsub,  .spot:focus-visible .spot__tagsub { fill: var(--text-on-accent); }
+
+.spot:focus-visible .spot__tagbg {
+  stroke: var(--focus-ring);
+  stroke-width: 4;
+}
+
+/* Locked room: visibly present, deliberately not enterable. */
+.spot--locked { cursor: not-allowed; }
+.spot--locked .spot__art { opacity: .45; }
+.spot--locked:hover .spot__art { transform: none; }
+.spot--locked .spot__tagbg { fill: var(--surface-2); stroke-dasharray: 5 4; }
+.spot--locked:hover .spot__tagbg { fill: var(--surface-2); stroke: var(--border-strong); }
+.spot--locked:hover .spot__tagtext { fill: var(--text); }
+.spot--locked:hover .spot__tagsub  { fill: var(--text-subtle); }
+
+/* ------------------------------------------------------------------ Doors */
+
+.doorleaf {
+  fill: var(--accent);
+  transform-box: view-box;
+  transition: transform var(--dur-slow) var(--ease);
+}
+.doorleaf--l { transform-origin: 430px 694px; }
+.doorleaf--r { transform-origin: 570px 694px; }
+
+.room[data-open="true"] .doorleaf--l { transform: rotate(-72deg); }
+.room[data-open="true"] .doorleaf--r { transform: rotate(72deg); }
+
+.frontdoor { cursor: pointer; outline: none; }
+.frontdoor__hit { fill: transparent; }
+.frontdoor__pulse {
+  fill: var(--accent);
+  opacity: .18;
+  transform-box: view-box;
+  transform-origin: 500px 686px;
+  animation: doorpulse 2.2s var(--ease) infinite;
+}
+@keyframes doorpulse {
+  0%, 100% { transform: scale(.72); opacity: .30; }
+  50%      { transform: scale(1.12); opacity: .06; }
+}
+.frontdoor:focus-visible .spot__tagbg { stroke: var(--focus-ring); stroke-width: 4; }
+
+/* Once inside, the door stops advertising itself. */
+.room[data-open="true"] .frontdoor { pointer-events: none; }
+.room[data-open="true"] .frontdoor__pulse,
+.room[data-open="true"] .frontdoor .spot__tag { opacity: 0; transition: opacity var(--dur-med) var(--ease); }
+
+/* ----------------------------------------------------------------- Avatar */
+
+.room-avatar {
+  opacity: 0;
+  transform-box: view-box;
+  transform-origin: 500px 672px;
+  transition: opacity var(--dur-med) var(--ease), transform 900ms var(--ease);
+}
+.room-avatar__dot { fill: var(--accent); }
+.room-avatar__initials {
+  fill: var(--text-on-accent);
+  font-size: 14px; font-weight: 800; text-anchor: middle;
+}
+.room[data-open="true"] .room-avatar { opacity: 1; transform: translateY(-190px); }
+
+/* ------------------------------------------------------- Locked room state */
+
+/* Until you sign in, nothing but the door responds. Scoped to .spot so the
+   front door keeps its own label — it is the only thing you can act on, so
+   it must stay readable. */
+.room[data-open="false"] .spot { pointer-events: none; }
+.room[data-open="false"] .spot .spot__art { opacity: .32; }
+.room[data-open="false"] .spot .spot__tag { opacity: 0; }
+.room[data-open="false"] .rug { opacity: .25; }
+
+/* Lift the door above the dimming veil so it reads as the way in. */
+.room[data-open="false"] .frontdoor .spot__tagbg { fill: var(--accent); stroke: var(--accent); }
+.room[data-open="false"] .frontdoor .spot__tagtext,
+.room[data-open="false"] .frontdoor .spot__tagsub { fill: var(--text-on-accent); }
+.room[data-open="false"] .doorleaf { fill: var(--accent); }
+
+.room__dim {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--bg) 42%, transparent);
+  pointer-events: none;
+  transition: opacity var(--dur-slow) var(--ease);
+}
+.room[data-open="true"] .room__dim { opacity: 0; }
+
+/* ------------------------------------------------------------- Check-in bubble */
+
+.bubble {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%) scale(.9);
+  z-index: 20;
+  width: min(340px, 84%);
+  padding: var(--s-5);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-3);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-med) var(--ease), transform var(--dur-med) var(--ease);
+}
+.bubble.is-in { opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto; }
+.bubble::after {
+  content: "";
+  position: absolute;
+  bottom: -11px; left: 50%;
+  width: 20px; height: 20px;
+  transform: translateX(-50%) rotate(45deg);
+  background: var(--surface);
+  border-right: 1px solid var(--border-strong);
+  border-bottom: 1px solid var(--border-strong);
+  border-radius: 0 0 5px 0;
+}
+.bubble__title { font-size: var(--fs-lg); font-weight: var(--fw-heavy); margin-bottom: var(--s-2); }
+.bubble__text { font-size: var(--fs-sm); color: var(--text-muted); margin-bottom: var(--s-4); }
+.bubble__actions { display: flex; gap: var(--s-2); flex-wrap: wrap; }
+
+/* --------------------------------------------------------------- List view */
+
+.roomlist { display: grid; gap: var(--s-2); }
+.roomlist__item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  text-decoration: none;
+}
+a.roomlist__item:hover { border-color: var(--accent); background: var(--accent-quiet); }
+.roomlist__item.is-locked { background: var(--surface-2); border-style: dashed; }
+.roomlist__label { font-weight: var(--fw-bold); color: var(--text); }
+.roomlist__sub { font-size: var(--fs-xs); color: var(--text-subtle); margin-left: auto; }
+
+.room-views { display: none; }
+.room-views.is-on { display: block; }
+
+/* --------------------------------------------------------------- Nav hub */
+
+/* Replaces the sidebar on the inner screens: one button that opens the room. */
+.hub {
+  position: fixed;
+  left: var(--s-5);
+  bottom: var(--s-5);
+  z-index: 70;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-5) var(--s-3) var(--s-3);
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  border: none;
+  box-shadow: var(--shadow-3);
+  font-weight: var(--fw-heavy);
+  font-size: var(--fs-sm);
+  transition: transform var(--dur-fast) var(--ease);
+}
+.hub:hover { transform: translateY(-2px); }
+.hub__glyph {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--text-on-accent) 22%, transparent);
+  display: grid; place-items: center;
+}
+.hub__glyph svg { width: 17px; height: 17px; }
+
+.hub-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  background: rgba(16, 20, 18, .55);
+  display: grid;
+  place-items: center;
+  padding: var(--s-5);
+  animation: fade var(--dur-med) var(--ease);
+}
+.hub-panel {
+  width: min(860px, 100%);
+  max-height: 92vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-3);
+  padding: var(--s-5);
+  animation: rise var(--dur-med) var(--ease);
+}
+
+/* ------------------------------------------------------------ Responsive */
+
+/* The bottom tab bar appears at 860px, so the hub has to clear it from the
+   same breakpoint — not 760, which left them overlapping in between. */
+@media (max-width: 860px) {
+  .hub {
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(var(--tabbar-h) + var(--s-3));
+  }
+  .hub:hover { transform: translateX(-50%) translateY(-2px); }
+}
+
+@media (max-width: 760px) {
+  .room-top { padding: var(--s-3) var(--s-4); gap: var(--s-2); }
+  .room-top__name { display: none; }
+  .room-top .account__text { display: none; }
+  .room-stage { padding: 0 var(--s-3) var(--s-5); }
+  .spot__tagtext { font-size: 18px; }
+  .spot__tagsub  { font-size: 13px; }
+}
+
+/* --------------------------------------------------------- Reduced motion */
+
+:root[data-motion="reduced"] .frontdoor__pulse { animation: none; opacity: .28; }
+:root[data-motion="reduced"] .doorleaf,
+:root[data-motion="reduced"] .avatar,
+:root[data-motion="reduced"] .spot__art,
+:root[data-motion="reduced"] .bubble { transition: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  :root:where(:not([data-motion="full"])) .frontdoor__pulse { animation: none; opacity: .28; }
+  :root:where(:not([data-motion="full"])) .doorleaf,
+  :root:where(:not([data-motion="full"])) .avatar,
+  :root:where(:not([data-motion="full"])) .spot__art,
+  :root:where(:not([data-motion="full"])) .bubble { transition: none; }
+}
+
+/* ----------------------------------------------------------- Forced colors */
+
+@media (forced-colors: active) {
+  .floor, .furn, .furn-2, .furn-3 { fill: Canvas; stroke: CanvasText; }
+  .wall, .wall-inner, .ink, .ink-2 { stroke: CanvasText; }
+  .screen, .doorleaf, .plant, .plant-2, .accent-soft, .room-avatar__dot { fill: Highlight; }
+  .spot__tagbg { fill: Canvas; stroke: CanvasText; }
+  .spot__tagtext, .spot__tagsub { fill: CanvasText; }
+}

@@ -33,9 +33,6 @@ export default async function Leave() {
     .select('id, kind, starts_on, ends_on, note, status')
     .order('starts_on', { ascending: false })
 
-  const { data: roles } = await supabase.from('person_roles').select('role')
-  const isHr = (roles ?? []).some((r) => r.role === 'hr')
-
   const rows = requests ?? []
   const taken = rows
     .filter((r) => r.status === 'approved')
@@ -44,7 +41,7 @@ export default async function Leave() {
   const left = entitlement - taken
 
   return (
-    <Shell current="leave" plane="work" isHr={isHr}>
+    <Shell current="leave" plane="work">
       <PageHead
         title="Leave and profile"
         lead="The one part of WorkWell your employer does see — and only this part."

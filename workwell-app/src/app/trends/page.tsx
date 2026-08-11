@@ -46,14 +46,11 @@ export default async function Trends() {
     .order('day', { ascending: false })
     .limit(30)
 
-  const { data: roles } = await supabase.from('person_roles').select('role')
-  const isHr = (roles ?? []).some((r) => r.role === 'hr')
-
   const rows: Row[] = data ?? []
 
   if (rows.length === 0) {
     return (
-      <Shell current="trends" isHr={isHr}>
+      <Shell current="trends">
         <PageHead title="Your trends" />
         <PlaneBadge plane="private" />
         <div className="card">
@@ -79,7 +76,7 @@ export default async function Trends() {
   const enough = rows.length >= ENOUGH
 
   return (
-    <Shell current="trends" isHr={isHr}>
+    <Shell current="trends">
       <PageHead
         title="Your trends"
         lead={

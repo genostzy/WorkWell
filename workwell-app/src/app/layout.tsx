@@ -8,6 +8,8 @@ import '@/styles/tokens.css'
 import '@/styles/base.css'
 import '@/styles/layout.css'
 import '@/styles/components.css'
+import '@/styles/room.css'
+import '@/styles/sky.css'
 import './globals.css'
 
 // The prototype's typeface. Loaded through next/font so it is self-hosted

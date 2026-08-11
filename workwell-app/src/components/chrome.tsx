@@ -2,11 +2,11 @@ import Link from 'next/link'
 
 export type Page = 'home' | 'check-in' | 'trends' | 'leave' | 'hr' | 'org'
 
-/** Which plane a screen belongs to. This drives the accent — teal-green for
- *  the employee's own data, terracotta for anything the employer sees — and
- *  the badge below. The prototype validated that pair for colour-vision
- *  separation, which is why plane identity is never carried by colour
- *  alone: there is always an icon and a sentence too. */
+/** Which plane a screen belongs to. Drives the accent — teal-green for the
+ *  employee's own data, terracotta for anything the employer sees. The
+ *  prototype validated that pair for colour-vision separation, which is
+ *  also why plane identity is never carried by colour alone: there is
+ *  always a chip, an icon and a sentence too. */
 export type Plane = 'private' | 'work' | 'org'
 
 const BADGE: Record<Plane, { icon: string; label: string; sub: string }> = {
@@ -27,21 +27,6 @@ const BADGE: Record<Plane, { icon: string; label: string; sub: string }> = {
   },
 }
 
-const LINKS: { href: string; label: string; id: Page }[] = [
-  { href: '/', label: 'Home', id: 'home' },
-  { href: '/check-in', label: 'Check in', id: 'check-in' },
-  { href: '/trends', label: 'Trends', id: 'trends' },
-  { href: '/leave', label: 'Leave', id: 'leave' },
-]
-
-/** HR links are shown only to HR. Presentation, not protection — the pages
- *  gate on the role and RLS gates the data. Hiding them just stops an
- *  employee clicking into a wall. */
-const HR_LINKS: { href: string; label: string; id: Page }[] = [
-  { href: '/hr', label: 'People', id: 'hr' },
-  { href: '/org', label: 'Org', id: 'org' },
-]
-
 export function PlaneBadge({ plane }: { plane: Plane }) {
   const b = BADGE[plane]
   return (
@@ -57,7 +42,7 @@ export function PlaneBadge({ plane }: { plane: Plane }) {
 
 /** The privacy claim, stated once and briefly. The prototype learned that
  *  repeating it at paragraph length on every screen makes people stop
- *  reading it, so detail sits behind a disclosure. */
+ *  reading it, so the detail sits behind a disclosure. */
 export function PrivacyNote({
   children,
   detail,
@@ -83,53 +68,76 @@ export function PrivacyNote({
   )
 }
 
+const TITLES: Record<Page, string> = {
+  home: 'The office',
+  'check-in': 'Daily check-in',
+  trends: 'Your trends',
+  leave: 'Leave & profile',
+  hr: 'People',
+  org: 'Structural load',
+}
+
+/**
+ * The shell for every screen that is not the office itself.
+ *
+ * There is deliberately no nav bar. The office is the navigation surface,
+ * so every screen carries a floating button back to it — the prototype's
+ * pattern, and the reason the room is worth having at all.
+ */
 export function Shell({
   children,
   current,
   plane = 'private',
-  isHr = false,
 }: {
   children: React.ReactNode
   current?: Page
   plane?: Plane
-  isHr?: boolean
 }) {
-  const links = isHr ? [...LINKS, ...HR_LINKS] : LINKS
+  const badge = BADGE[plane]
 
   return (
     <div className="app" data-plane={plane}>
-      <header className="topbar">
-        <Link href="/" className="topbar__brand">
-          <span aria-hidden="true">🌿</span> WorkWell
-        </Link>
-        <div className="topbar__spacer" />
-        <nav className="topbar__nav" aria-label="Sections">
-          {links.map((l) => (
-            <Link
-              key={l.id}
-              href={l.href}
-              aria-current={current === l.id ? 'page' : undefined}
-            >
-              {l.label}
-            </Link>
-          ))}
-        </nav>
-      </header>
-
       <div className="main">
+        <header className="topbar">
+          <Link className="topbar__home" href="/" aria-label="Back to the office">
+            <span className="sidebar__mark" aria-hidden="true">
+              🌿
+            </span>
+          </Link>
+          <span className="topbar__title">
+            {current ? TITLES[current] : 'WorkWell'}
+          </span>
+          <span className="topbar__spacer" />
+          <div className="topbar__actions">
+            <span
+              className={plane === 'org' ? 'chip' : 'chip chip--accent'}
+              title={badge.sub}
+            >
+              {badge.icon} {badge.label}
+            </span>
+          </div>
+        </header>
+
+        {/* Shown on narrow screens, where the chip alone is too quiet. */}
+        <div className="plane-strip">
+          <span aria-hidden="true">{badge.icon}</span>
+          <span>{badge.sub}</span>
+        </div>
+
         <main className="content">{children}</main>
       </div>
+
+      <Link className="hub" href="/">
+        <span className="hub__glyph" aria-hidden="true">
+          🏠
+        </span>
+        The office
+      </Link>
     </div>
   )
 }
 
-export function PageHead({
-  title,
-  lead,
-}: {
-  title: string
-  lead?: string
-}) {
+export function PageHead({ title, lead }: { title: string; lead?: string }) {
   return (
     <div className="page-head">
       <h1>{title}</h1>

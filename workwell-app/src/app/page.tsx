@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { PageHead, PlaneBadge, PrivacyNote, Shell } from '@/components/chrome'
+import { Office } from '@/components/office'
+import { Shell, PageHead } from '@/components/chrome'
 
 export default async function Home() {
   const supabase = await createClient()
@@ -49,88 +50,10 @@ export default async function Home() {
     )
   }
 
-  const today = new Date().toISOString().slice(0, 10)
-  const { data: todays } = await supabase
-    .from('check_ins')
-    .select('mood, energy, pressure')
-    .eq('day', today)
-    .maybeSingle()
-
   const { data: roles } = await supabase.from('person_roles').select('role')
   const isHr = (roles ?? []).some((r) => r.role === 'hr')
 
-  const firstName = me.full_name.split(' ')[0]
-
-  return (
-    <Shell current="home" isHr={isHr}>
-      <PageHead
-        title={`Hello, ${firstName}`}
-        lead={
-          todays
-            ? 'You checked in today. You can change it any time before midnight.'
-            : 'Three questions, ten seconds. Skip anything you would rather not answer.'
-        }
-      />
-
-      <PlaneBadge plane="private" />
-
-      <PrivacyNote detail="Your check-ins, notes and trends are stored on a separate plane from anything your employer can query. HR sees group patterns for eight or more people, and your leave dates. Never your mood, and never your name attached to a number.">
-        <b>Only you can see your check-ins.</b>{' '}
-      </PrivacyNote>
-
-      <div className="grid grid--2">
-        <div className="card">
-          <div className="card__head">
-            <div>
-              <div className="card__title">Today</div>
-              <div className="card__sub">
-                {todays ? 'Recorded' : 'Not checked in yet'}
-              </div>
-            </div>
-          </div>
-          <p className="t-subtle">
-            {todays
-              ? 'Changing it replaces today’s entry rather than adding another.'
-              : 'Mood, energy and pressure. Every question is skippable.'}
-          </p>
-          <div className="mt-4">
-            <Link className="btn btn--primary" href="/check-in">
-              {todays ? 'Change today’s answer' : 'Check in'}
-            </Link>
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card__head">
-            <div>
-              <div className="card__title">Your trends</div>
-              <div className="card__sub">Against your own baseline</div>
-            </div>
-          </div>
-          <p className="t-subtle">
-            Measured against how your own weeks usually go — never against a
-            colleague, and never as a score.
-          </p>
-          <div className="mt-4">
-            <Link className="btn btn--secondary" href="/trends">
-              See trends
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      <div className="card card--quiet mt-5">
-        <div className="card__title mb-2">Leave and profile</div>
-        <p className="t-subtle">
-          The one part your employer does see. Booking a day off says nothing
-          about how you are.
-        </p>
-        <div className="mt-4">
-          <Link className="btn btn--ghost" href="/leave">
-            Open
-          </Link>
-        </div>
-      </div>
-    </Shell>
-  )
+  // The office is the interface, not a menu. The room is the navigation
+  // surface; the plain list beside it is never optional.
+  return <Office isHr={isHr} name={me.full_name} />
 }

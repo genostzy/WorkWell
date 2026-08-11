@@ -1,0 +1,145 @@
+/* ==========================================================================
+   WorkWell — Sky
+   Decorative backdrop for the office. Sits behind everything and must never
+   cost legibility: all text-bearing chrome keeps its own scrim on top.
+   ========================================================================== */
+
+.sky {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.sky__grad {
+  position: absolute;
+  inset: 0;
+  transition: background 4s linear;
+}
+
+/* Content sits above the sky. */
+body.has-sky { background: transparent; }
+body.has-sky .room-shell { position: relative; z-index: 1; }
+
+/* ------------------------------------------------------------ Sun & moon */
+
+.sky__body {
+  position: absolute;
+  width: 58px;
+  height: 58px;
+  margin: -29px 0 0 -29px;      /* centre on its coordinates */
+  transition: left 4s linear, top 4s linear;
+}
+.sky__body svg { display: block; width: 100%; height: 100%; }
+
+/* A soft halo, kept well behind the pixel edges so they stay crisp. */
+.sky__body::before {
+  content: "";
+  position: absolute;
+  inset: -46%;
+  border-radius: 50%;
+  z-index: -1;
+}
+.sky__body[data-type="sun"]::before  { background: radial-gradient(circle, rgba(255,214,120,.42), transparent 68%); }
+.sky__body[data-type="moon"]::before { background: radial-gradient(circle, rgba(206,216,245,.30), transparent 68%); }
+
+/* ---------------------------------------------------------------- Stars */
+
+.sky__stars {
+  position: absolute;
+  inset: 0;
+  transition: opacity 4s linear;
+}
+.sky__star {
+  position: absolute;
+  display: block;
+  background: #FFFFFF;          /* square, not round — pixel style */
+}
+
+/* --------------------------------------------------------------- Clouds */
+
+.sky__clouds {
+  position: absolute;
+  inset: 0;
+  transition: opacity 4s linear;
+}
+.sky__cloud {
+  position: absolute;
+  left: -160px;
+  width: 110px;
+  height: 36px;
+  animation: skyDrift var(--dur, 220s) linear infinite;
+}
+.sky__cloud span {
+  position: absolute;
+  display: block;
+  background: rgba(255, 255, 255, .82);
+}
+@keyframes skyDrift {
+  from { transform: translateX(0) scale(var(--s, 1)); }
+  to   { transform: translateX(calc(100vw + 320px)) scale(var(--s, 1)); }
+}
+
+/* --------------------------------------- Keeping the interface readable */
+
+/* The sky is behind the whole page, so anything carrying text gets a scrim.
+   Without these the caption and topbar would sit straight on a sunset. */
+body.has-sky .room-top {
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+}
+
+body.has-sky [data-room-caption],
+body.has-sky [data-room-hint] {
+  display: inline-block;
+  padding: var(--s-2) var(--s-4);
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--bg) 84%, transparent);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+}
+
+body.has-sky .room-note {
+  background: color-mix(in srgb, var(--surface-2) 92%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+/* The list view scrolls over the sky. Its items and its heading both get real
+   backing — a text-shadow is not a contrast strategy, and this text would
+   otherwise sit straight on a sunset. */
+/* Opaque, not translucent. A sunset tints a translucent panel enough to drop
+   secondary text under 4.5:1 — measured at 4.17. Keeping content surfaces
+   solid means the token contrasts already validated hold exactly, and the sky
+   frames the panel instead of bleeding through it. */
+body.has-sky .roomlist__item { background: var(--surface); }
+body.has-sky [data-view-panel="list"].is-on {
+  padding: var(--s-5);
+  border-radius: var(--r-lg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-2);
+}
+
+/* --------------------------------------------------------- Reduced motion */
+
+:root[data-motion="reduced"] .sky__cloud { animation: none; }
+:root[data-motion="reduced"] .sky__grad,
+:root[data-motion="reduced"] .sky__body,
+:root[data-motion="reduced"] .sky__stars,
+:root[data-motion="reduced"] .sky__clouds { transition: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  :root:where(:not([data-motion="full"])) .sky__cloud { animation: none; }
+  :root:where(:not([data-motion="full"])) .sky__grad,
+  :root:where(:not([data-motion="full"])) .sky__body,
+  :root:where(:not([data-motion="full"])) .sky__stars,
+  :root:where(:not([data-motion="full"])) .sky__clouds { transition: none; }
+}
+
+/* ------------------------------------------------------- Forced colours */
+
+@media (forced-colors: active) {
+  .sky { display: none; }        /* decoration only — drop it entirely */
+}

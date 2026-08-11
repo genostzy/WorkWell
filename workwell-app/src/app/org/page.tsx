@@ -49,7 +49,7 @@ export default async function Org() {
     (metrics ?? []).find((m) => m.cohort === cohort && m.metric === metric)
 
   return (
-    <Shell current="org" plane="org" isHr>
+    <Shell current="org" plane="org">
       <PageHead
         title="Structural load"
         lead="Where workload sits heavy, by group. Never by person."

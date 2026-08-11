@@ -31,45 +31,6 @@
   width: 100%;
 }
 
-.topbar__brand {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-2);
-  font-weight: 800;
-  font-size: var(--fs-lg);
-  letter-spacing: -0.01em;
-  color: var(--accent-text);
-}
-
-.topbar__nav {
-  display: flex;
-  gap: var(--s-1);
-  flex-wrap: wrap;
-}
-
-.topbar__nav a {
-  padding: var(--s-2) var(--s-3);
-  border-radius: var(--r-pill);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-muted);
-  min-height: 40px;
-  display: inline-flex;
-  align-items: center;
-}
-
-.topbar__nav a:hover {
-  background: var(--surface-2);
-  color: var(--text);
-}
-
-.topbar__nav a[aria-current="page"] {
-  background: var(--accent-quiet);
-  color: var(--accent-text);
-}
-
-/* The 1–5 scale. The prototype's dragscale is a bespoke SVG control; this
-   is the plain radio-group equivalent, styled to match the token set. */
 .scale + .scale { margin-top: var(--s-6); }
 
 .scale__legend {
@@ -152,3 +113,22 @@
 .metric + .metric { margin-top: var(--s-2); }
 
 .metric b { color: var(--text); }
+
+/* A room object whose screen is not built yet. Better to say so for a
+   moment than to navigate somewhere misleading or do nothing at all. */
+[data-unbuilt] { outline: 2px dashed var(--accent); outline-offset: 3px; }
+[data-unbuilt]::after {
+  content: "Not built yet";
+  position: absolute;
+  transform: translate(8px, -8px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xs);
+  padding: 2px 8px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+/* The room needs its own full-bleed stage, not the article column. */
+.room-shell { min-height: 100vh; }
