@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { PageHead, PlaneBadge, PrivacyNote, Shell } from '@/components/chrome'
 import { Decide } from './decide'
+import { AccessRequests } from './requests'
 
 function fmt(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', {
@@ -49,6 +50,12 @@ export default async function Hr() {
     .select('id, person_id, kind, starts_on, ends_on, note, status')
     .order('created_at', { ascending: false })
 
+  const { data: requests } = await supabase
+    .from('access_requests')
+    .select('id, email, full_name, note, created_at, status')
+    .eq('status', 'pending')
+    .order('created_at')
+
   const byPerson = new Map((employment ?? []).map((e) => [e.person_id, e]))
   const names = new Map((people ?? []).map((p) => [p.id, p.full_name]))
   const pending = (leave ?? []).filter((l) => l.status === 'pending')
@@ -68,6 +75,8 @@ export default async function Hr() {
       >
         <b>Employment data only.</b>{' '}
       </PrivacyNote>
+
+      <AccessRequests requests={requests ?? []} />
 
       <div className="grid grid--3 mb-5">
         <div className="stat">

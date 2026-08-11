@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Office } from '@/components/office'
 import { Shell, PageHead } from '@/components/chrome'
+import { RequestAccess } from '@/components/request-access'
 
 export default async function Home() {
   const supabase = await createClient()
@@ -61,19 +62,11 @@ export default async function Home() {
   if (!me) {
     return (
       <Shell current="home">
-        <PageHead title="Signed in, but not set up yet" />
-        <div className="card">
-          <div className="state state--info">
-            <div className="state__icon" aria-hidden="true">
-              ✉️
-            </div>
-            <h2 className="state__title">This account is not linked to anyone</h2>
-            <p className="state__text">
-              Ask whoever runs WorkWell where you work to invite this email
-              address. Until then there is nothing here to show you.
-            </p>
-          </div>
-        </div>
+        <PageHead
+          title="You're signed in"
+          lead="An account is not access yet. Ask, and whoever runs WorkWell where you work decides."
+        />
+        <RequestAccess />
       </Shell>
     )
   }
