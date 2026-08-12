@@ -21,9 +21,15 @@ export function RequestAccess() {
     supabase
       .from('access_requests')
       .select('status, full_name')
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle()
-      .then(({ data }) => {
-        if (data) {
+      .then(({ data, error }) => {
+        // Ordered and limited rather than bare: maybeSingle throws if a
+        // second request row ever exists, and asking twice is a thing a
+        // person can do. The most recent one is the live one.
+        if (error) setError(error.message)
+        else if (data) {
           setExisting(data)
           setName(data.full_name)
         }

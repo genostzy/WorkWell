@@ -140,6 +140,68 @@ export function Shell({
   )
 }
 
+/**
+ * A read that failed, said as a read that failed.
+ *
+ * A query that errored and a query that found nothing are different things,
+ * and rendering the first as the second is how "your record could not be
+ * loaded" became "you have no record" on the home page. Every screen that
+ * reads something now distinguishes them, because the difference decides
+ * what the person should do: wait and retry, or go and create something.
+ */
+export function LoadError({
+  what,
+  detail,
+}: {
+  what: string
+  detail?: string | null
+}) {
+  return (
+    <div className="card">
+      <div className="state state--error">
+        <div className="state__icon" aria-hidden="true">
+          ⚠️
+        </div>
+        <h2 className="state__title">{what} could not be loaded</h2>
+        <p className="state__text">
+          Nothing has been lost — this is a read failing, not data missing.
+        </p>
+        {detail && (
+          <p className="t-subtle mt-3">
+            <code>{detail}</code>
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** Nothing here yet, said without sounding like a fault. */
+export function Empty({
+  icon = '🌱',
+  title,
+  children,
+  action,
+}: {
+  icon?: string
+  title: string
+  children?: React.ReactNode
+  action?: React.ReactNode
+}) {
+  return (
+    <div className="card">
+      <div className="state state--info">
+        <div className="state__icon" aria-hidden="true">
+          {icon}
+        </div>
+        <h2 className="state__title">{title}</h2>
+        {children && <p className="state__text">{children}</p>}
+        {action && <div className="state__actions">{action}</div>}
+      </div>
+    </div>
+  )
+}
+
 export function PageHead({ title, lead }: { title: string; lead?: string }) {
   return (
     <div className="page-head">

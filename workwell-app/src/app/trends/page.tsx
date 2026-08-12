@@ -1,6 +1,13 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { PageHead, PlaneBadge, PrivacyNote, Shell } from '@/components/chrome'
+import {
+  Empty,
+  LoadError,
+  PageHead,
+  PlaneBadge,
+  PrivacyNote,
+  Shell,
+} from '@/components/chrome'
 
 /** The PRD is explicit that we say "not enough data yet" rather than
  *  guess. Four entries cannot describe a pattern. */
@@ -40,11 +47,21 @@ function Bar({ value }: { value: number | null }) {
 export default async function Trends() {
   const supabase = await createClient()
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('check_ins')
     .select('day, mood, energy, pressure, note')
     .order('day', { ascending: false })
     .limit(30)
+
+  if (error) {
+    return (
+      <Shell current="trends">
+        <PageHead title="Your trends" />
+        <PlaneBadge plane="private" />
+        <LoadError what="Your check-ins" detail={error.message} />
+      </Shell>
+    )
+  }
 
   const rows: Row[] = data ?? []
 
@@ -53,22 +70,16 @@ export default async function Trends() {
       <Shell current="trends">
         <PageHead title="Your trends" />
         <PlaneBadge plane="private" />
-        <div className="card">
-          <div className="state state--info">
-            <div className="state__icon" aria-hidden="true">
-              🌱
-            </div>
-            <h2 className="state__title">Nothing here yet</h2>
-            <p className="state__text">
-              Your first check-in starts the record. It stays yours.
-            </p>
-            <div className="state__actions">
-              <Link className="btn btn--primary" href="/check-in">
-                Check in
-              </Link>
-            </div>
-          </div>
-        </div>
+        <Empty
+          title="Nothing here yet"
+          action={
+            <Link className="btn btn--primary" href="/check-in">
+              Check in
+            </Link>
+          }
+        >
+          Your first check-in starts the record. It stays yours.
+        </Empty>
       </Shell>
     )
   }

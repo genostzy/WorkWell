@@ -64,8 +64,12 @@ export default function CheckIn() {
       .select('mood, energy, pressure, note')
       .eq('day', today)
       .maybeSingle()
-      .then(({ data }) => {
-        if (data) {
+      .then(({ data, error }) => {
+        // No row for today is the normal case — a blank form is right. A
+        // failed read is not, and starting blank over answers that do exist
+        // would quietly overwrite them on save.
+        if (error) setError(error.message)
+        else if (data) {
           setAnswers({
             mood: data.mood,
             energy: data.energy,

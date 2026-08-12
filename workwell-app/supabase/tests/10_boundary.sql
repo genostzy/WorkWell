@@ -10,7 +10,7 @@
 -- What is asserted here is the structural floor: nothing in a plane schema
 -- is ungoverned, and no view can bypass the policies.
 begin;
-select plan(8);
+select plan(9);
 
 create temp table res(i int, r text) on commit drop;
 grant all on res to authenticated;
@@ -90,6 +90,19 @@ insert into res select 8, ok(
   not has_function_privilege('authenticated', 'org_agg.refresh(int)', 'execute')
   and not has_function_privilege('anon', 'org_agg.refresh(int)', 'execute'),
   'no API role can execute the aggregation routine');
+
+-- Every RPC guards itself by resolving the caller first, so an anon call
+-- raises rather than writing. That is one layer, and it is the layer most
+-- likely to be got wrong in a hurry. Supabase's default privileges grant
+-- EXECUTE on new public functions to anon directly, which `revoke from
+-- public` does not undo — so this has to be asserted rather than assumed.
+insert into res select 9, is(
+  (select count(*)::int from pg_proc p
+     join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and has_function_privilege('anon', p.oid, 'execute')),
+  0,
+  'no function in public is executable by anon');
 
 select count(*) as total,
        count(*) filter (where r like 'not ok%') as failures,

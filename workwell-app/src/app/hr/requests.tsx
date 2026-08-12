@@ -16,16 +16,43 @@ export type AccessRequest = {
  *  Job title and department are asked for here rather than later because a
  *  person with no department never appears in any cohort, and would sit
  *  invisibly outside the org dashboard. */
+/** Which planes the new account gets. Deliberately not a checkbox: an
+ *  unticked box is a default nobody chose, and the difference between these
+ *  two is the difference between an account that can only see its own week
+ *  and one that can see the whole directory. */
+type Grant = 'private' | 'hr'
+
+const GRANTS: Record<Grant, { title: string; word: string; desc: string }> = {
+  private: {
+    title: 'Private',
+    word: 'private',
+    desc: 'Their own check-ins, trends, nudges and leave. Nobody else can read any of it.',
+  },
+  hr: {
+    title: 'HR',
+    word: 'hr',
+    desc: 'All of the above, plus the directory, leave decisions and group patterns. Still never anyone’s check-ins.',
+  },
+}
+
 function Row({ req }: { req: AccessRequest }) {
   const router = useRouter()
   const [jobTitle, setJobTitle] = useState('')
   const [department, setDepartment] = useState('')
-  const [isHr, setIsHr] = useState(false)
+  const [grant, setGrant] = useState<Grant | null>(null)
+  const [typed, setTyped] = useState('')
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState<'approved' | 'declined' | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  // Case is not the point — deliberateness is. Someone who types "HR" has
+  // read the word either way.
+  const confirmed =
+    grant !== null && typed.trim().toLowerCase() === GRANTS[grant].word
+
   async function decide(approve: boolean) {
+    if (approve && !confirmed) return
+
     setBusy(true)
     setError(null)
 
@@ -35,7 +62,7 @@ function Row({ req }: { req: AccessRequest }) {
       p_approve: approve,
       p_job_title: jobTitle || null,
       p_department: department || null,
-      p_is_hr: isHr,
+      p_is_hr: grant === 'hr',
     })
 
     setBusy(false)
@@ -53,7 +80,9 @@ function Row({ req }: { req: AccessRequest }) {
           <span aria-hidden="true">✓</span>
           <span>
             {done === 'approved'
-              ? `${req.full_name} now has access.`
+              ? `${req.full_name} now has ${
+                  grant === 'hr' ? 'HR' : 'private'
+                } access.`
               : `${req.full_name} was not approved.`}
           </span>
         </p>
@@ -106,22 +135,65 @@ function Row({ req }: { req: AccessRequest }) {
         </div>
       </div>
 
-      <label className="row mt-3" style={{ gap: 'var(--s-2)' }}>
-        <input
-          type="checkbox"
-          checked={isHr}
-          onChange={(e) => setIsHr(e.target.checked)}
-        />
-        <span className="t-subtle">
-          Also give them HR access — they will see the directory and group
-          patterns, never anyone’s check-ins
-        </span>
-      </label>
+      <fieldset className="mt-4" style={{ border: 0, padding: 0, margin: 0 }}>
+        <legend className="field__label">What should this account be?</legend>
+        <div className="stack stack--tight mt-2">
+          {(Object.keys(GRANTS) as Grant[]).map((g) => (
+            <label
+              className={`pick${grant === g ? ' is-on' : ''}`}
+              key={g}
+              htmlFor={`grant-${g}-${req.id}`}
+            >
+              <input
+                type="radio"
+                id={`grant-${g}-${req.id}`}
+                name={`grant-${req.id}`}
+                checked={grant === g}
+                onChange={() => {
+                  setGrant(g)
+                  setTyped('')
+                }}
+              />
+              <span>
+                <b>{GRANTS[g].title}</b>
+                <span className="t-subtle" style={{ display: 'block' }}>
+                  {GRANTS[g].desc}
+                </span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      {/* Typing the word is the whole safeguard. Granting HR by mis-clicking
+          a radio is the one mistake here that hands someone the directory,
+          and it is silent — nothing looks wrong afterwards. */}
+      {grant && (
+        <div className="field mt-4">
+          <label className="field__label" htmlFor={`confirm-${req.id}`}>
+            Type <code>{GRANTS[grant].word}</code> to continue
+          </label>
+          <input
+            id={`confirm-${req.id}`}
+            className="input"
+            value={typed}
+            autoComplete="off"
+            spellCheck={false}
+            placeholder={GRANTS[grant].word}
+            onChange={(e) => setTyped(e.target.value)}
+          />
+          <p className="field__hint">
+            {grant === 'hr'
+              ? 'This one sees every colleague’s employment record.'
+              : 'Nobody, including you, will be able to read their check-ins.'}
+          </p>
+        </div>
+      )}
 
       <div className="row mt-4">
         <button
           className="btn btn--primary btn--sm"
-          disabled={busy}
+          disabled={busy || !confirmed}
           onClick={() => decide(true)}
         >
           Approve

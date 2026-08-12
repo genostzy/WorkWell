@@ -43,14 +43,17 @@ export default function Nudges() {
     DEFAULTS
   )
   const [delivered, setDelivered] = useState<Delivered[]>([])
+  const [logError, setLogError] = useState<string | null>(null)
+  const [answering, setAnswering] = useState<string | null>(null)
 
   const loadDelivered = useCallback(async () => {
     const supabase = createClient()
     const today = new Date().toISOString().slice(0, 10)
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('nudge_log')
       .select('id, kind, action')
       .eq('sent_on', today)
+    setLogError(error?.message ?? null)
     setDelivered(data ?? [])
   }, [])
 
@@ -58,10 +61,21 @@ export default function Nudges() {
     loadDelivered()
   }, [loadDelivered])
 
+  // Answering used to ignore its own result, so a failed write left the
+  // nudge sitting there and the three buttons doing nothing visible. A
+  // silent no-op is the one response a person cannot act on.
   async function answer(id: string, action: string) {
+    setAnswering(id)
+    setLogError(null)
     const supabase = createClient()
-    await supabase.from('nudge_log').update({ action }).eq('id', id)
-    loadDelivered()
+    const { error } = await supabase
+      .from('nudge_log')
+      .update({ action })
+      .eq('id', id)
+    setAnswering(null)
+
+    if (error) setLogError(error.message)
+    else loadDelivered()
   }
 
   const open = delivered.filter((d) => d.action === null)
@@ -118,6 +132,15 @@ export default function Nudges() {
               <span className="chip">{anyOn ? 'On' : 'All off'}</span>
             </div>
 
+            {logError && (
+              <div className="banner banner--error mt-4" role="alert">
+                <span aria-hidden="true">⚠️</span>
+                <span>
+                  <b>That did not go through.</b> {logError}
+                </span>
+              </div>
+            )}
+
             {open.length === 0 ? (
               <p className="t-subtle mt-4">
                 {anyOn
@@ -140,6 +163,7 @@ export default function Nudges() {
                         <button
                           className="btn btn--primary btn--sm"
                           type="button"
+                          disabled={answering === d.id}
                           onClick={() => answer(d.id, 'accepted')}
                         >
                           Okay
@@ -147,6 +171,7 @@ export default function Nudges() {
                         <button
                           className="btn btn--secondary btn--sm"
                           type="button"
+                          disabled={answering === d.id}
                           onClick={() => answer(d.id, 'snoozed')}
                         >
                           In 20 min
@@ -154,6 +179,7 @@ export default function Nudges() {
                         <button
                           className="btn btn--ghost btn--sm"
                           type="button"
+                          disabled={answering === d.id}
                           onClick={() => answer(d.id, 'dismissed')}
                         >
                           Not today

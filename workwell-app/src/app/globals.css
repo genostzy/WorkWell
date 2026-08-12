@@ -179,3 +179,83 @@ body.has-sky .app { position: relative; z-index: 1; }
 @media (max-width: 860px) {
   .room__svg { max-height: 74%; }
 }
+
+/* The product name with the company behind it.
+   Stacked, because at a size small enough not to compete with the name,
+   "by AxionHR" set beside it collides with the name's descenders and is
+   the first thing to vanish on a narrow screen. */
+.wordmark {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.wordmark__text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+  min-width: 0;
+}
+
+.wordmark__name {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-heavy);
+  letter-spacing: -0.02em;
+}
+
+.wordmark__by {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  /* Muted rather than subtle: subtle is the token for text you are meant to
+     be able to ignore, and this has to stay readable at 11px. */
+  color: var(--text-muted);
+}
+
+/* room.css hides the room's brand name entirely under 560px. The byline is
+   what identifies the product there, so keep it and drop only the name. */
+@media (max-width: 560px) {
+  .wordmark__name { display: none; }
+  .wordmark__by { font-size: 10px; }
+}
+
+/* A radio rendered as a full-width choice card.
+   Used where the difference between the options is consequential enough
+   that a bare radio in a row would under-sell it — granting HR access, in
+   particular, is a decision and should look like one. */
+.pick {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease),
+              background var(--dur-fast) var(--ease);
+}
+
+.pick:hover { border-color: var(--accent); }
+
+.pick.is-on {
+  border-color: var(--accent);
+  background: var(--accent-quiet);
+}
+
+.pick input {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+
+.pick code {
+  font-size: inherit;
+  background: var(--surface-2);
+  border-radius: var(--r-xs);
+  padding: 0 4px;
+}

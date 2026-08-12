@@ -56,3 +56,23 @@ export function Brandmark({
     </svg>
   )
 }
+
+/**
+ * The product name with the company behind it.
+ *
+ * Stacked rather than run on one line: at a size small enough not to
+ * compete with the name, "by AxionHR" set beside it collides with the
+ * name's own descenders and is the first thing to disappear on a narrow
+ * screen. Above the fold of the name it stays legible at 11px.
+ */
+export function Wordmark({ size = 30 }: { size?: number }) {
+  return (
+    <span className="wordmark">
+      <Brandmark size={size} />
+      <span className="wordmark__text">
+        <span className="wordmark__name">WorkWell</span>
+        <span className="wordmark__by">by AxionHR</span>
+      </span>
+    </span>
+  )
+}

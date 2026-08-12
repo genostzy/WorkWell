@@ -1,7 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { PageHead, PlaneBadge, PrivacyNote, Shell } from '@/components/chrome'
+import {
+  LoadError,
+  PageHead,
+  PlaneBadge,
+  PrivacyNote,
+  Shell,
+} from '@/components/chrome'
 import { createClient } from '@/lib/supabase/client'
 
 type Person = { id: string; full_name: string }
@@ -34,6 +40,7 @@ export default function Recognition() {
   const [received, setReceived] = useState<Appreciation[]>([])
   const [requests, setRequests] = useState<SupportRequest[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const [to, setTo] = useState('')
   const [message, setMessage] = useState('')
@@ -41,30 +48,41 @@ export default function Recognition() {
     'private'
   )
   const [sent, setSent] = useState(false)
+  const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
 
   const [body, setBody] = useState('')
   const [route, setRoute] = useState<'hr' | 'eap'>('hr')
+  const [supporting, setSupporting] = useState(false)
+  const [supportSent, setSupportSent] = useState(false)
   const [supportError, setSupportError] = useState<string | null>(null)
+  const [busyId, setBusyId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     const supabase = createClient()
 
-    const { data: mine } = await supabase.from('me').select('id').maybeSingle()
+    const { data: mine, error: meError } = await supabase
+      .from('me')
+      .select('id')
+      .maybeSingle()
     setMe(mine?.id ?? null)
 
-    const [{ data: ppl }, { data: apps }, { data: reqs }] = await Promise.all([
-      supabase.from('people').select('id, full_name').order('full_name'),
-      supabase
-        .from('appreciations')
-        .select('id, from_person, to_person, message, created_at')
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('support_requests')
-        .select('id, body, route, status, created_at')
-        .order('created_at', { ascending: false }),
-    ])
+    const [{ data: ppl }, { data: apps, error: appError }, { data: reqs, error: reqError }] =
+      await Promise.all([
+        supabase.from('people').select('id, full_name').order('full_name'),
+        supabase
+          .from('appreciations')
+          .select('id, from_person, to_person, message, created_at')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('support_requests')
+          .select('id, body, route, status, created_at')
+          .order('created_at', { ascending: false }),
+      ])
 
+    // A read that failed is not an empty inbox, and showing it as one is how
+    // a permission problem gets mistaken for "nobody has thanked you".
+    setLoadError((meError ?? appError ?? reqError)?.message ?? null)
     setPeople((ppl ?? []).filter((p) => p.id !== mine?.id))
     setReceived((apps ?? []).filter((a) => a.to_person === mine?.id))
     setRequests(reqs ?? [])
@@ -75,14 +93,20 @@ export default function Recognition() {
     load()
   }, [load])
 
+  // Without a person row every insert below fails on a not-null constraint,
+  // and a constraint violation is a poor way to learn you have no access yet.
+  const NO_PERSON = 'This account is not linked to a person yet, so there is nobody to send this as.'
+
   async function sendAppreciation(e: React.FormEvent) {
     e.preventDefault()
     setSendError(null)
+    if (!me) return setSendError(NO_PERSON)
     if (!to || !message.trim()) {
       setSendError('Pick someone and write something.')
       return
     }
 
+    setSending(true)
     const supabase = createClient()
     const { error } = await supabase.from('appreciations').insert({
       from_person: me,
@@ -90,6 +114,7 @@ export default function Recognition() {
       message: message.trim(),
       visibility,
     })
+    setSending(false)
 
     if (error) setSendError(error.message)
     else {
@@ -102,30 +127,43 @@ export default function Recognition() {
   async function sendSupport(e: React.FormEvent) {
     e.preventDefault()
     setSupportError(null)
+    if (!me) return setSupportError(NO_PERSON)
     if (!body.trim()) {
       setSupportError('Write what would help.')
       return
     }
 
+    setSupporting(true)
     const supabase = createClient()
     const { error } = await supabase
       .from('support_requests')
       .insert({ person_id: me, body: body.trim(), route })
+    setSupporting(false)
 
     if (error) setSupportError(error.message)
     else {
       setBody('')
+      setSupportSent(true)
       load()
     }
   }
 
   async function withdraw(id: string) {
+    setBusyId(id)
+    setSupportError(null)
     const supabase = createClient()
     const { error } = await supabase
       .from('support_requests')
       .update({ status: 'withdrawn' })
       .eq('id', id)
-    if (!error) load()
+    setBusyId(null)
+
+    // This used to be `if (!error) load()`, so a failed withdrawal did
+    // nothing at all — the button looked broken, and the request stayed
+    // visible to HR with no hint that taking it back had not worked. On
+    // this screen of all screens that silence is the wrong answer.
+    if (error) setSupportError(`Could not withdraw that: ${error.message}`)
+    else load()
   }
 
   const open = requests.filter((r) => r.status === 'open')
@@ -148,9 +186,23 @@ export default function Recognition() {
           <div className="skel skel--title" />
           <div className="skel skel--text" />
         </div>
+      ) : loadError ? (
+        <LoadError what="This page" detail={loadError} />
       ) : (
         <div className="grid grid--sidebar-right">
           <div className="stack">
+            {/* Nobody to thank yet is a normal state for a new organisation,
+                and a select whose only entry is "Choose someone…" invites a
+                click that can only fail. Say why instead. */}
+            {people.length === 0 ? (
+              <div className="card">
+                <div className="card__title mb-2">Appreciate someone</div>
+                <p className="t-subtle">
+                  There is nobody else here yet. As colleagues are given
+                  accounts they appear in this list.
+                </p>
+              </div>
+            ) : (
             <form className="card" onSubmit={sendAppreciation}>
               <div className="card__title mb-2">Appreciate someone</div>
               <p className="card__sub mb-4">
@@ -231,10 +283,15 @@ export default function Recognition() {
                 </span>
               </div>
 
-              <button className="btn btn--primary mt-5" type="submit">
-                Send appreciation
+              <button
+                className="btn btn--primary mt-5"
+                type="submit"
+                disabled={sending}
+              >
+                {sending ? 'Sending…' : 'Send appreciation'}
               </button>
             </form>
+            )}
 
             <div className="card card--flush">
               <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
@@ -284,6 +341,13 @@ export default function Recognition() {
                 </div>
               )}
 
+              {supportSent && (
+                <p className="confirmed mb-4" role="status">
+                  <span aria-hidden="true">✓</span>
+                  <span>Sent. You can withdraw it at any time.</span>
+                </p>
+              )}
+
               <div className="field">
                 <label className="field__label" htmlFor="msg">
                   What would help?
@@ -293,7 +357,10 @@ export default function Recognition() {
                   id="msg"
                   value={body}
                   placeholder="Only the person you send this to will read it."
-                  onChange={(e) => setBody(e.target.value)}
+                  onChange={(e) => {
+                    setBody(e.target.value)
+                    setSupportSent(false)
+                  }}
                 />
               </div>
 
@@ -319,8 +386,12 @@ export default function Recognition() {
                 </span>
               </div>
 
-              <button className="btn btn--primary btn--block mt-4" type="submit">
-                Send privately
+              <button
+                className="btn btn--primary btn--block mt-4"
+                type="submit"
+                disabled={supporting}
+              >
+                {supporting ? 'Sending…' : 'Send privately'}
               </button>
               <p className="field__hint mt-3">Your manager is not copied.</p>
             </form>
@@ -338,9 +409,10 @@ export default function Recognition() {
                         <button
                           className="btn btn--ghost btn--sm"
                           type="button"
+                          disabled={busyId === r.id}
                           onClick={() => withdraw(r.id)}
                         >
-                          Withdraw
+                          {busyId === r.id ? 'Withdrawing…' : 'Withdraw'}
                         </button>
                       </div>
                       <p className="t-subtle mt-2">{r.body}</p>

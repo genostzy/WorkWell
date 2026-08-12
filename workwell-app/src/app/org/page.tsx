@@ -1,5 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
-import { PageHead, PlaneBadge, PrivacyNote, Shell } from '@/components/chrome'
+import {
+  Empty,
+  LoadError,
+  PageHead,
+  PlaneBadge,
+  PrivacyNote,
+  Shell,
+} from '@/components/chrome'
 
 const METRICS = [
   { key: 'mood', label: 'Mood' },
@@ -33,17 +40,28 @@ export default async function Org() {
     )
   }
 
-  const { data: cohorts } = await supabase
-    .from('org_cohorts')
-    .select('cohort, headcount, suppressed')
-    .order('headcount', { ascending: false })
+  const [{ data: cohorts, error: cohortError }, { data: metrics }] =
+    await Promise.all([
+      supabase
+        .from('org_cohorts')
+        .select('cohort, headcount, suppressed')
+        .order('headcount', { ascending: false }),
+      supabase.from('org_metrics').select('cohort, metric, value, n'),
+    ])
 
-  const { data: metrics } = await supabase
-    .from('org_metrics')
-    .select('cohort, metric, value, n')
+  if (cohortError) {
+    return (
+      <Shell current="org" plane="org">
+        <PageHead title="Structural load" />
+        <PlaneBadge plane="org" />
+        <LoadError what="The group figures" detail={cohortError.message} />
+      </Shell>
+    )
+  }
 
-  const shown = (cohorts ?? []).filter((c) => !c.suppressed)
-  const hidden = (cohorts ?? []).filter((c) => c.suppressed)
+  const all = cohorts ?? []
+  const shown = all.filter((c) => !c.suppressed)
+  const hidden = all.filter((c) => c.suppressed)
 
   const valueFor = (cohort: string, metric: string) =>
     (metrics ?? []).find((m) => m.cohort === cohort && m.metric === metric)
@@ -80,24 +98,27 @@ export default async function Org() {
         <div className="stat">
           <span className="stat__label">People counted</span>
           <span className="stat__value t-num">
-            {(cohorts ?? []).reduce((s, c) => s + c.headcount, 0)}
+            {all.reduce((s, c) => s + c.headcount, 0)}
           </span>
         </div>
       </div>
 
-      {shown.length === 0 && (
-        <div className="card">
-          <div className="state">
-            <div className="state__icon" aria-hidden="true">
-              👥
-            </div>
-            <h2 className="state__title">Nothing can be shown yet</h2>
-            <p className="state__text">
-              Every group is currently under eight people. That is the rule
-              working, not a failure.
-            </p>
-          </div>
-        </div>
+      {/* No groups at all and no group large enough are different situations,
+          and the second message is simply false in the first case. A brand
+          new organisation has nothing to suppress — it has nothing yet. */}
+      {all.length === 0 && (
+        <Empty icon="👥" title="No groups yet">
+          Groups are built from the department on each person&rsquo;s
+          employment record. Once colleagues are added with one, they appear
+          here — the figures follow at eight people per group.
+        </Empty>
+      )}
+
+      {all.length > 0 && shown.length === 0 && (
+        <Empty icon="👥" title="Nothing can be shown yet">
+          Every group is currently under eight people. That is the rule
+          working, not a failure.
+        </Empty>
       )}
 
       {shown.map((c) => (

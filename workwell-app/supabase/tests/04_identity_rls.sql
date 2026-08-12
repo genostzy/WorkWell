@@ -22,8 +22,14 @@ select ok(
 
 select policies_are('identity', 'people',
   array['people_read_own_org'], 'people has exactly its read policy');
+-- Two read policies, and RLS ORs them: your own roles always, plus every
+-- role in your org if you are HR. The second exists because account
+-- management needs to answer "who else is HR", which roles_read_own cannot.
+-- A role says what an account can open, never how anyone is, so this is a
+-- work-plane fact and widening it reaches nothing on the private plane.
 select policies_are('identity', 'person_roles',
-  array['roles_read_own'], 'person_roles has exactly its read policy');
+  array['roles_read_own', 'roles_read_by_hr'],
+  'person_roles has exactly its two read policies');
 select policies_are('identity', 'orgs',
   array['orgs_read_own'], 'orgs has exactly its read policy');
 

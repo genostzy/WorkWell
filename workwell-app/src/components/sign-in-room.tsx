@@ -3,7 +3,7 @@
 import Script from 'next/script'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Brandmark } from '@/components/brandmark'
+import { Wordmark } from '@/components/brandmark'
 
 /**
  * Signing in, as the Hi-Fi design draws it.
@@ -20,18 +20,27 @@ import { Brandmark } from '@/components/brandmark'
  */
 
 type Step = 'ask' | 'sending' | 'sent'
+type Mode = 'login' | 'signup'
 
 const REMEMBER = 'ww.email'
 const RESEND_SECONDS = 45
 
 /** Supabase's messages are written for developers. These are the ones a
- *  person signing in can actually act on. */
-function readable(message: string): string {
+ *  person at the door can actually act on.
+ *
+ *  The one that matters is "signups not allowed for otp". On log in it does
+ *  not mean signups are disabled — it is what shouldCreateUser: false
+ *  returns for an address with no account, which is exactly the check log in
+ *  is for. Passing that sentence through would send someone to ask IT about
+ *  a setting when what they need is the Sign up tab. */
+function readable(message: string, mode: Mode): string {
   const m = message.toLowerCase()
   if (m.includes('rate limit') || /after \d+ seconds/.test(m))
     return 'Too many requests just now. Give it a minute and try again.'
   if (m.includes('signups not allowed') || m.includes('not authorized'))
-    return 'That address cannot sign in yet. Whoever runs WorkWell where you work has to invite it first.'
+    return mode === 'login'
+      ? 'No WorkWell account for that address yet. Sign up instead — it takes the same email.'
+      : 'That address cannot be signed up here. Speak to whoever runs WorkWell where you work.'
   if (m.includes('invalid') && m.includes('email'))
     return 'That does not look like an email address.'
   return message
@@ -52,6 +61,7 @@ export function SignInRoom({
 
   const [view, setView] = useState<'room' | 'list'>('room')
   const [open, setOpen] = useState(openOnLoad)
+  const [mode, setMode] = useState<Mode>('login')
   const [step, setStep] = useState<Step>('ask')
   const [email, setEmail] = useState('')
   const [error, setError] = useState<string | null>(notice ?? null)
@@ -106,10 +116,13 @@ export function SignInRoom({
 
   /* ------------------------------------------------------------ The sheet */
 
-  const openSheet = useCallback((from?: Element | null) => {
+  const openSheet = useCallback((from?: Element | null, as?: Mode) => {
     doorRef.current = from ?? null
     setError(null)
-    setStep((s) => (s === 'sending' ? 'ask' : s))
+    if (as) setMode(as)
+    // Reopening after a sent link should ask again, not sit on someone
+    // else's confirmation screen.
+    setStep((s) => (s === 'sent' && as ? 'ask' : s === 'sending' ? 'ask' : s))
     setOpen(true)
   }, [])
 
@@ -145,7 +158,7 @@ export function SignInRoom({
   }, [cooldown])
 
   const send = useCallback(
-    async (address: string) => {
+    async (address: string, as: Mode) => {
       const clean = address.trim().toLowerCase()
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) {
         setError('That does not look like an email address.')
@@ -164,11 +177,20 @@ export function SignInRoom({
       const supabase = createClient()
       const { error } = await supabase.auth.signInWithOtp({
         email: clean,
-        options: { emailRedirectTo: callback.toString() },
+        options: {
+          emailRedirectTo: callback.toString(),
+          // This one flag is the whole difference between the two doors.
+          // Log in refuses to create anything: only an address that already
+          // has an account — which, with magic links, means one that has
+          // proved it owns that inbox — gets a link at all. Without it, a
+          // typo in a work address quietly signs you up as a stranger and
+          // you sit forever in a queue nobody expects you in.
+          shouldCreateUser: as === 'signup',
+        },
       })
 
       if (error) {
-        setError(readable(error.message))
+        setError(readable(error.message, as))
         setStep('ask')
         return
       }
@@ -223,8 +245,7 @@ export function SignInRoom({
       <div className={`room-shell${view === 'room' ? ' is-fit' : ''}`}>
         <header className="room-top">
           <div className="room-top__brand">
-            <Brandmark size={30} />
-            <span className="room-top__name">WorkWell</span>
+            <Wordmark />
           </div>
           <span className="room-top__spacer" />
           <div className="segmented" role="group" aria-label="How to navigate">
@@ -243,13 +264,22 @@ export function SignInRoom({
               List
             </button>
           </div>
-          <button
-            className="btn btn--primary btn--sm"
-            type="button"
-            onClick={() => openSheet()}
-          >
-            Sign in
-          </button>
+          <div className="row" style={{ gap: 'var(--s-2)' }}>
+            <button
+              className="btn btn--ghost btn--sm"
+              type="button"
+              onClick={() => openSheet(null, 'signup')}
+            >
+              Sign up
+            </button>
+            <button
+              className="btn btn--primary btn--sm"
+              type="button"
+              onClick={() => openSheet(null, 'login')}
+            >
+              Log in
+            </button>
+          </div>
         </header>
 
         <main className="room-stage">
@@ -281,11 +311,18 @@ export function SignInRoom({
             </h1>
             <p className="t-subtle mb-4">Sign in at the front door first.</p>
             <button
-              className="btn btn--primary btn--block mb-4"
+              className="btn btn--primary btn--block mb-2"
               type="button"
-              onClick={() => openSheet()}
+              onClick={() => openSheet(null, 'login')}
             >
-              Sign in to come in
+              Log in
+            </button>
+            <button
+              className="btn btn--secondary btn--block mb-4"
+              type="button"
+              onClick={() => openSheet(null, 'signup')}
+            >
+              Sign up
             </button>
             <div ref={listRef} />
           </div>
@@ -309,9 +346,52 @@ export function SignInRoom({
             <div className="auth__card" style={{ padding: 'var(--s-6)' }}>
               {step === 'ask' && (
                 <>
-                  <h2 className="auth__title">Come in</h2>
+                  <div className="wordmark mb-5">
+                    <Wordmark size={34} />
+                  </div>
+
+                  {/* Both doors take an email and send a link, so the only
+                      thing telling them apart is which one is selected.
+                      Naming that in the control, rather than relying on the
+                      heading below it, is what stops someone signing up a
+                      second account when they meant to come back. */}
+                  <div
+                    className="segmented mb-5"
+                    role="group"
+                    aria-label="Log in or sign up"
+                    style={{ width: '100%' }}
+                  >
+                    <button
+                      type="button"
+                      aria-pressed={mode === 'login'}
+                      onClick={() => {
+                        setMode('login')
+                        setError(null)
+                      }}
+                      style={{ flex: 1 }}
+                    >
+                      Log in
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={mode === 'signup'}
+                      onClick={() => {
+                        setMode('signup')
+                        setError(null)
+                      }}
+                      style={{ flex: 1 }}
+                    >
+                      Sign up
+                    </button>
+                  </div>
+
+                  <h2 className="auth__title">
+                    {mode === 'login' ? 'Welcome back' : 'Create an account'}
+                  </h2>
                   <p className="auth__sub">
-                    We email you a link. No password to remember, none to leak.
+                    {mode === 'login'
+                      ? 'We email a link to an address that already has an account. No password to remember, none to leak.'
+                      : 'Same as logging in — we email you a link. Then HR decides what you can open.'}
                   </p>
 
                   {error && (
@@ -323,7 +403,7 @@ export function SignInRoom({
                   <form
                     onSubmit={(e) => {
                       e.preventDefault()
-                      send(email)
+                      send(email, mode)
                     }}
                   >
                     <div className="field">
@@ -350,7 +430,7 @@ export function SignInRoom({
                       className="btn btn--primary btn--block mt-4"
                       type="submit"
                     >
-                      Send me a link
+                      {mode === 'login' ? 'Send me a link' : 'Sign me up'}
                     </button>
                   </form>
 
@@ -385,8 +465,10 @@ export function SignInRoom({
                   </div>
                   <h2 className="state__title">Check your email</h2>
                   <p className="state__text" role="status">
-                    The link is on its way to <b>{email}</b>. Opening it brings
-                    you straight in.
+                    The link is on its way to <b>{email}</b>.{' '}
+                    {mode === 'login'
+                      ? 'Opening it brings you straight in.'
+                      : 'Opening it creates your account, and then you can ask HR for access.'}
                   </p>
                   <p className="t-subtle">
                     Nothing yet? It can take a minute, and it sometimes lands
@@ -397,7 +479,7 @@ export function SignInRoom({
                       className="btn btn--secondary btn--sm"
                       type="button"
                       disabled={cooldown > 0}
-                      onClick={() => send(email)}
+                      onClick={() => send(email, mode)}
                     >
                       {cooldown > 0 ? `Send again in ${cooldown}s` : 'Send again'}
                     </button>

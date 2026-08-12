@@ -1,7 +1,13 @@
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { PageHead, PlaneBadge, PrivacyNote, Shell } from '@/components/chrome'
+import {
+  LoadError,
+  PageHead,
+  PlaneBadge,
+  PrivacyNote,
+  Shell,
+} from '@/components/chrome'
 import { Decide } from './decide'
-import { AccessRequests } from './requests'
 
 function fmt(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', {
@@ -36,25 +42,37 @@ export default async function Hr() {
     )
   }
 
-  const { data: people } = await supabase
-    .from('people')
-    .select('id, full_name, status')
-    .order('full_name')
+  const [
+    { data: people, error: peopleError },
+    { data: employment },
+    { data: leave, error: leaveError },
+    { data: requests },
+  ] = await Promise.all([
+    supabase.from('people').select('id, full_name, status').order('full_name'),
+    supabase.from('employment').select('person_id, job_title, department'),
+    supabase
+      .from('leave_requests')
+      .select('id, person_id, kind, starts_on, ends_on, note, status')
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('access_requests')
+      .select('id, email, full_name, note, created_at, status')
+      .eq('status', 'pending')
+      .order('created_at'),
+  ])
 
-  const { data: employment } = await supabase
-    .from('employment')
-    .select('person_id, job_title, department')
-
-  const { data: leave } = await supabase
-    .from('leave_requests')
-    .select('id, person_id, kind, starts_on, ends_on, note, status')
-    .order('created_at', { ascending: false })
-
-  const { data: requests } = await supabase
-    .from('access_requests')
-    .select('id, email, full_name, note, created_at, status')
-    .eq('status', 'pending')
-    .order('created_at')
+  // An empty directory and a directory that would not load look identical
+  // once the rows are gone, and only one of them means "add someone".
+  const readError = peopleError ?? leaveError
+  if (readError) {
+    return (
+      <Shell current="hr" plane="org">
+        <PageHead title="People" />
+        <PlaneBadge plane="work" />
+        <LoadError what="The directory" detail={readError.message} />
+      </Shell>
+    )
+  }
 
   const byPerson = new Map((employment ?? []).map((e) => [e.person_id, e]))
   const names = new Map((people ?? []).map((p) => [p.id, p.full_name]))
@@ -76,7 +94,27 @@ export default async function Hr() {
         <b>Employment data only.</b>{' '}
       </PrivacyNote>
 
-      <AccessRequests requests={requests ?? []} />
+      {/* Requests moved to Accounts, where the rest of the access decisions
+          are. Leaving a copy here would mean two screens racing to decide
+          the same request. */}
+      <div className="card">
+        <div className="card__head">
+          <div>
+            <div className="card__title">Accounts &amp; access</div>
+            <div className="card__sub">
+              {(requests ?? []).length > 0
+                ? `${(requests ?? []).length} waiting to be let in`
+                : 'Who can get in, and what they can open'}
+            </div>
+          </div>
+          {(requests ?? []).length > 0 && (
+            <span className="chip chip--accent">{(requests ?? []).length}</span>
+          )}
+        </div>
+        <Link className="btn btn--secondary btn--sm mt-3" href="/hr/accounts">
+          Manage accounts
+        </Link>
+      </div>
 
       <div className="grid grid--3 mb-5">
         <div className="stat">
@@ -124,8 +162,19 @@ export default async function Hr() {
       <div className="card card--flush mt-5">
         <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
           <div className="card__title">Directory</div>
-          <div className="card__sub">{(people ?? []).length} people</div>
+          <div className="card__sub">
+            {(people ?? []).length === 1
+              ? '1 person'
+              : `${(people ?? []).length} people`}
+          </div>
         </div>
+        {(people ?? []).length === 0 ? (
+          // A table of headers with no rows under them reads as a failure.
+          <p className="t-subtle" style={{ padding: '0 var(--s-5) var(--s-5)' }}>
+            Nobody has been added yet. Approve someone on{' '}
+            <Link href="/hr/accounts">Accounts</Link> and they appear here.
+          </p>
+        ) : (
         <div className="table-scroll">
           <table className="data-table">
             <caption className="sr-only">Employee directory</caption>
@@ -162,6 +211,7 @@ export default async function Hr() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
     </Shell>
   )

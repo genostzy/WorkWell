@@ -1,13 +1,27 @@
 import { createClient } from '@/lib/supabase/server'
-import { PageHead, PlaneBadge, PrivacyNote, Shell } from '@/components/chrome'
+import {
+  Empty,
+  LoadError,
+  PageHead,
+  PlaneBadge,
+  PrivacyNote,
+  Shell,
+} from '@/components/chrome'
 import { LeaveForm } from './form'
 
-function fmt(iso: string) {
-  return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
+// A missing or unparseable date must not reach the page as the string
+// "Invalid Date", which is what toLocaleDateString returns for one and
+// reads like a bug in the record rather than an empty field.
+function fmt(iso: string | null | undefined) {
+  if (!iso) return '—'
+  const d = new Date(iso + 'T00:00:00')
+  return Number.isNaN(d.getTime())
+    ? '—'
+    : d.toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      })
 }
 
 function days(a: string, b: string) {
@@ -18,27 +32,65 @@ function days(a: string, b: string) {
 export default async function Leave() {
   const supabase = await createClient()
 
-  const { data: me } = await supabase.from('me').select('id').maybeSingle()
-
-  const { data: employment } = await supabase
-    .from('employment')
-    .select(
-      'job_title, department, team, manager_name, contract_type, location, started_on, entitlement'
-    )
-    .eq('person_id', me?.id ?? '')
+  const { data: me, error: meError } = await supabase
+    .from('me')
+    .select('id')
     .maybeSingle()
 
-  const { data: requests } = await supabase
-    .from('leave_requests')
-    .select('id, kind, starts_on, ends_on, note, status')
-    .order('starts_on', { ascending: false })
+  // Without a person row there is no employment record to read and nothing
+  // to book against, so ask for neither — an .eq on an empty id is a query
+  // that can only ever come back empty.
+  const [employmentResult, requestResult] = me
+    ? await Promise.all([
+        supabase
+          .from('employment')
+          .select(
+            'job_title, department, team, manager_name, contract_type, location, started_on, entitlement'
+          )
+          .eq('person_id', me.id)
+          .maybeSingle(),
+        supabase
+          .from('leave_requests')
+          .select('id, kind, starts_on, ends_on, note, status')
+          .order('starts_on', { ascending: false }),
+      ])
+    : [null, null]
 
-  const rows = requests ?? []
+  const readError = meError ?? requestResult?.error ?? null
+  if (readError) {
+    return (
+      <Shell current="leave" plane="work">
+        <PageHead title="Leave and profile" />
+        <PlaneBadge plane="work" />
+        <LoadError what="Your leave record" detail={readError.message} />
+      </Shell>
+    )
+  }
+
+  if (!me) {
+    return (
+      <Shell current="leave" plane="work">
+        <PageHead title="Leave and profile" />
+        <PlaneBadge plane="work" />
+        <Empty icon="🔑" title="No employment record yet">
+          Leave belongs to an employment record, and yours is created when HR
+          approves your access. Nothing is missing — it does not exist yet.
+        </Empty>
+      </Shell>
+    )
+  }
+
+  const employment = employmentResult?.data ?? null
+  const rows = requestResult?.data ?? []
   const taken = rows
     .filter((r) => r.status === 'approved')
     .reduce((sum, r) => sum + days(r.starts_on, r.ends_on), 0)
   const entitlement = employment?.entitlement ?? 20
   const left = entitlement - taken
+  // Guard the bar's own arithmetic rather than the value: an entitlement of
+  // zero is a legitimate record (a contractor, say) and 0/0 is NaN, which
+  // reaches CSS as `width: NaN%` and silently paints nothing.
+  const usedPct = entitlement > 0 ? Math.min(100, (taken / entitlement) * 100) : 0
 
   return (
     <Shell current="leave" plane="work">
@@ -58,7 +110,7 @@ export default async function Leave() {
 
       <div className="grid grid--sidebar-right">
         <div className="stack">
-          <LeaveForm personId={me?.id ?? null} />
+          <LeaveForm personId={me.id} />
 
           <div className="card card--flush">
             <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
@@ -125,9 +177,7 @@ export default async function Leave() {
               <div className="meter__track">
                 <div
                   className="meter__fill"
-                  style={{
-                    width: `${Math.min(100, (taken / entitlement) * 100)}%`,
-                  }}
+                  style={{ width: `${usedPct}%` }}
                 />
               </div>
               <div className="row row--between t-subtle">

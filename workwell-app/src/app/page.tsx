@@ -15,7 +15,7 @@ export default async function Home() {
 
   const { data: me, error: meError } = await supabase
     .from('me')
-    .select('full_name')
+    .select('full_name, status')
     .maybeSingle()
 
   // A query that FAILED and a query that found nothing are different
@@ -51,6 +51,32 @@ export default async function Home() {
           lead="An account is not access yet. Ask, and whoever runs WorkWell where you work decides."
         />
         <RequestAccess />
+      </Shell>
+    )
+  }
+
+  // A closed account is stopped here rather than in the resolver. Cutting it
+  // off in current_person_id() would revoke someone's access to their own
+  // private plane on the day they leave, which is a different decision from
+  // "this person no longer works here" and not one HR gets to make by
+  // clicking Close.
+  if (me.status === 'left') {
+    return (
+      <Shell current="home">
+        <PageHead title="This account is closed" />
+        <div className="card">
+          <div className="state">
+            <div className="state__icon" aria-hidden="true">
+              🔒
+            </div>
+            <h2 className="state__title">You are signed in, but not in</h2>
+            <p className="state__text">
+              Whoever runs WorkWell where you work has closed this account.
+              Nothing you recorded has been deleted, and nobody has gained
+              access to it.
+            </p>
+          </div>
+        </div>
       </Shell>
     )
   }
