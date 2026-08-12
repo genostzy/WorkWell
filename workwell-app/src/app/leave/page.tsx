@@ -8,6 +8,7 @@ import {
   Shell,
 } from '@/components/chrome'
 import { LeaveForm } from './form'
+import { OwnProfile } from './profile'
 
 // A missing or unparseable date must not reach the page as the string
 // "Invalid Date", which is what toLocaleDateString returns for one and
@@ -34,7 +35,7 @@ export default async function Leave() {
 
   const { data: me, error: meError } = await supabase
     .from('me')
-    .select('id')
+    .select('id, full_name')
     .maybeSingle()
 
   // Without a person row there is no employment record to read and nothing
@@ -80,6 +81,7 @@ export default async function Leave() {
     )
   }
 
+  const fullName = me.full_name
   const employment = employmentResult?.data ?? null
   const rows = requestResult?.data ?? []
   const taken = rows
@@ -110,6 +112,8 @@ export default async function Leave() {
 
       <div className="grid grid--sidebar-right">
         <div className="stack">
+          <OwnProfile legalName={fullName} />
+
           <LeaveForm personId={me.id} />
 
           <div className="card card--flush">
@@ -165,6 +169,43 @@ export default async function Leave() {
         </div>
 
         <div className="stack">
+          {/* Straight from the prototype's my-profile: the clearest possible
+              statement of the split, on the screen someone would come
+              looking for it — this is the one place where the employer does
+              see something, so it is where the line has to be drawn. */}
+          <div className="card card--accent">
+            <div className="card__title mb-3">What your employer holds</div>
+            <ul className="stack stack--tight" style={{ fontSize: 'var(--fs-sm)' }}>
+              {[
+                'Your job, team, manager and start date',
+                'Leave dates and balance',
+                'Whether your account is open',
+              ].map((t) => (
+                <li className="row" key={t} style={{ gap: 'var(--s-2)', flexWrap: 'nowrap' }}>
+                  <span aria-hidden="true">✓</span>
+                  <span>{t}</span>
+                </li>
+              ))}
+            </ul>
+
+            <div className="hr" />
+
+            <div className="card__title mb-3">What it never holds</div>
+            <ul className="stack stack--tight" style={{ fontSize: 'var(--fs-sm)' }}>
+              {[
+                'Your check-ins, mood, energy or pressure',
+                'Your quiet hours, or when you were active',
+                'Which nudges you use, or whether you use WorkWell at all',
+                'What you called yourself, or the colour above',
+              ].map((t) => (
+                <li className="row" key={t} style={{ gap: 'var(--s-2)', flexWrap: 'nowrap' }}>
+                  <span aria-hidden="true">✕</span>
+                  <span>{t}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
           <div className="card">
             <div className="card__title mb-4">Balance</div>
             <div className="stat mb-4">

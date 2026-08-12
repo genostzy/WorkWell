@@ -148,6 +148,54 @@
     transparent 70%);
 }
 
+/* ------------------------------------------------------------------ Lamps
+
+   The room is drawn with its lights in it at every hour; what changes is
+   whether they are on. During the day they are furniture — a faint outline
+   you stop noticing. At night they are the only thing holding the room up.
+
+   The glow is a radial gradient painted through `fill`, which needs a real
+   gradient definition in SVG, so it is done with a filtered circle instead:
+   a blurred disc is the same thing and needs no <defs>. */
+
+.lamp__shade { fill: var(--furn-2, var(--surface-3)); }
+.lamp__flex { stroke: var(--furn-2, var(--surface-3)); stroke-width: 2; }
+.lamp__bulb { fill: var(--surface-3); }
+
+.lamp__glow {
+  fill: rgba(255, 214, 138, .5);
+  filter: blur(26px);
+  opacity: 0;
+  transition: opacity var(--dur-slow) var(--ease);
+}
+
+/* Daytime: the fittings are barely there. */
+.lamp__shade, .lamp__flex, .lamp__bulb {
+  opacity: .35;
+  transition: opacity var(--dur-slow) var(--ease);
+}
+
+/* Night: lights on. The bulb is the brightest thing in the room and the
+   pool beneath it is what makes the floor legible again. */
+.room[data-phase="quiet"] .lamp__glow { opacity: 1; }
+.room[data-phase="quiet"] .lamp__shade,
+.room[data-phase="quiet"] .lamp__flex { opacity: .9; }
+.room[data-phase="quiet"] .lamp__bulb {
+  opacity: 1;
+  fill: rgb(255, 226, 165);
+}
+
+/* Before anyone has come in, the lights are off whatever the hour — an
+   empty office at 9am does not have its lamps burning. */
+.room[data-open="false"] .lamp__glow { opacity: 0; }
+
+/* A blur this size is expensive to animate and pointless to anyone who has
+   asked for less movement; the light still changes, it just arrives. */
+:root[data-motion="reduced"] .lamp__glow { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  :root:where(:not([data-motion="full"])) .lamp__glow { transition: none; }
+}
+
 /* Quiet hours: lights out. */
 .room[data-phase="quiet"]::after {
   background: linear-gradient(180deg,

@@ -101,10 +101,29 @@ export function Shell({
     <div className="app" data-plane={plane}>
       <div className="main">
         <header className="topbar">
+          {/* The mark is the way back. It was already a link to the office,
+              but nothing about it said so — a logo in the top-left is read
+              as a logo, and people looked for a back button instead. The
+              chevron is what turns it into one. */}
           <Link className="topbar__home" href="/" aria-label="Back to the office">
+            <svg
+              className="topbar__back"
+              viewBox="0 0 24 24"
+              width="17"
+              height="17"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="m15 6-6 6 6 6" />
+            </svg>
             <span className="sidebar__mark">
               <Brandmark size={28} />
             </span>
+            <span className="topbar__backword">The office</span>
           </Link>
           <span className="topbar__title">
             {current ? TITLES[current] : 'WorkWell'}

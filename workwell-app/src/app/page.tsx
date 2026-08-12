@@ -81,10 +81,24 @@ export default async function Home() {
     )
   }
 
-  const { data: roles } = await supabase.from('person_roles').select('role')
+  const [{ data: roles }, { data: profile }] = await Promise.all([
+    supabase.from('person_roles').select('role'),
+    supabase
+      .from('profile')
+      .select('preferred_name, avatar_initials, avatar_colour, greeting')
+      .maybeSingle(),
+  ])
   const isHr = (roles ?? []).some((r) => r.role === 'hr')
 
   // The office is the interface, not a menu. The room is the navigation
   // surface; the plain list beside it is never optional.
-  return <Office isHr={isHr} name={me.full_name} />
+  return (
+    <Office
+      isHr={isHr}
+      name={profile?.preferred_name || me.full_name}
+      initials={profile?.avatar_initials ?? null}
+      colour={profile?.avatar_colour ?? 'accent'}
+      greeting={profile?.greeting ?? 'warm'}
+    />
+  )
 }

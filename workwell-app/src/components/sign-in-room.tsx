@@ -4,6 +4,7 @@ import Script from 'next/script'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Wordmark } from '@/components/brandmark'
+import { hideSky, showSky } from '@/lib/sky'
 
 /**
  * Signing in, as the Hi-Fi design draws it.
@@ -78,6 +79,9 @@ export function SignInRoom({
       WW.room.roomSVG({ role: 'employee', minutes }) +
       '<div class="room__dim"></div>'
 
+    // The room is dark at night whether or not anyone has come in yet.
+    roomRef.current.dataset.phase = WW.room.phaseAt(minutes)
+
     // `locked` here is the same gate the room honours: before sign-in these
     // must not be live links, or the list is a way around the front door.
     if (listRef.current) {
@@ -87,14 +91,10 @@ export function SignInRoom({
 
   useEffect(() => {
     if (window.WW?.room) build()
-
-    // sky.js appends to document.body and never takes it away. React does
-    // not own that node, so it has to be removed by hand or it paints over
-    // whatever screen comes next.
-    return () => {
-      document.querySelectorAll('.sky').forEach((el) => el.remove())
-      document.body.classList.remove('has-sky')
-    }
+    showSky()
+    // Hidden rather than removed — see lib/sky for why removing it is what
+    // left the office with no background on the way back.
+    return hideSky
   }, [build])
 
   // On a phone the plan scales down until its labels are ~13px and the tap

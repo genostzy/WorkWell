@@ -130,6 +130,65 @@
   color: var(--text-muted);
 }
 
+/* The mark in the topbar is the way back to the office, so it is built to
+   look like one: chevron, mark, destination. The word is dropped on narrow
+   screens where the page title needs the room, but the chevron stays —
+   that is the part carrying the meaning. */
+.topbar__home {
+  gap: var(--s-2);
+  padding: 4px var(--s-2) 4px 4px;
+  color: var(--text-muted);
+}
+.topbar__home:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.topbar__back { flex: none; }
+.topbar__backword {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+}
+@media (max-width: 620px) {
+  .topbar__backword { display: none; }
+}
+
+/* ---------------------------------------------------------- Avatar colour
+
+   One place defines the five, used by the swatches, the profile preview and
+   the figure in the room. Hues rather than tokens: these are a personal
+   choice and must not shift when the plane accent does — the accent already
+   means "which plane am I on", and a colour cannot carry two meanings. */
+[data-avatar-colour="accent"] { --avatar-ink: var(--accent); }
+[data-avatar-colour="clay"]   { --avatar-ink: #c2603a; }
+[data-avatar-colour="indigo"] { --avatar-ink: #4a5bbf; }
+[data-avatar-colour="plum"]   { --avatar-ink: #8e4a86; }
+[data-avatar-colour="moss"]   { --avatar-ink: #4f7a3f; }
+
+.avatar[data-avatar-colour] {
+  background: var(--avatar-ink);
+  color: var(--text-on-accent);
+}
+
+.swatches { display: flex; gap: var(--s-2); flex-wrap: wrap; }
+
+.swatch {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: var(--avatar-ink);
+  border: 2px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--border);
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease),
+              box-shadow var(--dur-fast) var(--ease);
+}
+.swatch:hover { transform: translateY(-1px); }
+.swatch[aria-checked="true"] {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--avatar-ink);
+}
+
+/* The figure standing in the room picks up the same choice. */
+.room[data-avatar-colour] .room-avatar__dot { fill: var(--avatar-ink); }
+
 /* The room needs its own full-bleed stage, not the article column. */
 .room-shell { min-height: 100vh; }
 

@@ -4,6 +4,7 @@ import Script from 'next/script'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { SignOut } from '@/components/sign-out'
+import { hideSky, showSky } from '@/lib/sky'
 import { Wordmark } from '@/components/brandmark'
 
 /** The prototype's room is vendored unmodified from workwell-prototype, so
@@ -48,7 +49,39 @@ declare global {
   }
 }
 
-export function Office({ isHr, name }: { isHr: boolean; name: string }) {
+/** The app's own data-motion attribute wins over the OS setting, matching
+ *  what the prototype's stylesheets already do with it. */
+function reducedMotion() {
+  const attr = document.documentElement.getAttribute('data-motion')
+  if (attr === 'reduced') return true
+  if (attr === 'full') return false
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+/** "Wilson Dayrit" → "WD". One letter is better than a wrong two. */
+function initialsOf(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  const first = parts[0][0]
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : ''
+  return (first + last).toUpperCase()
+}
+
+export function Office({
+  isHr,
+  name,
+  initials,
+  colour = 'accent',
+  greeting = 'warm',
+}: {
+  isHr: boolean
+  /** Preferred name if one is set, otherwise the employment record's. */
+  name: string
+  /** An override; null means derive from the name. */
+  initials?: string | null
+  colour?: string
+  greeting?: string
+}) {
   const router = useRouter()
   const roomRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
@@ -70,6 +103,20 @@ export function Office({ isHr, name }: { isHr: boolean; name: string }) {
     const caps = { own: true, org: isHr }
 
     roomRef.current.innerHTML = WW.room.roomSVG({ minutes, ...caps })
+
+    // The whole time-of-day treatment in room.css hangs off this attribute —
+    // the warm morning wash, the lights going down at night, the clock
+    // staying legible through it. The prototype set it in page-office.js and
+    // it was never ported, so the room has been drawn at noon at every hour
+    // since. It is set here rather than in React's render because the SVG
+    // above is written imperatively and the two must land together.
+    roomRef.current.dataset.phase = WW.room.phaseAt(minutes)
+
+    // The avatar shipped reading "?" because nothing ever filled it in.
+    const mark = roomRef.current.querySelector('.room-avatar__initials')
+    if (mark) mark.textContent = initials?.trim() || initialsOf(name)
+    roomRef.current.dataset.avatarColour = colour
+
     if (listRef.current) {
       listRef.current.innerHTML = WW.room.roomList(
         isHr ? 'hr' : 'employee',
@@ -81,22 +128,20 @@ export function Office({ isHr, name }: { isHr: boolean; name: string }) {
     setPhase(WW.room.phaseAt(minutes))
     setClock(WW.room.formatTime(minutes))
     setLoaded(true)
-  }, [isHr])
+  }, [isHr, name, initials, colour])
 
   useEffect(() => {
     // The scripts may already be present on a client-side navigation back
     // to this page, in which case onReady never fires again.
     if (window.WW?.room) build()
+    showSky()
 
     // sky.js appends its element straight to document.body and never takes
     // it away. React does not own that node, so navigating to another
     // screen used to leave a fixed, full-viewport sky painting over it —
-    // the page was there, buried. The sky belongs to the office; it leaves
-    // when the office does.
-    return () => {
-      document.querySelectorAll('.sky').forEach((el) => el.remove())
-      document.body.classList.remove('has-sky')
-    }
+    // the page was there, buried. The sky belongs to the office, so it goes
+    // when the office goes.
+    return hideSky
   }, [build])
 
   // Keep the room in step with the clock the way the prototype does: the
@@ -107,6 +152,42 @@ export function Office({ isHr, name }: { isHr: boolean; name: string }) {
     }, 60000)
     return () => window.clearInterval(id)
   }, [build])
+
+  /**
+   * Walk the avatar to a spot.
+   *
+   * The avatar is you, standing in your own office, and until now it stood
+   * in one place no matter where you went — which made the room a picture
+   * of an office rather than one you are in.
+   *
+   * Its resting position is baked into room.css as a translate from the
+   * doorway, so the move is an inline transform, which wins over the class
+   * rule. getBBox gives the art's box in the SVG's own user units, the same
+   * units the transform is expressed in, so no screen-pixel conversion is
+   * needed and it stays correct at every size the room is drawn at.
+   */
+  const walkTo = useCallback((spot: Element) => {
+    const avatar = roomRef.current?.querySelector<SVGGElement>('.room-avatar')
+    const art = spot.querySelector<SVGGraphicsElement>('.spot__art')
+    if (!avatar || !art) return 0
+
+    let box: DOMRect
+    try {
+      box = art.getBBox()
+    } catch {
+      // getBBox throws on a node that is not rendered. Nothing to walk to.
+      return 0
+    }
+
+    // Stand just below the middle of the furniture rather than on top of it.
+    const x = box.x + box.width / 2
+    const y = box.y + box.height / 2 + 26
+    avatar.style.transform = `translate(${Math.round(x - 500)}px, ${Math.round(y - 672)}px)`
+
+    // Long enough to read as crossing the room, short enough that nobody
+    // waits on it. Someone who has asked for less motion gets neither.
+    return reducedMotion() ? 0 : 420
+  }, [])
 
   const navigate = useCallback(
     (e: React.MouseEvent | React.KeyboardEvent) => {
@@ -126,9 +207,13 @@ export function Office({ isHr, name }: { isHr: boolean; name: string }) {
         window.setTimeout(() => el.removeAttribute('data-unbuilt'), 1600)
         return
       }
-      router.push(route)
+
+      const spot = target.closest('.spot')
+      const wait = spot ? walkTo(spot) : 0
+      if (wait) window.setTimeout(() => router.push(route), wait)
+      else router.push(route)
     },
-    [router]
+    [router, walkTo]
   )
 
   const onKey = useCallback(
@@ -150,7 +235,8 @@ export function Office({ isHr, name }: { isHr: boolean; name: string }) {
         onReady={build}
       />
 
-      <div className="room-shell is-fit">
+      {/* Only the room locks itself to the viewport; the list has to scroll. */}
+      <div className={`room-shell${view === 'room' ? ' is-fit' : ''}`}>
         <header className="room-top">
           <div className="room-top__brand">
             <Wordmark />
@@ -183,7 +269,7 @@ export function Office({ isHr, name }: { isHr: boolean; name: string }) {
           >
             <p className="t-subtle" style={{ textAlign: 'center' }}>
               {clock
-                ? `${name.split(' ')[0]} · ${clock}${
+                ? `${greeting === 'warm' ? `${name.split(' ')[0]} · ` : ''}${clock}${
                     phase === 'quiet' ? ' · quiet hours' : ''
                   }`
                 : ' '}
@@ -203,13 +289,20 @@ export function Office({ isHr, name }: { isHr: boolean; name: string }) {
             )}
           </div>
 
-          {/* A picture must never be the only way to navigate. */}
+          {/* A picture must never be the only way to navigate.
+              `is-on` is not decoration here: .room-views is display:none
+              until it has that class, so without it the List button
+              switched to a panel that could never be shown. */}
           <div
-            className="room-views"
+            className={`room-views${view === 'list' ? ' is-on' : ''}`}
             data-view-panel="list"
             hidden={view !== 'list'}
             style={{ width: 'min(560px, 100%)' }}
           >
+            <h1 className="mb-2" style={{ fontSize: 'var(--fs-xl)' }}>
+              Where would you like to go?
+            </h1>
+            <p className="t-subtle mb-4">Everywhere you can go from here.</p>
             <div ref={listRef} onClick={navigate} onKeyDown={onKey} />
           </div>
         </main>

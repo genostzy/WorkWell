@@ -143,6 +143,34 @@ function roomSVG(opts) {
   const own = o.own !== undefined ? o.own : o.role !== 'hr';
   const org = o.org !== undefined ? o.org : o.role === 'hr';
 
+  /* --- ceiling lights ---
+     Drawn at every hour but only lit at night, so the room reads as a room
+     with its lights off rather than as a room that has been greyed out.
+     Purely scenery: no tabindex, no data-go, nothing to land on with a
+     keyboard, because a lamp is not somewhere you can go. */
+  const lights = `
+    <g class="lamps" aria-hidden="true">
+      <g class="lamp" transform="translate(216 250)">
+        <circle class="lamp__glow" r="120"/>
+        <line class="lamp__flex" x1="0" y1="-46" x2="0" y2="-12"/>
+        <path class="lamp__shade" d="M-26 0 L26 0 L15 -16 L-15 -16 Z"/>
+        <circle class="lamp__bulb" cy="2" r="5"/>
+      </g>
+      <g class="lamp" transform="translate(500 470)">
+        <circle class="lamp__glow" r="132"/>
+        <line class="lamp__flex" x1="0" y1="-52" x2="0" y2="-14"/>
+        <path class="lamp__shade" d="M-30 0 L30 0 L17 -18 L-17 -18 Z"/>
+        <circle class="lamp__bulb" cy="2" r="6"/>
+      </g>
+      ${org ? `
+      <g class="lamp" transform="translate(812 96)">
+        <circle class="lamp__glow" r="118"/>
+        <line class="lamp__flex" x1="0" y1="-44" x2="0" y2="-12"/>
+        <path class="lamp__shade" d="M-26 0 L26 0 L15 -16 L-15 -16 Z"/>
+        <circle class="lamp__bulb" cy="2" r="5"/>
+      </g>` : ''}
+    </g>`;
+
   /* --- desk (trends) --- */
   const desk = `
     <rect class="furn" x="96" y="300" width="240" height="112" rx="12"/>
@@ -269,6 +297,10 @@ function roomSVG(opts) {
     <rect class="wall"  x="24" y="24" width="952" height="672" rx="22"/>
 
     ${own ? '<rect class="rug" x="360" y="300" width="230" height="150" rx="16"/>' : ''}
+
+    <!-- lit pools go over the floor and under the furniture, so the light
+         falls on the room rather than washing across the top of it -->
+    ${lights}
 
     <!-- meeting room partition, with its doorway gap -->
     <path class="wall-inner" d="M626 24 L626 270 L700 270 M772 270 L976 270"/>
