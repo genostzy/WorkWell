@@ -1,6 +1,6 @@
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Office } from '@/components/office'
+import { SignInRoom } from '@/components/sign-in-room'
 import { Shell, PageHead } from '@/components/chrome'
 import { RequestAccess } from '@/components/request-access'
 
@@ -8,26 +8,10 @@ export default async function Home() {
   const supabase = await createClient()
   const { data: claims } = await supabase.auth.getClaims()
 
-  if (!claims) {
-    return (
-      <div className="app" data-plane="private">
-        <div className="main">
-          <main className="content">
-            <div className="page-head">
-              <h1>WorkWell</h1>
-              <p className="t-lead">
-                Notice your own strain early. Your employer sees where workload
-                sits heavy — never who.
-              </p>
-            </div>
-            <Link className="btn btn--primary btn--lg" href="/sign-in">
-              Sign in
-            </Link>
-          </main>
-        </div>
-      </div>
-    )
-  }
+  // Signed out, the office is seen from outside: dimmed, inert, with one
+  // live thing in it. A landing page with a Sign in button would have been
+  // a second, plainer product bolted in front of this one.
+  if (!claims) return <SignInRoom />
 
   const { data: me, error: meError } = await supabase
     .from('me')

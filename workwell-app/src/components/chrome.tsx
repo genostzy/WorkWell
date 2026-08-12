@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { SignOut } from '@/components/sign-out'
+import { Brandmark } from '@/components/brandmark'
 
 export type Page = 'home' | 'check-in' | 'trends' | 'leave' | 'hr' | 'org'
 
@@ -101,8 +102,8 @@ export function Shell({
       <div className="main">
         <header className="topbar">
           <Link className="topbar__home" href="/" aria-label="Back to the office">
-            <span className="sidebar__mark" aria-hidden="true">
-              🌿
+            <span className="sidebar__mark">
+              <Brandmark size={28} />
             </span>
           </Link>
           <span className="topbar__title">
