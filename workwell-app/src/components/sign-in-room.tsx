@@ -37,7 +37,14 @@ function readable(message: string): string {
   return message
 }
 
-export function SignInRoom({ openOnLoad = false }: { openOnLoad?: boolean }) {
+export function SignInRoom({
+  openOnLoad = false,
+  notice,
+}: {
+  openOnLoad?: boolean
+  /** Something that went wrong before this page loaded — a dead link, say. */
+  notice?: string
+}) {
   const roomRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const emailRef = useRef<HTMLInputElement>(null)
@@ -47,7 +54,7 @@ export function SignInRoom({ openOnLoad = false }: { openOnLoad?: boolean }) {
   const [open, setOpen] = useState(openOnLoad)
   const [step, setStep] = useState<Step>('ask')
   const [email, setEmail] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(notice ?? null)
   const [cooldown, setCooldown] = useState(0)
 
   /* ------------------------------------------------------------- The room */
