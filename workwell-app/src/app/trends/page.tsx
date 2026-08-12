@@ -17,6 +17,7 @@ const METRICS = [
   { key: 'mood' as const, label: 'Mood' },
   { key: 'energy' as const, label: 'Energy' },
   { key: 'pressure' as const, label: 'Pressure' },
+  { key: 'workload' as const, label: 'Workload' },
 ]
 
 type Row = {
@@ -24,10 +25,11 @@ type Row = {
   mood: number | null
   energy: number | null
   pressure: number | null
+  workload: number | null
   note: string | null
 }
 
-function average(rows: Row[], key: 'mood' | 'energy' | 'pressure') {
+function average(rows: Row[], key: 'mood' | 'energy' | 'pressure' | 'workload') {
   const values = rows.map((r) => r[key]).filter((v): v is number => v !== null)
   if (!values.length) return null
   return values.reduce((a, b) => a + b, 0) / values.length
@@ -49,7 +51,7 @@ export default async function Trends() {
 
   const { data, error } = await supabase
     .from('check_ins')
-    .select('day, mood, energy, pressure, note')
+    .select('day, mood, energy, pressure, workload, note')
     .order('day', { ascending: false })
     .limit(30)
 
@@ -153,6 +155,7 @@ export default async function Trends() {
                 <th scope="col">Mood</th>
                 <th scope="col">Energy</th>
                 <th scope="col">Pressure</th>
+                <th scope="col">Workload</th>
                 <th scope="col">Note</th>
               </tr>
             </thead>
@@ -168,6 +171,7 @@ export default async function Trends() {
                   <td className="t-num">{r.mood ?? '—'}</td>
                   <td className="t-num">{r.energy ?? '—'}</td>
                   <td className="t-num">{r.pressure ?? '—'}</td>
+                  <td className="t-num">{r.workload ?? '—'}</td>
                   <td className="t-subtle">{r.note ?? ''}</td>
                 </tr>
               ))}

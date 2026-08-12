@@ -45,6 +45,10 @@ declare global {
         formatTime: (m: number) => string
       }
       sky?: { paint: () => void }
+      /** dragscale.js — builds a draggable scale into an empty element and
+       *  dispatches a bubbling `ww:scale` from it on every change. */
+      initDragScale?: (root: HTMLElement) => unknown
+      onReady?: (fn: () => void) => void
     }
   }
 }

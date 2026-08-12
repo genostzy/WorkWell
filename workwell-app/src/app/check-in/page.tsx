@@ -1,88 +1,164 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import Script from 'next/script'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge, PrivacyNote, Shell } from '@/components/chrome'
 
-type Answers = {
-  mood: number | null
-  energy: number | null
-  pressure: number | null
-  note: string
-}
+/**
+ * The daily check-in, as the prototype draws it.
+ *
+ * Four questions, one per step, each answered by dragging a shape rather
+ * than picking a number: shape the face, fill the battery, squeeze the
+ * block, balance the scales. dragscale.js and scales.js are vendored
+ * unmodified from workwell-prototype and mount themselves into the empty
+ * divs below — React owns the flow, they own the drawing.
+ *
+ * Two places this departs from the prototype, both deliberate:
+ *
+ * "Skip this" records nothing rather than keeping the scale's starting
+ * value. The prototype seeds its summary from whatever the scale happened
+ * to render with, which makes a skipped question indistinguishable from a
+ * deliberate middle answer — and the PRD requires every question be
+ * skippable and "would rather not say" be its own answer. The column is
+ * nullable for exactly this reason.
+ *
+ * The note says it is stored on your private plane, not "on your device",
+ * because here it genuinely is stored — and the plane is the promise.
+ */
 
-/** Three questions, all skippable per the PRD. A null answer is a real
- *  answer — "I would rather not say" must not be indistinguishable from
- *  the middle of the scale, which is why clearing is offered explicitly. */
-const SCALES = [
+type Key = 'mood' | 'energy' | 'pressure' | 'workload'
+
+const STEPS: {
+  key: Key
+  title: string
+  lead: string
+  label: string
+  fallback: number
+}[] = [
   {
-    key: 'mood' as const,
-    label: 'How did today feel?',
-    hint: 'Your overall sense of the day.',
-    low: 'Rough',
-    high: 'Good',
+    key: 'mood',
+    title: 'How’s your mood?',
+    lead: 'Shape the face to match. No right answer, and nothing is averaged into a score.',
+    label: 'Mood',
+    fallback: 3,
   },
   {
-    key: 'energy' as const,
-    label: 'How much did you have in the tank?',
-    hint: 'Energy, not productivity.',
-    low: 'Empty',
-    high: 'Full',
+    key: 'energy',
+    title: 'How’s your energy?',
+    lead: 'Physical or mental, whichever you notice more.',
+    label: 'Energy',
+    fallback: 2,
   },
   {
-    key: 'pressure' as const,
-    label: 'How much pressure were you under?',
-    hint: 'Workload and deadlines — not how well you coped.',
-    low: 'None',
-    high: 'A lot',
+    key: 'pressure',
+    title: 'How much pressure are you under?',
+    lead: 'Squeeze the shape to match — drag either plate.',
+    label: 'Pressure',
+    fallback: 4,
+  },
+  {
+    key: 'workload',
+    title: 'How does the workload feel?',
+    lead: 'Left is what you can take, right is what’s on you. This is about the amount of work — not how well you’re coping.',
+    label: 'Workload',
+    fallback: 4,
   },
 ]
 
+type Answers = Record<Key, number | null>
+
 export default function CheckIn() {
   const router = useRouter()
+  const flowRef = useRef<HTMLDivElement>(null)
+
+  const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState<Answers>({
     mood: null,
     energy: null,
     pressure: null,
-    note: '',
+    workload: null,
   })
+  const [labels, setLabels] = useState<Partial<Record<Key, string>>>({})
+  const [note, setNote] = useState('')
+  const [existing, setExisting] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [ready, setReady] = useState(false)
 
-  // Load today's entry so returning here amends rather than silently
-  // starting blank over the top of existing answers.
+  /* ------------------------------------------------------------- Loading */
+
   useEffect(() => {
     const supabase = createClient()
     const today = new Date().toISOString().slice(0, 10)
 
     supabase
       .from('check_ins')
-      .select('mood, energy, pressure, note')
+      .select('mood, energy, pressure, workload, note')
       .eq('day', today)
       .maybeSingle()
       .then(({ data, error }) => {
-        // No row for today is the normal case — a blank form is right. A
-        // failed read is not, and starting blank over answers that do exist
-        // would quietly overwrite them on save.
+        // No row for today is the normal case. A failed read is not, and
+        // starting blank over answers that exist would overwrite them.
         if (error) setError(error.message)
         else if (data) {
+          setExisting(true)
           setAnswers({
             mood: data.mood,
             energy: data.energy,
             pressure: data.pressure,
-            note: data.note ?? '',
+            workload: data.workload,
           })
+          setNote(data.note ?? '')
         }
         setLoading(false)
       })
   }, [])
 
-  async function save(e: React.FormEvent) {
-    e.preventDefault()
+  /* -------------------------------------------------------- The scales
+
+     They append their own children, so React must never render into those
+     nodes. Mounted once, after today's values are known — dragscale reads
+     data-value at init and never again — and kept mounted for the life of
+     the page, which is why the steps hide rather than unmount. */
+
+  const mountScales = useCallback(() => {
+    if (!window.WW?.initDragScale || !flowRef.current || loading) return
+
+    flowRef.current
+      .querySelectorAll<HTMLElement>('[data-scale]')
+      .forEach((el) => {
+        if (el.dataset.mounted) return
+        el.dataset.mounted = 'true'
+        window.WW!.initDragScale!(el)
+      })
+    setReady(true)
+  }, [loading])
+
+  useEffect(() => {
+    mountScales()
+  }, [mountScales])
+
+  // One listener for all four: the event bubbles and carries its own name.
+  useEffect(() => {
+    const el = flowRef.current
+    if (!el) return
+    const onScale = (e: Event) => {
+      const { name, value, label } = (e as CustomEvent).detail
+      setAnswers((a) => ({ ...a, [name as Key]: value as number }))
+      setLabels((l) => ({ ...l, [name as Key]: label as string }))
+    }
+    el.addEventListener('ww:scale', onScale)
+    return () => el.removeEventListener('ww:scale', onScale)
+  }, [ready])
+
+  /* -------------------------------------------------------------- Saving */
+
+  async function save() {
     setSaving(true)
     setError(null)
 
@@ -91,7 +167,8 @@ export default function CheckIn() {
       p_mood: answers.mood,
       p_energy: answers.energy,
       p_pressure: answers.pressure,
-      p_note: answers.note,
+      p_workload: answers.workload,
+      p_note: note,
     })
 
     setSaving(false)
@@ -102,127 +179,232 @@ export default function CheckIn() {
     }
   }
 
+  const skip = (key: Key) => {
+    setAnswers((a) => ({ ...a, [key]: null }))
+    setLabels((l) => ({ ...l, [key]: undefined }))
+    setStep((s) => s + 1)
+  }
+
+  /* ------------------------------------------------------------ Rendering */
+
   if (loading) {
     return (
       <Shell current="check-in">
-        <PageHead title="How was today?" />
-        <div className="card">
-          <div className="skel skel--title" />
-          <div className="skel skel--text" />
-          <div className="skel skel--text" />
+        <PageHead title="How’s today going?" />
+        <div className="card" aria-hidden="true">
+          <div className="skel skel--text w-50 mb-5" />
+          <div className="skel" style={{ height: 6 }} />
+          <div className="skel skel--title mt-6 mb-4" />
+          <div className="grid grid--4 mt-4">
+            {[0, 1, 2, 3].map((i) => (
+              <div className="skel" style={{ height: 92 }} key={i} />
+            ))}
+          </div>
         </div>
+        <p className="sr-only" role="status">
+          Loading your check-in.
+        </p>
       </Shell>
     )
   }
 
-  if (saved) {
-    return (
-      <Shell current="check-in">
-        <PageHead title="Saved" />
-        <div className="card">
+  const done = saved
+  const current = STEPS[step]
+
+  return (
+    <Shell current="check-in">
+      {/* ready before dragscale: it calls WW.onReady the moment it loads.
+          icons before it too — the hint line under each scale asks for one. */}
+      <Script src="/prototype/ready.js" strategy="afterInteractive" />
+      <Script src="/prototype/icons.js" strategy="afterInteractive" />
+      <Script src="/prototype/dragscale.js" strategy="afterInteractive" />
+      <Script
+        src="/prototype/scales.js"
+        strategy="afterInteractive"
+        onReady={mountScales}
+      />
+
+      <PageHead
+        title="How’s today going?"
+        lead="Four taps, ten seconds. Skip anything."
+      />
+
+      <PlaneBadge plane="private" />
+
+      <PrivacyNote detail="Not the values, not the dates, not whether you checked in at all. That is what makes an honest answer possible.">
+        <b>Your employer cannot see these answers.</b>{' '}
+      </PrivacyNote>
+
+      {error && (
+        <div className="banner banner--error mb-5" role="alert">
+          <span aria-hidden="true">⚠️</span>
+          <span>
+            <b>Couldn’t save to your history.</b> {error}
+          </span>
+        </div>
+      )}
+
+      {existing && !done && step === 0 && (
+        <div className="banner banner--info mb-5" role="status">
+          <span aria-hidden="true">✓</span>
+          <span>
+            <b>You already checked in today.</b> Going through again amends
+            it — one a day is plenty.
+          </span>
+        </div>
+      )}
+
+      <div className="card" ref={flowRef} data-flow>
+        {!done && (
+          <>
+            <div className="row row--between mb-5">
+              <span className="stepper__label">
+                Step {step + 1} of {STEPS.length}
+              </span>
+              <Link className="btn btn--ghost btn--sm" href="/trends">
+                Skip today
+              </Link>
+            </div>
+            <div className="stepper mb-6" aria-hidden="true">
+              {STEPS.map((s, i) => (
+                <span
+                  className="stepper__dot"
+                  key={s.key}
+                  data-done={i <= step ? 'true' : 'false'}
+                />
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Every step stays in the document: dragscale mounted into these
+            nodes and re-mounting on each change would lose the drag state
+            and the value with it. */}
+        {STEPS.map((s, i) => (
+          <div key={s.key} hidden={done || i !== step}>
+            <h2 className="mb-2">{s.title}</h2>
+            <p className="t-subtle mb-5">{s.lead}</p>
+
+            <div
+              data-scale={s.key}
+              data-value={answers[s.key] ?? s.fallback}
+              data-label={s.label}
+            />
+
+            {s.key === 'workload' && (
+              <div className="field mt-5">
+                <label className="field__label" htmlFor="note">
+                  Anything you want to note? (optional)
+                </label>
+                <textarea
+                  id="note"
+                  className="textarea"
+                  value={note}
+                  placeholder="Only you will ever read this."
+                  onChange={(e) => setNote(e.target.value)}
+                />
+                <span className="field__hint">
+                  Stored on your private plane, with the rest of it.
+                </span>
+              </div>
+            )}
+
+            <div className="row mt-6">
+              {i > 0 && (
+                <button
+                  className="btn btn--secondary"
+                  type="button"
+                  onClick={() => setStep(i - 1)}
+                >
+                  ‹ Back
+                </button>
+              )}
+
+              {i < STEPS.length - 1 ? (
+                <>
+                  <button
+                    className="btn btn--primary"
+                    type="button"
+                    onClick={() => setStep(i + 1)}
+                  >
+                    Next ›
+                  </button>
+                  <button
+                    className="btn btn--ghost"
+                    type="button"
+                    onClick={() => skip(s.key)}
+                  >
+                    Skip this
+                  </button>
+                </>
+              ) : (
+                <button
+                  className="btn btn--primary"
+                  type="button"
+                  disabled={saving}
+                  onClick={save}
+                >
+                  {saving ? 'Saving…' : '✓ Save check-in'}
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+
+        {done && (
           <div className="state state--info">
             <div className="state__icon" aria-hidden="true">
               ✓
             </div>
-            <h2 className="state__title">That’s it.</h2>
+            <h2 className="state__title">Saved. That’s it.</h2>
             <p className="state__text">
               It joins your own history and nothing else.
             </p>
-            <div className="state__actions">
+
+            <div
+              className="row mt-2"
+              style={{ justifyContent: 'center', gap: 'var(--s-2)' }}
+            >
+              {STEPS.filter((s) => answers[s.key] !== null).map((s) => (
+                <span className="chip" key={s.key}>
+                  {s.label}: <b>{labels[s.key] ?? answers[s.key]}</b>
+                </span>
+              ))}
+            </div>
+
+            <div
+              className="state__actions row"
+              style={{ justifyContent: 'center' }}
+            >
               <Link className="btn btn--primary" href="/trends">
                 See your trends
               </Link>
               <button
                 className="btn btn--secondary"
                 type="button"
-                onClick={() => setSaved(false)}
+                onClick={() => {
+                  setSaved(false)
+                  setStep(0)
+                }}
               >
                 Change an answer
               </button>
             </div>
           </div>
+        )}
+      </div>
+
+      <div className="card card--quiet mt-5">
+        <div className="row row--between">
+          <div>
+            <div className="card__title">Prefer a different format?</div>
+            <p className="t-subtle mt-2">Emoji, sliders, or plain words.</p>
+          </div>
+          <Link className="btn btn--secondary btn--sm nowrap" href="/workspace">
+            Change format
+          </Link>
         </div>
-      </Shell>
-    )
-  }
-
-  return (
-    <Shell current="check-in">
-      <PageHead
-        title="How was today?"
-        lead="Skip anything you would rather not answer."
-      />
-
-      <PlaneBadge plane="private" />
-
-      <PrivacyNote detail="This is stored on the private plane. HR can query group patterns for eight or more people, and your leave dates. They cannot query this table at all — not your row, not anyone's.">
-        <b>Nobody else will ever read this.</b>{' '}
-      </PrivacyNote>
-
-      {error && (
-        <div className="banner banner--error" role="alert">
-          {error}
-        </div>
-      )}
-
-      <form className="card" onSubmit={save}>
-        {SCALES.map((scale) => (
-          <fieldset className="scale" key={scale.key}>
-            <legend className="scale__legend">{scale.label}</legend>
-            <span className="scale__hint">{scale.hint}</span>
-            <div className="scale__row">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <div className="scale__opt" key={n}>
-                  <input
-                    type="radio"
-                    id={`${scale.key}-${n}`}
-                    name={scale.key}
-                    checked={answers[scale.key] === n}
-                    onChange={() =>
-                      setAnswers((a) => ({ ...a, [scale.key]: n }))
-                    }
-                  />
-                  <label htmlFor={`${scale.key}-${n}`}>{n}</label>
-                </div>
-              ))}
-            </div>
-            <div className="scale__ends">
-              <span>{scale.low}</span>
-              <span>{scale.high}</span>
-            </div>
-            {answers[scale.key] !== null && (
-              <button
-                type="button"
-                className="linkish"
-                onClick={() => setAnswers((a) => ({ ...a, [scale.key]: null }))}
-              >
-                Clear this answer
-              </button>
-            )}
-          </fieldset>
-        ))}
-
-        <div className="field mt-6">
-          <label className="field__label" htmlFor="note">
-            Anything you want to note? (optional)
-          </label>
-          <textarea
-            id="note"
-            className="textarea"
-            value={answers.note}
-            placeholder="Only you will ever read this."
-            onChange={(e) => setAnswers((a) => ({ ...a, note: e.target.value }))}
-          />
-        </div>
-
-        <button
-          className="btn btn--primary btn--block mt-5"
-          type="submit"
-          disabled={saving}
-        >
-          {saving ? 'Saving…' : 'Save today’s check-in'}
-        </button>
-      </form>
+      </div>
     </Shell>
   )
 }
