@@ -196,12 +196,18 @@
   :root:where(:not([data-motion="full"])) .lamp__glow { transition: none; }
 }
 
-/* Quiet hours: lights out. */
-.room[data-phase="quiet"]::after {
-  background: linear-gradient(180deg,
-    rgba(24, 32, 58, .46) 0%,
-    rgba(16, 22, 42, .58) 100%);
-}
+/* Quiet hours: lights out.
+
+   There is deliberately no darkening wash here any more. ::after covers the
+   whole element, lamps included, so a night tint sat on top of the one thing
+   it was supposed to make legible — the glow was being dimmed by the same
+   layer that was meant to say "it is dark in here". Removing it lets the lit
+   pools carry the contrast instead of fighting it.
+
+   Night is still read from the room: the furniture goes quiet, the sky
+   behind it is dark, and the lamps are on. That is enough, and it is the
+   more honest picture — a dark room with lights in it, rather than a lit
+   room with a filter over the top. */
 .room[data-phase="quiet"] .screen,
 .room[data-phase="quiet"] .accent-soft { opacity: .18; }
 .room[data-phase="quiet"] .plant,
