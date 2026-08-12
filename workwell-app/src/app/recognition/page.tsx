@@ -1,28 +1,135 @@
+'use client'
+
+import { useCallback, useEffect, useState } from 'react'
 import { PageHead, PlaneBadge, PrivacyNote, Shell } from '@/components/chrome'
-import { PreviewNotice, ToggleRow } from '@/components/preview'
+import { createClient } from '@/lib/supabase/client'
 
-const FEED = [
-  {
-    initials: 'PN',
-    from: 'Priya Nair',
-    time: 'Tuesday',
-    text: 'Thank you for picking up the migration review at short notice — it unblocked the whole team.',
-  },
-  {
-    initials: 'MR',
-    from: 'Marco Reyes',
-    time: 'Last week',
-    text: 'Your notes on the incident were the clearest thing I read all month.',
-  },
-]
+type Person = { id: string; full_name: string }
+type Appreciation = {
+  id: string
+  from_person: string
+  to_person: string
+  message: string
+  created_at: string
+}
+type SupportRequest = {
+  id: string
+  body: string
+  route: string
+  status: string
+  created_at: string
+}
 
-/** Recognition and connection — PRD F5. Peer appreciation, virtual coffee,
- *  and a private route to HR or an EAP.
+/** Recognition and connection — PRD F5.
  *
- *  No counting anywhere, by design. The PRD forbids leaderboards, and a
- *  tally of who was thanked most is a ranking of people wearing a friendly
- *  hat. */
+ *  Nothing is counted, by design. The PRD forbids leaderboards, and a tally
+ *  of who gets thanked most is a ranking of people wearing a friendly hat.
+ *
+ *  The support request is the only place in the product where an employee
+ *  deliberately opens a channel to HR. That consent is expressed per row
+ *  and is revocable: withdrawing takes it back out of HR's view entirely. */
 export default function Recognition() {
+  const [me, setMe] = useState<string | null>(null)
+  const [people, setPeople] = useState<Person[]>([])
+  const [received, setReceived] = useState<Appreciation[]>([])
+  const [requests, setRequests] = useState<SupportRequest[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const [to, setTo] = useState('')
+  const [message, setMessage] = useState('')
+  const [visibility, setVisibility] = useState<'private' | 'team' | 'everyone'>(
+    'private'
+  )
+  const [sent, setSent] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
+
+  const [body, setBody] = useState('')
+  const [route, setRoute] = useState<'hr' | 'eap'>('hr')
+  const [supportError, setSupportError] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    const supabase = createClient()
+
+    const { data: mine } = await supabase.from('me').select('id').maybeSingle()
+    setMe(mine?.id ?? null)
+
+    const [{ data: ppl }, { data: apps }, { data: reqs }] = await Promise.all([
+      supabase.from('people').select('id, full_name').order('full_name'),
+      supabase
+        .from('appreciations')
+        .select('id, from_person, to_person, message, created_at')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('support_requests')
+        .select('id, body, route, status, created_at')
+        .order('created_at', { ascending: false }),
+    ])
+
+    setPeople((ppl ?? []).filter((p) => p.id !== mine?.id))
+    setReceived((apps ?? []).filter((a) => a.to_person === mine?.id))
+    setRequests(reqs ?? [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  async function sendAppreciation(e: React.FormEvent) {
+    e.preventDefault()
+    setSendError(null)
+    if (!to || !message.trim()) {
+      setSendError('Pick someone and write something.')
+      return
+    }
+
+    const supabase = createClient()
+    const { error } = await supabase.from('appreciations').insert({
+      from_person: me,
+      to_person: to,
+      message: message.trim(),
+      visibility,
+    })
+
+    if (error) setSendError(error.message)
+    else {
+      setSent(true)
+      setMessage('')
+      load()
+    }
+  }
+
+  async function sendSupport(e: React.FormEvent) {
+    e.preventDefault()
+    setSupportError(null)
+    if (!body.trim()) {
+      setSupportError('Write what would help.')
+      return
+    }
+
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('support_requests')
+      .insert({ person_id: me, body: body.trim(), route })
+
+    if (error) setSupportError(error.message)
+    else {
+      setBody('')
+      load()
+    }
+  }
+
+  async function withdraw(id: string) {
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('support_requests')
+      .update({ status: 'withdrawn' })
+      .eq('id', id)
+    if (!error) load()
+  }
+
+  const open = requests.filter((r) => r.status === 'open')
+
   return (
     <Shell plane="private">
       <PageHead
@@ -31,138 +138,223 @@ export default function Recognition() {
       />
 
       <PlaneBadge plane="private" />
-      <PreviewNotice what="sending appreciation or a support request" />
 
       <PrivacyNote detail="Appreciation is private between you and the person unless you both choose otherwise. Nothing is tallied, ranked or reported — there is no leaderboard, because a count of who gets thanked most is a ranking of people in a friendly hat.">
         <b>Never counted, never ranked.</b>{' '}
       </PrivacyNote>
 
-      <div className="grid grid--sidebar-right">
-        <div className="stack">
-          <div className="card">
-            <div className="card__title mb-2">Appreciate someone</div>
-            <p className="card__sub mb-4">
-              Private unless you both choose otherwise
-            </p>
+      {loading ? (
+        <div className="card">
+          <div className="skel skel--title" />
+          <div className="skel skel--text" />
+        </div>
+      ) : (
+        <div className="grid grid--sidebar-right">
+          <div className="stack">
+            <form className="card" onSubmit={sendAppreciation}>
+              <div className="card__title mb-2">Appreciate someone</div>
+              <p className="card__sub mb-4">
+                Private unless you both choose otherwise
+              </p>
 
-            <div className="field">
-              <label className="field__label" htmlFor="who">
-                Who
-              </label>
-              <select className="select" id="who" defaultValue="Priya Nair">
-                <option>Priya Nair</option>
-                <option>Marco Reyes</option>
-                <option>Sam Okonkwo</option>
-              </select>
-            </div>
+              {sent && (
+                <p className="confirmed mb-4" role="status">
+                  <span aria-hidden="true">✓</span>
+                  <span>Sent. Only they will see it.</span>
+                </p>
+              )}
 
-            <div className="field mt-4">
-              <label className="field__label" htmlFor="what">
-                What for
-              </label>
-              <textarea
-                className="textarea"
-                id="what"
-                placeholder="Something specific beats something warm."
-              />
-            </div>
+              {sendError && (
+                <div className="banner banner--error mb-4" role="alert">
+                  {sendError}
+                </div>
+              )}
 
-            <div className="field mt-4">
-              <span className="field__label">Who else can see it</span>
-              <div className="segmented" role="group" aria-label="Visibility">
-                <button type="button" aria-pressed="true">
-                  Just them
-                </button>
-                <button type="button" aria-pressed="false">
-                  Their team
-                </button>
-                <button type="button" aria-pressed="false">
-                  Everyone
-                </button>
+              <div className="field">
+                <label className="field__label" htmlFor="who">
+                  Who
+                </label>
+                <select
+                  className="select"
+                  id="who"
+                  value={to}
+                  onChange={(e) => {
+                    setTo(e.target.value)
+                    setSent(false)
+                  }}
+                >
+                  <option value="">Choose someone…</option>
+                  {people.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.full_name}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <span className="field__hint">
-                Anything wider needs their agreement.
-              </span>
-            </div>
 
-            <div className="row mt-5">
-              <button className="btn btn--primary" type="button">
+              <div className="field mt-4">
+                <label className="field__label" htmlFor="what">
+                  What for
+                </label>
+                <textarea
+                  className="textarea"
+                  id="what"
+                  value={message}
+                  placeholder="Something specific beats something warm."
+                  onChange={(e) => {
+                    setMessage(e.target.value)
+                    setSent(false)
+                  }}
+                />
+              </div>
+
+              <div className="field mt-4">
+                <span className="field__label">Who else can see it</span>
+                <div className="segmented" role="group" aria-label="Visibility">
+                  {(['private', 'team', 'everyone'] as const).map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      aria-pressed={visibility === v}
+                      onClick={() => setVisibility(v)}
+                    >
+                      {v === 'private'
+                        ? 'Just them'
+                        : v === 'team'
+                          ? 'Their team'
+                          : 'Everyone'}
+                    </button>
+                  ))}
+                </div>
+                <span className="field__hint">
+                  Anything wider needs their agreement.
+                </span>
+              </div>
+
+              <button className="btn btn--primary mt-5" type="submit">
                 Send appreciation
               </button>
-              <button className="btn btn--secondary" type="button">
-                Send a virtual coffee instead
+            </form>
+
+            <div className="card card--flush">
+              <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
+                <div className="card__title">For you</div>
+                <div className="card__sub">
+                  {received.length === 0
+                    ? 'Nothing yet'
+                    : 'Things colleagues have sent you'}
+                </div>
+              </div>
+              {received.length > 0 && (
+                <div className="feed">
+                  {received.map((a) => (
+                    <article className="feed__item" key={a.id}>
+                      <div className="avatar" aria-hidden="true">
+                        ♥
+                      </div>
+                      <div className="grow">
+                        <div className="row row--between">
+                          <span className="feed__name">A colleague</span>
+                          <span className="feed__time">
+                            {new Date(a.created_at).toLocaleDateString('en-GB', {
+                              day: 'numeric',
+                              month: 'short',
+                            })}
+                          </span>
+                        </div>
+                        <p className="feed__text">{a.message}</p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="stack">
+            <form className="card card--accent" onSubmit={sendSupport}>
+              <div className="card__title mb-2">Ask for support</div>
+              <p className="card__sub mb-4">
+                A private route to HR or an external service
+              </p>
+
+              {supportError && (
+                <div className="banner banner--error mb-4" role="alert">
+                  {supportError}
+                </div>
+              )}
+
+              <div className="field">
+                <label className="field__label" htmlFor="msg">
+                  What would help?
+                </label>
+                <textarea
+                  className="textarea"
+                  id="msg"
+                  value={body}
+                  placeholder="Only the person you send this to will read it."
+                  onChange={(e) => setBody(e.target.value)}
+                />
+              </div>
+
+              <div className="field mt-4">
+                <label className="field__label" htmlFor="to-route">
+                  Send to
+                </label>
+                <select
+                  className="select"
+                  id="to-route"
+                  value={route}
+                  onChange={(e) => setRoute(e.target.value as 'hr' | 'eap')}
+                >
+                  <option value="hr">HR at your organisation</option>
+                  <option value="eap">
+                    Employee assistance programme (external)
+                  </option>
+                </select>
+                <span className="field__hint">
+                  {route === 'hr'
+                    ? 'HR will see this until you withdraw it.'
+                    : 'HR never sees requests sent externally.'}
+                </span>
+              </div>
+
+              <button className="btn btn--primary btn--block mt-4" type="submit">
+                Send privately
               </button>
-            </div>
-          </div>
+              <p className="field__hint mt-3">Your manager is not copied.</p>
+            </form>
 
-          <div className="card card--flush">
-            <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-              <div className="card__title">For you</div>
-              <div className="card__sub">Things colleagues have sent you</div>
-            </div>
-            <div className="feed">
-              {FEED.map((f) => (
-                <article className="feed__item" key={f.from}>
-                  <div className="avatar">{f.initials}</div>
-                  <div className="grow">
-                    <div className="row row--between">
-                      <span className="feed__name">{f.from}</span>
-                      <span className="feed__time">{f.time}</span>
+            {open.length > 0 && (
+              <div className="card">
+                <div className="card__title mb-3">Your open requests</div>
+                <div className="stack stack--tight">
+                  {open.map((r) => (
+                    <div key={r.id}>
+                      <div className="row row--between">
+                        <span className="chip">
+                          {r.route === 'hr' ? 'To HR' : 'To the EAP'}
+                        </span>
+                        <button
+                          className="btn btn--ghost btn--sm"
+                          type="button"
+                          onClick={() => withdraw(r.id)}
+                        >
+                          Withdraw
+                        </button>
+                      </div>
+                      <p className="t-subtle mt-2">{r.body}</p>
                     </div>
-                    <p className="feed__text">{f.text}</p>
-                    <div className="row mt-3">
-                      <button className="btn btn--ghost btn--sm" type="button">
-                        Say thanks
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
+                  ))}
+                </div>
+                <p className="field__hint mt-4">
+                  Withdrawing takes it back out of HR&rsquo;s view entirely.
+                </p>
+              </div>
+            )}
           </div>
         </div>
-
-        <div className="stack">
-          <div className="card">
-            <div className="card__title mb-2">Virtual coffee</div>
-            <p className="card__sub mb-4">Occasional pairing suggestions</p>
-            <ToggleRow
-              title="Suggest a pairing now and then"
-              desc="Decline any of them without a word to anyone"
-            />
-          </div>
-
-          <div className="card card--accent">
-            <div className="card__title mb-2">Ask for support</div>
-            <p className="card__sub mb-4">
-              A private route to HR or an external EAP
-            </p>
-            <div className="field">
-              <label className="field__label" htmlFor="msg">
-                What would help?
-              </label>
-              <textarea
-                className="textarea"
-                id="msg"
-                placeholder="Only the person you send this to will read it."
-              />
-            </div>
-            <div className="field mt-4">
-              <label className="field__label" htmlFor="to">
-                Send to
-              </label>
-              <select className="select" id="to" defaultValue="HR">
-                <option>HR — Wilson Dayrit</option>
-                <option>Employee assistance programme (external)</option>
-              </select>
-            </div>
-            <button className="btn btn--primary btn--block mt-4" type="button">
-              Send privately
-            </button>
-            <p className="field__hint mt-3">Your manager is not copied.</p>
-          </div>
-        </div>
-      </div>
+      )}
     </Shell>
   )
 }

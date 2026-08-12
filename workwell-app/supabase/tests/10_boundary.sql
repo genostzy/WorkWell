@@ -1,74 +1,80 @@
+-- The boundary, asserted as it actually stands.
+--
+-- This file used to assert that no API role held any grant inside private,
+-- work or org_agg. That was true while those schemas were empty and became
+-- false the moment an employee needed to read their own check-ins. Schema
+-- closure was always a proxy; the real guarantee is that every table in
+-- those schemas is governed by RLS, and that the per-table tests
+-- (11_private_plane, 12_planes, 13_slice_f) prove who can read what.
+--
+-- What is asserted here is the structural floor: nothing in a plane schema
+-- is ungoverned, and no view can bypass the policies.
 begin;
-select plan(7);
+select plan(8);
 
--- Two orgs, one person each, to prove tenancy holds.
+create temp table res(i int, r text) on commit drop;
+grant all on res to authenticated;
+
 insert into identity.orgs (id, name) values
   ('c0000000-0000-0000-0000-00000000000a', 'Org A'),
   ('c0000000-0000-0000-0000-00000000000b', 'Org B');
 
 insert into auth.users (id, email) values
   ('d0000000-0000-0000-0000-00000000000a', 'a@orga.example'),
-  ('d0000000-0000-0000-0000-00000000000b', 'b@orgb.example'),
   ('d0000000-0000-0000-0000-0000000000ff', 'orphan@nowhere.example');
 
 insert into identity.people (org_id, auth_user_id, email, full_name, status) values
   ('c0000000-0000-0000-0000-00000000000a',
    'd0000000-0000-0000-0000-00000000000a', 'a@orga.example', 'Person A', 'active'),
   ('c0000000-0000-0000-0000-00000000000b',
-   'd0000000-0000-0000-0000-00000000000b', 'b@orgb.example', 'Person B', 'active');
+   null, 'b@orgb.example', 'Person B', 'invited');
 
--- Cross-org isolation.
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"d0000000-0000-0000-0000-00000000000a"}';
 
-select is((select count(*)::int from identity.people), 1,
-          'a person sees only their own org');
-select is((select count(*)::int from identity.orgs), 1,
-          'a person sees only their own org row');
+insert into res select 1, is((select count(*)::int from identity.people), 1,
+  'a person sees only their own org');
+insert into res select 2, is((select count(*)::int from identity.orgs), 1,
+  'a person sees only their own org row');
 
--- The orphan: an auth user with no invitation.
 set local request.jwt.claims = '{"sub":"d0000000-0000-0000-0000-0000000000ff"}';
 
-select is(identity.current_person_id(), null,
-          'an uninvited account resolves to no person');
-select is((select count(*)::int from identity.people), 0,
-          'an uninvited account sees no people');
+insert into res select 3, is(identity.current_person_id(), null,
+  'an uninvited account resolves to no person');
+insert into res select 4, is((select count(*)::int from identity.people), 0,
+  'an uninvited account sees no people');
 
 reset role;
 
--- The private, work and org_agg schemas stay shut, checked at two levels
--- because they bite at different times.
---
--- Schema level: meaningful right now. Without usage on the schema, no API
--- role can reach anything inside it regardless of table grants.
-select ok(
-  not has_schema_privilege('authenticated', 'private', 'usage')
-  and not has_schema_privilege('anon',          'private', 'usage')
-  and not has_schema_privilege('authenticated', 'work',    'usage')
-  and not has_schema_privilege('anon',          'work',    'usage')
-  and not has_schema_privilege('authenticated', 'org_agg', 'usage')
-  and not has_schema_privilege('anon',          'org_agg', 'usage'),
-  'no API role can enter private, work or org_agg'
-);
-
--- Table level: vacuous while these schemas are empty, because
--- role_table_grants only lists real tables. It is here so that the moment
--- a later slice adds its first table, a stray grant on it fails this
--- suite rather than shipping.
-select is(
-  (select count(*)::int
-     from information_schema.role_table_grants
-    where table_schema in ('private','work','org_agg')
-      and grantee in ('anon','authenticated')),
+-- The structural floor. Every table in a plane schema is governed, so a
+-- table added without RLS fails here rather than shipping open.
+insert into res select 5, is(
+  (select count(*)::int from pg_class c
+     join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname in ('private','work','org_agg')
+      and c.relkind = 'r'
+      and not c.relrowsecurity),
   0,
-  'no API role holds any grant inside private, work or org_agg'
-);
+  'every table in private, work and org_agg has RLS enabled');
 
--- A Postgres view is security definer by default. One added to public
--- without security_invoker runs as its owner and returns every row,
--- bypassing every policy in this schema. Written as a scan of all public
--- views so a view added later is covered without editing this test.
-select is(
+-- RLS on with no policy denies everything, which is safe but is almost
+-- always an oversight rather than a decision.
+insert into res select 6, is(
+  (select count(*)::int from pg_class c
+     join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname in ('private','work','org_agg')
+      and c.relkind = 'r'
+      and c.relrowsecurity
+      and not exists (
+        select 1 from pg_policies p
+         where p.schemaname = n.nspname and p.tablename = c.relname)),
+  0,
+  'every governed table actually carries a policy');
+
+-- A view is security definer by default. One added to public without
+-- security_invoker runs as its owner and returns every row, bypassing
+-- every policy above it.
+insert into res select 7, is(
   (select count(*)::int from pg_class c
      join pg_namespace n on n.oid = c.relnamespace
     where n.nspname = 'public'
@@ -76,8 +82,17 @@ select is(
       and array_to_string(coalesce(c.reloptions, '{}'::text[]), ',')
           !~ 'security_invoker=(true|on)'),
   0,
-  'every view in public sets security_invoker'
-);
+  'every view in public sets security_invoker');
 
-select * from finish();
+-- The aggregation routine reads check-ins in bulk. No HTTP-reachable role
+-- may ever be able to call it.
+insert into res select 8, ok(
+  not has_function_privilege('authenticated', 'org_agg.refresh(int)', 'execute')
+  and not has_function_privilege('anon', 'org_agg.refresh(int)', 'execute'),
+  'no API role can execute the aggregation routine');
+
+select count(*) as total,
+       count(*) filter (where r like 'not ok%') as failures,
+       coalesce(string_agg(r, ' | ' order by i) filter (where r like 'not ok%'), 'ALL PASS') as detail
+from res;
 rollback;

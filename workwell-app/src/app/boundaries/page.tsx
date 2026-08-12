@@ -1,16 +1,44 @@
+'use client'
+
 import { PageHead, PlaneBadge, PrivacyNote, Shell } from '@/components/chrome'
-import { PreviewNotice, Segmented, ToggleRow } from '@/components/preview'
+import { SaveState, ToggleRow } from '@/components/controls'
+import { usePrefs } from '@/lib/use-prefs'
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
-/** Boundary assistant — PRD F4. A user-defined working window, delayed
- *  sending, and focus protection.
+const DEFAULTS = {
+  quiet_from: '18:30:00',
+  quiet_to: '08:30:00',
+  quiet_days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as string[],
+  delayed_sending: true,
+  hold_morning: false,
+  protect_lunch: false,
+  no_late_meetings: false,
+}
+
+/** Boundary assistant — PRD F4.
  *
- *  The PRD is unusually firm about this one: no after-hours record reaches
- *  the employer, ever. An activity log is precisely the liability that
- *  right-to-disconnect law is aimed at, so the honest design is not to
- *  collect it. */
+ *  The PRD is firm about this one: no after-hours record reaches the
+ *  employer, ever. An activity log is precisely the liability that
+ *  right-to-disconnect law targets, so the honest design is not to collect
+ *  it — which is why there is no "hours worked" figure anywhere here, not
+ *  even for the person themselves. */
 export default function Boundaries() {
+  const { value, update, loading, saving, error } = usePrefs(
+    'boundaries',
+    DEFAULTS
+  )
+
+  const days = value.quiet_days ?? []
+
+  function toggleDay(d: string) {
+    const next = days.includes(d) ? days.filter((x) => x !== d) : [...days, d]
+    update({ quiet_days: next })
+  }
+
+  // <input type="time"> wants HH:MM; Postgres hands back HH:MM:SS.
+  const hhmm = (t: string) => (t ?? '').slice(0, 5)
+
   return (
     <Shell plane="private">
       <PageHead
@@ -19,135 +47,126 @@ export default function Boundaries() {
       />
 
       <PlaneBadge plane="private" />
-      <PreviewNotice what="setting your hours" />
 
-      <PrivacyNote detail="Your working window, the messages held back, and when you were active are not visible to your employer in any form — not as a name, not as a total, not as a group average. An after-hours activity log is the exact record that creates legal exposure, so it is not kept.">
+      <PrivacyNote detail="Your working window and the messages held back are not visible to your employer in any form — not as a name, not as a total, not as a group average. No record of when you were active is kept at all, because that record is the exact thing that creates legal exposure.">
         <b>This is never employer-facing.</b>{' '}
       </PrivacyNote>
 
-      <div className="card">
-        <div className="card__head">
-          <div>
-            <div className="card__title">Quiet hours</div>
-            <div className="card__sub">
-              When you&rsquo;d rather not be pulled back into work
-            </div>
-          </div>
-        </div>
-
-        <div className="row mt-4" style={{ gap: 'var(--s-4)' }}>
-          <div className="field" style={{ flex: 1, minWidth: 130 }}>
-            <label className="field__label" htmlFor="qs">
-              From
-            </label>
-            <input className="input" id="qs" defaultValue="6:30 pm" readOnly />
-          </div>
-          <div className="field" style={{ flex: 1, minWidth: 130 }}>
-            <label className="field__label" htmlFor="qe">
-              Until
-            </label>
-            <input className="input" id="qe" defaultValue="8:30 am" readOnly />
-          </div>
-        </div>
-
-        <p className="field__label mt-4">Days this applies</p>
-        <div className="row" style={{ gap: 'var(--s-2)' }}>
-          {DAYS.map((d) => (
-            <button
-              key={d}
-              className={
-                d === 'Sat' || d === 'Sun'
-                  ? 'btn btn--ghost btn--sm'
-                  : 'btn btn--secondary btn--sm'
-              }
-              type="button"
-            >
-              {d}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid grid--2">
+      {loading ? (
         <div className="card">
-          <div className="card__title mb-2">Delayed sending</div>
-          <p className="card__sub mb-4">
-            Write when it suits you, deliver when it suits them
-          </p>
-
-          <div className="nudge">
-            <div className="nudge__icon" aria-hidden="true">
-              🌙
-            </div>
-            <div className="grow">
-              <div className="nudge__title">
-                It&rsquo;s 9:40 pm — send this in the morning?
-              </div>
-              <p className="nudge__text">
-                Sending at 9:00 am means nobody feels they must reply tonight.
-              </p>
-              <div className="nudge__actions">
-                <button className="btn btn--primary btn--sm" type="button">
-                  Schedule for 9:00 am
-                </button>
-                <button className="btn btn--secondary btn--sm" type="button">
-                  Send now anyway
-                </button>
+          <div className="skel skel--title" />
+          <div className="skel skel--text" />
+        </div>
+      ) : (
+        <>
+          <div className="card">
+            <div className="card__head">
+              <div>
+                <div className="card__title">Quiet hours</div>
+                <div className="card__sub">
+                  When you&rsquo;d rather not be pulled back into work
+                </div>
               </div>
             </div>
-          </div>
-        </div>
 
-        <div className="card card--flush">
-          <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-            <div className="card__title">Queued to send</div>
-            <div className="card__sub">Two messages waiting for 9:00 am</div>
-          </div>
-          <div className="stack stack--tight" style={{ padding: '0 var(--s-5)' }}>
-            <div className="row row--between">
-              <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 600 }}>
-                To #platform-team
-              </span>
-              <span className="chip">9:00 am</span>
+            <div className="row mt-4" style={{ gap: 'var(--s-4)' }}>
+              <div className="field" style={{ flex: 1, minWidth: 130 }}>
+                <label className="field__label" htmlFor="qs">
+                  From
+                </label>
+                <input
+                  className="input"
+                  id="qs"
+                  type="time"
+                  value={hhmm(value.quiet_from)}
+                  onChange={(e) =>
+                    update({ quiet_from: `${e.target.value}:00` })
+                  }
+                />
+              </div>
+              <div className="field" style={{ flex: 1, minWidth: 130 }}>
+                <label className="field__label" htmlFor="qe">
+                  Until
+                </label>
+                <input
+                  className="input"
+                  id="qe"
+                  type="time"
+                  value={hhmm(value.quiet_to)}
+                  onChange={(e) => update({ quiet_to: `${e.target.value}:00` })}
+                />
+              </div>
             </div>
-            <div className="row row--between">
-              <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 600 }}>
-                Reply to Priya N.
-              </span>
-              <span className="chip">9:00 am</span>
-            </div>
-          </div>
-          <div className="card__foot">
-            <button className="btn btn--ghost btn--sm" type="button">
-              Send all now
-            </button>
-          </div>
-        </div>
-      </div>
 
-      <div className="card">
-        <div className="card__title mb-2">Focus protection</div>
-        <p className="card__sub mb-4">
-          Holds blocks in your calendar so meetings can&rsquo;t fill everything
-        </p>
-        <div className="stack stack--tight">
-          <ToggleRow
-            title="Hold two hours each morning"
-            desc="Marked busy, no detail shared"
-            on
-          />
-          <ToggleRow title="Protect lunch" desc="Every weekday" on />
-          <ToggleRow title="No meetings after quiet hours start" />
-        </div>
-        <div className="mt-5">
-          <p className="field__label">Notification density</p>
-          <Segmented
-            label="Notification density"
-            options={['Compact', 'Comfortable', 'Spacious']}
-            active="Comfortable"
-          />
-        </div>
-      </div>
+            <p className="field__label mt-4">Days this applies</p>
+            <div className="row" style={{ gap: 'var(--s-2)' }}>
+              {DAYS.map((d) => (
+                <button
+                  key={d}
+                  className={
+                    days.includes(d)
+                      ? 'btn btn--secondary btn--sm'
+                      : 'btn btn--ghost btn--sm'
+                  }
+                  aria-pressed={days.includes(d)}
+                  type="button"
+                  onClick={() => toggleDay(d)}
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+
+            <SaveState saving={saving} error={error} />
+          </div>
+
+          <div className="card">
+            <div className="card__title mb-2">Delayed sending</div>
+            <p className="card__sub mb-4">
+              Write when it suits you, deliver when it suits them
+            </p>
+            <div className="stack stack--tight">
+              <ToggleRow
+                title="Hold messages written during quiet hours"
+                desc="They go out when your working window opens"
+                on={value.delayed_sending}
+                onChange={(delayed_sending) => update({ delayed_sending })}
+              />
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card__title mb-2">Focus protection</div>
+            <p className="card__sub mb-4">
+              Holds blocks in your calendar so meetings can&rsquo;t fill
+              everything
+            </p>
+            <div className="stack stack--tight">
+              <ToggleRow
+                title="Hold two hours each morning"
+                desc="Marked busy, with no detail shared"
+                on={value.hold_morning}
+                onChange={(hold_morning) => update({ hold_morning })}
+              />
+              <ToggleRow
+                title="Protect lunch"
+                desc="Every weekday"
+                on={value.protect_lunch}
+                onChange={(protect_lunch) => update({ protect_lunch })}
+              />
+              <ToggleRow
+                title="No meetings after quiet hours start"
+                on={value.no_late_meetings}
+                onChange={(no_late_meetings) => update({ no_late_meetings })}
+              />
+            </div>
+            <p className="field__hint mt-4">
+              Calendar holds need a calendar connection, which is not built.
+              These settings are stored and will apply when it is.
+            </p>
+          </div>
+        </>
+      )}
     </Shell>
   )
 }
