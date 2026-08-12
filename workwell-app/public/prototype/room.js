@@ -132,7 +132,16 @@ function spotLocked(s, inner, tx, ty, why) {
  */
 function roomSVG(opts) {
   const o = opts || {};
-  const isHr = o.role === 'hr';
+
+  /* Two independent capabilities, not one exclusive role.
+     `role` is the prototype's shorthand, from a sign-in that picked one demo
+     persona or the other, so nobody was ever both. Real accounts are: an HR
+     leader is also an employee and holds a private plane of their own. The
+     database has always agreed — every private-plane policy reads
+     person_id = current_person_id(), with no exception for the hr role.
+     Passing role alone still behaves exactly as before. */
+  const own = o.own !== undefined ? o.own : o.role !== 'hr';
+  const org = o.org !== undefined ? o.org : o.role === 'hr';
 
   /* --- desk (trends) --- */
   const desk = `
@@ -227,7 +236,7 @@ function roomSVG(opts) {
      employee floor is not drawn as furniture they cannot use — it is drawn
      as a sealed area, because an HR leader has no business seeing whose desk
      is whose. The wall is the point. */
-  const employeeFloor = isHr ? `
+  const employeeFloor = !own ? `
     <g class="sealed" aria-hidden="true">
       <rect class="sealed__fill" x="52" y="52" width="546" height="616" rx="16"/>
       <g transform="translate(325 330)">
@@ -259,19 +268,19 @@ function roomSVG(opts) {
     <rect class="floor" x="24" y="24" width="952" height="672" rx="22"/>
     <rect class="wall"  x="24" y="24" width="952" height="672" rx="22"/>
 
-    ${isHr ? '' : '<rect class="rug" x="360" y="300" width="230" height="150" rx="16"/>'}
+    ${own ? '<rect class="rug" x="360" y="300" width="230" height="150" rx="16"/>' : ''}
 
     <!-- meeting room partition, with its doorway gap -->
     <path class="wall-inner" d="M626 24 L626 270 L700 270 M772 270 L976 270"/>
 
     <!-- badge reader beside the meeting room door -->
-    <rect class="reader ${isHr ? 'is-open' : ''}" x="778" y="278" width="14" height="24" rx="4"/>
+    <rect class="reader ${org ? 'is-open' : ''}" x="778" y="278" width="14" height="24" rx="4"/>
 
     ${employeeFloor}
 
-    ${isHr ? spotOpen(by('files'), files, 784, 556) : ''}
+    ${org ? spotOpen(by('files'), files, 784, 556) : ''}
 
-    ${isHr
+    ${org
       ? spotOpen(by('meeting'), meeting, 812, 250)
       : spotLocked(by('meeting'), meeting, 812, 250,
           'Your account cannot open this room. It holds group data only.')}
@@ -343,18 +352,21 @@ function wireRoom(container, opts) {
  * `locked` mirrors the room's own gate — before sign-in these must not be
  * live links, or the list becomes a way around the front door.
  */
-function roomList(role, locked) {
-  const isHr = role === 'hr';
+function roomList(role, locked, opts) {
+  const o = opts || {};
+  const own = o.own !== undefined ? o.own : role !== 'hr';
+  const org = o.org !== undefined ? o.org : role === 'hr';
 
-  // An organisation account has exactly one destination. The private plane is
-  // not listed as locked — it is not theirs to know the shape of.
-  const visible = SPOTS.filter((s) => (isHr ? s.plane === 'org' : true));
+  // Organisation destinations are always listed, open or locked, because a
+  // closed door is information. A private one is listed only to whoever
+  // holds that plane — it is not anyone else's to know the shape of.
+  const visible = SPOTS.filter((s) => (s.plane === 'org' ? true : own));
 
   const items = visible.map((base) => {
     const s = (base.altWhen && base.altWhen())
       ? Object.assign({}, base, { href: base.altHref, sub: base.altSub })
       : base;
-    const open = (isHr ? s.plane === 'org' : s.plane === 'private') && !locked;
+    const open = (s.plane === 'org' ? org : own) && !locked;
     if (open) {
       return `<li><a class="roomlist__item" href="${s.href}">
            <span class="roomlist__label">${s.label}</span>
@@ -366,7 +378,7 @@ function roomList(role, locked) {
            <span class="roomlist__sub">${why}</span></span></li>`;
   }).join('');
 
-  const note = isHr && !locked
+  const note = org && !own && !locked
     ? `<li><span class="roomlist__item is-locked" aria-disabled="true">
          <span class="roomlist__label">Private plane</span>
          <span class="roomlist__sub">Employees only — sealed from your account</span>

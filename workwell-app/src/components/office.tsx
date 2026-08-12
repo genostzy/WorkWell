@@ -28,8 +28,17 @@ declare global {
   interface Window {
     WW?: {
       room?: {
-        roomSVG: (o: { role: string; minutes: number }) => string
-        roomList: (role: string, locked: boolean) => string
+        roomSVG: (o: {
+          role?: string
+          minutes: number
+          own?: boolean
+          org?: boolean
+        }) => string
+        roomList: (
+          role: string,
+          locked: boolean,
+          caps?: { own?: boolean; org?: boolean }
+        ) => string
         nowMinutes: () => number
         phaseAt: (m: number) => string
         formatTime: (m: number) => string
@@ -52,12 +61,21 @@ export function Office({ isHr, name }: { isHr: boolean; name: string }) {
     const WW = window.WW
     if (!WW?.room || !roomRef.current) return
 
-    const role = isHr ? 'hr' : 'employee'
     const minutes = WW.room.nowMinutes()
 
-    roomRef.current.innerHTML = WW.room.roomSVG({ role, minutes })
+    // Everyone signed in holds a private plane — an HR leader is an employee
+    // too, and their own check-ins are as unreadable to their employer as
+    // anyone else's. The org plane is the part the hr role adds, so the two
+    // are passed as separate capabilities rather than as one either/or role.
+    const caps = { own: true, org: isHr }
+
+    roomRef.current.innerHTML = WW.room.roomSVG({ minutes, ...caps })
     if (listRef.current) {
-      listRef.current.innerHTML = WW.room.roomList(role, false)
+      listRef.current.innerHTML = WW.room.roomList(
+        isHr ? 'hr' : 'employee',
+        false,
+        caps
+      )
     }
 
     setPhase(WW.room.phaseAt(minutes))
