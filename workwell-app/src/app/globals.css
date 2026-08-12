@@ -140,3 +140,42 @@
    an ordinary screen again — the symptom is a page that renders perfectly
    and shows nothing but background. */
 body.has-sky .app { position: relative; z-index: 1; }
+
+/* Room sizing.
+   The prototype set the plan's exact box in page-office.js so it filled the
+   stage without letterboxing. That sizing was not ported, so .room took its
+   full 1100px width and ran past the bottom of the viewport — the room read
+   as too big unless the browser was zoomed out.
+
+   Constraining .room with aspect-ratio did not work: max-height clamped the
+   height while the width stayed put, so the plan came out at ratio 1.69
+   against the SVG's own 1.39 and looked stretched. Letting the SVG size
+   itself is the fix — it has a viewBox and no width/height attributes, so
+   with width/height auto and both maxima set the browser scales it on its
+   intrinsic ratio and neither dimension can overrun.
+
+   86% is the "zoomed out" look: air around the plan rather than pressing
+   against the edges. */
+.room {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0 auto;
+}
+
+.room__svg {
+  width: auto;
+  height: auto;
+  max-width: min(100%, 940px);
+  max-height: 86%;
+  display: block;
+}
+
+.room-views.is-on[data-view-panel="room"] { gap: var(--s-3); }
+
+@media (max-width: 860px) {
+  .room__svg { max-height: 74%; }
+}

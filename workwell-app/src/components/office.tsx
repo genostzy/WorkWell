@@ -3,6 +3,7 @@
 import Script from 'next/script'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { SignOut } from '@/components/sign-out'
 
 /** The prototype's room is vendored unmodified from workwell-prototype, so
  *  it stays easy to re-sync. It still speaks in the prototype's filenames,
@@ -152,6 +153,7 @@ export function Office({ isHr, name }: { isHr: boolean; name: string }) {
               List
             </button>
           </div>
+          <SignOut compact />
         </header>
 
         <main className="room-stage">
