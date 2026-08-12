@@ -2,6 +2,8 @@
 
 import { PageHead, PlaneBadge, PrivacyNote, Shell } from '@/components/chrome'
 import { SaveState, ToggleRow } from '@/components/controls'
+import { useCallback, useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { usePrefs } from '@/lib/use-prefs'
 
 const DEFAULTS = {
@@ -26,11 +28,43 @@ const KINDS = [
  *  PRD refuses to optimise for acceptance, because a product that measures
  *  it becomes a product that nags. The cap is stored server-side so it is
  *  enforceable rather than a number the client agrees to respect. */
+type Delivered = { id: string; kind: string; action: string | null }
+
+const COPY: Record<string, { title: string; text: string }> = {
+  move: { title: 'Fancy a two-minute stretch?', text: 'A while at the desk now. Won’t fix a heavy week.' },
+  hydrate: { title: 'Water within reach?', text: 'Small thing, easy to miss.' },
+  breathe: { title: 'Two minutes before the next block?', text: 'Nothing to log, nothing to report.' },
+  step_away: { title: 'Long day — worth stopping?', text: 'The work will still be there tomorrow.' },
+}
+
 export default function Nudges() {
   const { value, update, loading, saving, error } = usePrefs(
     'nudge_prefs',
     DEFAULTS
   )
+  const [delivered, setDelivered] = useState<Delivered[]>([])
+
+  const loadDelivered = useCallback(async () => {
+    const supabase = createClient()
+    const today = new Date().toISOString().slice(0, 10)
+    const { data } = await supabase
+      .from('nudge_log')
+      .select('id, kind, action')
+      .eq('sent_on', today)
+    setDelivered(data ?? [])
+  }, [])
+
+  useEffect(() => {
+    loadDelivered()
+  }, [loadDelivered])
+
+  async function answer(id: string, action: string) {
+    const supabase = createClient()
+    await supabase.from('nudge_log').update({ action }).eq('id', id)
+    loadDelivered()
+  }
+
+  const open = delivered.filter((d) => d.action === null)
 
   const today = new Date().toISOString().slice(0, 10)
   const muted = value.muted_until != null && value.muted_until >= today
@@ -76,39 +110,63 @@ export default function Nudges() {
           <div className="card">
             <div className="card__head">
               <div>
-                <div className="card__title">Live example</div>
+                <div className="card__title">Waiting for you</div>
                 <div className="card__sub">
-                  What a nudge looks like when it arrives
+                  Delivered hourly during your working window
                 </div>
               </div>
               <span className="chip">{anyOn ? 'On' : 'All off'}</span>
             </div>
 
-            <div className="nudge mt-4">
-              <div className="nudge__icon" aria-hidden="true">
-                🧘
+            {open.length === 0 ? (
+              <p className="t-subtle mt-4">
+                {anyOn
+                  ? 'Nothing waiting. They arrive during your working window, up to the cap.'
+                  : 'Turn something on below and they will start arriving.'}
+              </p>
+            ) : (
+              <div className="stack mt-4">
+                {open.map((d) => (
+                  <div className="nudge" key={d.id}>
+                    <div className="nudge__icon" aria-hidden="true">
+                      🌿
+                    </div>
+                    <div className="grow">
+                      <div className="nudge__title">
+                        {COPY[d.kind]?.title ?? d.kind}
+                      </div>
+                      <p className="nudge__text">{COPY[d.kind]?.text}</p>
+                      <div className="nudge__actions">
+                        <button
+                          className="btn btn--primary btn--sm"
+                          type="button"
+                          onClick={() => answer(d.id, 'accepted')}
+                        >
+                          Okay
+                        </button>
+                        <button
+                          className="btn btn--secondary btn--sm"
+                          type="button"
+                          onClick={() => answer(d.id, 'snoozed')}
+                        >
+                          In 20 min
+                        </button>
+                        <button
+                          className="btn btn--ghost btn--sm"
+                          type="button"
+                          onClick={() => answer(d.id, 'dismissed')}
+                        >
+                          Not today
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="grow">
-                <div className="nudge__title">Fancy a two-minute stretch?</div>
-                <p className="nudge__text">
-                  At the desk since 1:15 pm. Won&rsquo;t fix a heavy week.
-                </p>
-                <div className="nudge__actions">
-                  <button className="btn btn--primary btn--sm" type="button">
-                    Okay
-                  </button>
-                  <button className="btn btn--secondary btn--sm" type="button">
-                    In 20 min
-                  </button>
-                  <button className="btn btn--ghost btn--sm" type="button">
-                    Not today
-                  </button>
-                </div>
-              </div>
-            </div>
+            )}
             <p className="field__hint mt-3">
-              An example, so you can see the shape of one. Delivery itself
-              needs a scheduler, which is not built.
+              What you answer is never counted or reported. It is recorded
+              only so the same one does not arrive twice.
             </p>
           </div>
 
@@ -162,7 +220,8 @@ export default function Nudges() {
               <div>
                 <div className="card__title">Daily cap</div>
                 <p className="card__sub">
-                  At most {value.daily_cap} a day. The cap is the point.
+                  {delivered.length} of at most {value.daily_cap} today. The cap
+                  is the point.
                 </p>
               </div>
               {!muted && (
