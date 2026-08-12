@@ -1,6 +1,5 @@
 'use client'
 
-import Script from 'next/script'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -30,6 +29,59 @@ import { PageHead, PlaneBadge, PrivacyNote, Shell } from '@/components/chrome'
  */
 
 type Key = 'mood' | 'energy' | 'pressure' | 'workload'
+
+/**
+ * These four have to execute in this order and nothing else enforces it.
+ *
+ * scales.js calls WW.defineScale at the top level, which dragscale.js
+ * defines; dragscale.js calls WW.onReady, which ready.js defines, and
+ * WW.icon, which icons.js defines. next/script's afterInteractive loads in
+ * parallel and guarantees no order between separate tags, so scales.js
+ * could — and did — run first, throw on an undefined defineScale, and
+ * register nothing. initDragScale then returns null against an empty
+ * registry and the step renders an empty box with no error in sight.
+ *
+ * Loading them by hand, in sequence, is what removes the race.
+ */
+const SCRIPTS = [
+  '/prototype/ready.js',
+  '/prototype/icons.js',
+  '/prototype/dragscale.js',
+  '/prototype/scales.js',
+]
+
+function loadInOrder(srcs: string[]) {
+  return srcs.reduce(
+    (chain, src) =>
+      chain.then(
+        () =>
+          new Promise<void>((resolve, reject) => {
+            const found = document.querySelector<HTMLScriptElement>(
+              `script[data-ww="${src}"]`
+            )
+            // Already there from an earlier visit to this screen.
+            if (found) {
+              if (found.dataset.done) return resolve()
+              found.addEventListener('load', () => resolve(), { once: true })
+              found.addEventListener('error', () => reject(new Error(src)), {
+                once: true,
+              })
+              return
+            }
+            const s = document.createElement('script')
+            s.src = src
+            s.dataset.ww = src
+            s.addEventListener('load', () => {
+              s.dataset.done = 'true'
+              resolve()
+            })
+            s.addEventListener('error', () => reject(new Error(src)))
+            document.head.append(s)
+          })
+      ),
+    Promise.resolve()
+  )
+}
 
 const STEPS: {
   key: Key
@@ -68,6 +120,15 @@ const STEPS: {
   },
 ]
 
+/** The same words scales.js labels each position with, so the fallback
+ *  below asks the question in the same language the drawings do. */
+const WORDS: Record<Key, string[]> = {
+  mood: ['', 'Low', 'Not great', 'OK', 'Good', 'Great'],
+  energy: ['', 'Empty', 'Low', 'Steady', 'Good', 'High'],
+  pressure: ['', 'Calm', 'Settled', 'Noticeable', 'High', 'Very high'],
+  workload: ['', 'Light', 'Manageable', 'About right', 'Heavy', 'Too much'],
+}
+
 type Answers = Record<Key, number | null>
 
 export default function CheckIn() {
@@ -89,6 +150,7 @@ export default function CheckIn() {
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [ready, setReady] = useState(false)
+  const [scalesFailed, setScalesFailed] = useState(false)
 
   /* ------------------------------------------------------------- Loading */
 
@@ -126,22 +188,50 @@ export default function CheckIn() {
      data-value at init and never again — and kept mounted for the life of
      the page, which is why the steps hide rather than unmount. */
 
-  const mountScales = useCallback(() => {
-    if (!window.WW?.initDragScale || !flowRef.current || loading) return
-
-    flowRef.current
-      .querySelectorAll<HTMLElement>('[data-scale]')
-      .forEach((el) => {
-        if (el.dataset.mounted) return
-        el.dataset.mounted = 'true'
-        window.WW!.initDragScale!(el)
-      })
-    setReady(true)
-  }, [loading])
-
   useEffect(() => {
-    mountScales()
-  }, [mountScales])
+    // Nothing to mount into until today's values are known: dragscale reads
+    // data-value once, at init, and never looks again.
+    if (loading) return
+
+    let cancelled = false
+
+    loadInOrder(SCRIPTS)
+      .then(() => {
+        if (cancelled || !flowRef.current) return
+
+        const init = window.WW?.initDragScale
+        if (!init) throw new Error('dragscale did not define initDragScale')
+
+        let built = 0
+        flowRef.current
+          .querySelectorAll<HTMLElement>('[data-scale]')
+          .forEach((el) => {
+            if (el.dataset.mounted) {
+              built += 1
+              return
+            }
+            // initDragScale returns null for a name it has no drawing for,
+            // which is the quiet failure that produced the empty step.
+            if (init(el)) {
+              el.dataset.mounted = 'true'
+              built += 1
+            }
+          })
+
+        if (built < STEPS.length) throw new Error('a scale has no drawing registered')
+        setReady(true)
+      })
+      .catch(() => {
+        // The drawings are how this screen is meant to be answered, but they
+        // are not the only way it can be. Fall back to the words rather than
+        // leave someone looking at an empty card.
+        if (!cancelled) setScalesFailed(true)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [loading])
 
   // One listener for all four: the event bubbles and carries its own name.
   useEffect(() => {
@@ -213,17 +303,6 @@ export default function CheckIn() {
 
   return (
     <Shell current="check-in">
-      {/* ready before dragscale: it calls WW.onReady the moment it loads.
-          icons before it too — the hint line under each scale asks for one. */}
-      <Script src="/prototype/ready.js" strategy="afterInteractive" />
-      <Script src="/prototype/icons.js" strategy="afterInteractive" />
-      <Script src="/prototype/dragscale.js" strategy="afterInteractive" />
-      <Script
-        src="/prototype/scales.js"
-        strategy="afterInteractive"
-        onReady={mountScales}
-      />
-
       <PageHead
         title="How’s today going?"
         lead="Four taps, ten seconds. Skip anything."
@@ -285,11 +364,35 @@ export default function CheckIn() {
             <h2 className="mb-2">{s.title}</h2>
             <p className="t-subtle mb-5">{s.lead}</p>
 
-            <div
-              data-scale={s.key}
-              data-value={answers[s.key] ?? s.fallback}
-              data-label={s.label}
-            />
+            {scalesFailed ? (
+              // Same question, same words, no drawing.
+              <div
+                className="segmented"
+                role="group"
+                aria-label={s.label}
+                style={{ flexWrap: 'wrap' }}
+              >
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    aria-pressed={answers[s.key] === n}
+                    onClick={() => {
+                      setAnswers((a) => ({ ...a, [s.key]: n }))
+                      setLabels((l) => ({ ...l, [s.key]: WORDS[s.key][n] }))
+                    }}
+                  >
+                    {WORDS[s.key][n]}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div
+                data-scale={s.key}
+                data-value={answers[s.key] ?? s.fallback}
+                data-label={s.label}
+              />
+            )}
 
             {s.key === 'workload' && (
               <div className="field mt-5">
