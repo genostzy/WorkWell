@@ -35,7 +35,7 @@ const ASKS: Record<Action, string> = {
   private: 'They keep their own private plane and lose the directory, leave decisions and group patterns.',
   close: 'They stop being able to open WorkWell. Their own check-ins are not deleted — they are theirs, and closing an account is not permission to destroy them.',
   reopen: 'They can open WorkWell again, with whatever access they had.',
-  reset: 'They get an email to set a new password. Their current one keeps working until they follow it. Nothing they have recorded is touched.',
+  reset: 'Their current password stops working immediately, and they choose a new one the next time they sign in. Nothing they have recorded is touched.',
 }
 
 function Confirm({
@@ -43,13 +43,13 @@ function Confirm({
   person,
   onCancel,
   onDone,
-  onSent,
+  onPassword,
 }: {
   action: Action
   person: Account
   onCancel: () => void
   onDone: () => void
-  onSent: () => void
+  onPassword: (password: string) => void
 }) {
   const router = useRouter()
   const [typed, setTyped] = useState('')
@@ -83,10 +83,10 @@ function Confirm({
       const body = await res.json().catch(() => ({}))
       setBusy(false)
       if (!res.ok) {
-        setError(body.error ?? 'The reset email could not be sent.')
+        setError(body.error ?? 'The password could not be reset.')
         return
       }
-      onSent()
+      onPassword(body.password)
       router.refresh()
       return
     }
@@ -161,7 +161,8 @@ function Confirm({
 
 function Manage({ person }: { person: Account }) {
   const [action, setAction] = useState<Action | null>(null)
-  const [sent, setSent] = useState(false)
+  const [password, setPassword] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   // You cannot change your own access or close your own account. The
   // database refuses both, so this is not the guard — it is the reason the
@@ -170,18 +171,39 @@ function Manage({ person }: { person: Account }) {
     return <span className="t-subtle">This is you</span>
   }
 
-  if (sent) {
+  if (password) {
     return (
       <div className="card card--accent mt-3" style={{ margin: 0 }}>
-        <div className="card__title mb-2">Reset email sent</div>
-        <p className="t-subtle">
-          {person.full_name} can follow it to set a new password.
+        <div className="card__title mb-2">New temporary password</div>
+        <div className="row" style={{ gap: 'var(--s-2)' }}>
+          <code className="input" style={{ flex: 1, letterSpacing: '0.04em' }}>
+            {password}
+          </code>
+          <button
+            className="btn btn--secondary btn--sm"
+            type="button"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(password)
+                setCopied(true)
+              } catch {
+                setCopied(false)
+              }
+            }}
+          >
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+        </div>
+        <p className="field__hint mt-3">
+          <b>Shown once.</b> {person.full_name} chooses their own the next
+          time they sign in.
         </p>
         <button
           className="btn btn--primary btn--sm mt-3"
           type="button"
           onClick={() => {
-            setSent(false)
+            setPassword(null)
+            setCopied(false)
             setAction(null)
           }}
         >
@@ -198,7 +220,7 @@ function Manage({ person }: { person: Account }) {
         person={person}
         onCancel={() => setAction(null)}
         onDone={() => setAction(null)}
-        onSent={() => setSent(true)}
+        onPassword={setPassword}
       />
     )
   }

@@ -33,12 +33,7 @@ export async function middleware(request: NextRequest) {
   // fetches before checking sits on a loading state forever when signed
   // out, and each new page would have to remember its own guard.
   const path = request.nextUrl.pathname
-  // /set-password is reachable with no session: an invite or reset link
-  // lands here carrying a token pair in the URL fragment, which never
-  // reaches the server, so there is nothing here yet for getClaims() to
-  // find. The page itself turns that fragment into a session client-side
-  // before it renders the form.
-  const isPublic = path === '/' || path.startsWith('/sign-in') || path === '/set-password'
+  const isPublic = path === '/' || path.startsWith('/sign-in')
 
   if (!data && !isPublic) {
     const url = request.nextUrl.clone()

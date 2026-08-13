@@ -28,3 +28,23 @@ export function createAdminClient() {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 }
+
+/**
+ * A password someone has to read off one screen and type into another.
+ *
+ * The alphabet leaves out the characters that get misread doing exactly
+ * that — O/0, I/l/1 — so a wrong first login means a wrong password rather
+ * than a wrong transcription. Grouped with a dash for the same reason.
+ *
+ * crypto.getRandomValues, not Math.random: this is a credential, however
+ * short-lived, and Math.random is predictable from previous outputs.
+ *
+ * The modulo is unbiased because 32 divides 256 exactly.
+ */
+export function generatePassword() {
+  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789abc'.slice(0, 32)
+  const bytes = new Uint8Array(10)
+  crypto.getRandomValues(bytes)
+  const chars = Array.from(bytes, (b) => alphabet[b % alphabet.length])
+  return `${chars.slice(0, 5).join('')}-${chars.slice(5).join('')}`
+}

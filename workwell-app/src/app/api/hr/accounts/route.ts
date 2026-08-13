@@ -1,9 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createAdminClient, generatePassword } from '@/lib/supabase/admin'
 
 /**
- * Creating an account, and resetting a password.
+ * Creating accounts, and resetting a password.
  *
  * Both need Supabase's Admin API, which needs the service-role key, which
  * bypasses every RLS policy we have. So the first thing this route does —
@@ -12,23 +12,29 @@ import { createAdminClient } from '@/lib/supabase/admin'
  * database functions below check `is_hr()` again on their own account. The
  * key is powerful enough that one gate in front of it is not enough.
  *
- * Nobody here ever sees or hands over a password. Account creation sends an
- * invite email; a reset sends a recovery email. Both links land the person
- * on /set-password, which is the only route in the app reachable without an
- * existing session — see middleware.ts. Supabase's own invite/recovery
- * verification does not support PKCE, so the session it grants arrives as
- * an access/refresh token pair in the URL fragment rather than a server-
- * exchangeable code; /set-password is what picks that up client-side.
+ * Nothing here logs a generated password. Each is returned once, in the
+ * response body, and never written down on this side.
  */
 
-type Body = {
-  action: 'create' | 'reset'
-  personId?: string
+type AccountInput = {
   email?: string
   fullName?: string
   jobTitle?: string
   department?: string
   isHr?: boolean
+}
+
+type AccountResult = {
+  email: string
+  fullName: string
+  password?: string
+  error?: string
+}
+
+type Body = {
+  action: 'create' | 'reset'
+  personId?: string
+  accounts?: AccountInput[]
 }
 
 function fail(message: string, status = 400) {
@@ -68,8 +74,6 @@ export async function POST(request: NextRequest) {
     return fail(e instanceof Error ? e.message : 'Admin access unavailable.', 500)
   }
 
-  const redirectTo = `${request.nextUrl.origin}/set-password`
-
   /* ------------------------------------------------------------- Reset */
 
   if (body.action === 'reset') {
@@ -82,92 +86,123 @@ export async function POST(request: NextRequest) {
     })
     if (error) return fail(error.message)
 
-    const { data: authUser, error: getError } = await admin.auth.admin.getUserById(
-      authId as string
+    const password = generatePassword()
+    const { error: updateError } = await admin.auth.admin.updateUserById(
+      authId as string,
+      { password }
     )
-    if (getError || !authUser.user.email) return fail('That account has no email on file.', 502)
-
     // The flag is already true at this point. That is the safe way round:
-    // an account flagged to change a password that did not get reset is a
-    // nuisance, where the reverse would be a changed password nobody was
-    // ever asked to replace.
-    const { error: sendError } = await admin.auth.resetPasswordForEmail(
-      authUser.user.email,
-      { redirectTo }
-    )
-    if (sendError) return fail(sendError.message, 502)
+    // an account flagged to change a password that did not change is a
+    // nuisance, where the reverse would be a changed password nobody is
+    // asked to replace.
+    if (updateError) return fail(updateError.message, 502)
 
-    return NextResponse.json({ email: authUser.user.email })
+    return NextResponse.json({ password })
   }
 
   /* ------------------------------------------------------------ Create */
 
   if (body.action !== 'create') return fail('Unknown action.')
 
-  const email = (body.email ?? '').trim().toLowerCase()
-  const fullName = (body.fullName ?? '').trim()
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-    return fail('That does not look like an email address.')
-  if (!fullName) return fail('A name is required.')
+  const accounts = Array.isArray(body.accounts) ? body.accounts : []
+  if (accounts.length === 0) return fail('Add at least one account.')
 
-  const { data: created, error: createError } = await admin.auth.admin.inviteUserByEmail(
-    email,
-    { redirectTo, data: { full_name: fullName } }
-  )
+  // One bad row should not sink the rest of the batch — HR typing ten
+  // people and having a typo in row 4 lose rows 5 through 10 too would be
+  // a worse experience than a form that fails per-row and keeps going.
+  const results: AccountResult[] = []
 
-  let authUserId = created?.user?.id ?? null
+  for (const raw of accounts) {
+    const email = (raw.email ?? '').trim().toLowerCase()
+    const fullName = (raw.fullName ?? '').trim()
 
-  if (createError) {
-    // An address can already have an auth account without having access —
-    // anyone who signed in under the old magic-link flow has one, and so
-    // does anyone HR is re-inviting after they lost the first email. That is
-    // a reason to send them a fresh link, not to refuse: refusing would
-    // leave those people permanently un-addable while their email looks
-    // free in the directory.
-    const alreadyExists =
-      createError.status === 422 ||
-      /already (been )?registered|already exists/i.test(createError.message)
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      results.push({ email: raw.email ?? '', fullName, error: 'Not a valid email address.' })
+      continue
+    }
+    if (!fullName) {
+      results.push({ email, fullName, error: 'A name is required.' })
+      continue
+    }
 
-    if (!alreadyExists) return fail(createError.message, 502)
+    const password = generatePassword()
 
-    const { data: list, error: listError } = await admin.auth.admin.listUsers()
-    if (listError) return fail(listError.message, 502)
-
-    const existing = list.users.find(
-      (u) => (u.email ?? '').toLowerCase() === email
-    )
-    if (!existing)
-      return fail('That address is taken but its account could not be found.', 502)
-
-    const { error: sendError } = await admin.auth.resetPasswordForEmail(email, {
-      redirectTo,
+    // email_confirm: HR vouching for the address in person is the
+    // confirmation. There is no inbox round-trip in this flow to do it.
+    const { data: created, error: createError } = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
     })
-    if (sendError) return fail(sendError.message, 502)
-    authUserId = existing.id
+
+    let authUserId = created?.user?.id ?? null
+
+    if (createError) {
+      // An address can already have an auth account without having access —
+      // anyone invited under an earlier flow has one. That is a reason to
+      // adopt it, not to refuse: refusing would leave that person
+      // permanently un-addable while their email looks free in the
+      // directory.
+      const alreadyExists =
+        createError.status === 422 ||
+        /already (been )?registered|already exists/i.test(createError.message)
+
+      if (!alreadyExists) {
+        results.push({ email, fullName, error: createError.message })
+        continue
+      }
+
+      const { data: list, error: listError } = await admin.auth.admin.listUsers()
+      if (listError) {
+        results.push({ email, fullName, error: listError.message })
+        continue
+      }
+
+      const existing = list.users.find((u) => (u.email ?? '').toLowerCase() === email)
+      if (!existing) {
+        results.push({ email, fullName, error: 'That address is taken but its account could not be found.' })
+        continue
+      }
+
+      const { error: pwError } = await admin.auth.admin.updateUserById(existing.id, {
+        password,
+        email_confirm: true,
+      })
+      if (pwError) {
+        results.push({ email, fullName, error: pwError.message })
+        continue
+      }
+      authUserId = existing.id
+    }
+
+    if (!authUserId) {
+      results.push({ email, fullName, error: 'The account was not created.' })
+      continue
+    }
+
+    const { error: provisionError } = await supabase.rpc('provision_person', {
+      p_auth_user_id: authUserId,
+      p_full_name: fullName,
+      p_job_title: raw.jobTitle ?? null,
+      p_department: raw.department ?? null,
+      p_is_hr: raw.isHr ?? false,
+    })
+
+    if (provisionError) {
+      // The auth user exists but has no person record. That is the
+      // product's existing "signed in, no access" state rather than a new
+      // kind of broken, and it is recoverable: creating the account again
+      // adopts this same auth user by the branch above.
+      results.push({
+        email,
+        fullName,
+        error: `Signed in was created but not linked to a person: ${provisionError.message}. Creating it again will pick it up.`,
+      })
+      continue
+    }
+
+    results.push({ email, fullName, password })
   }
 
-  if (!authUserId) return fail('The account was not created.', 502)
-
-  const { error: provisionError } = await supabase.rpc('provision_person', {
-    p_auth_user_id: authUserId,
-    p_full_name: fullName,
-    p_job_title: body.jobTitle ?? null,
-    p_department: body.department ?? null,
-    p_is_hr: body.isHr ?? false,
-  })
-
-  if (provisionError) {
-    // The auth user exists but has no person record. That is the product's
-    // existing "signed in, no access" state rather than a new kind of
-    // broken, and it is recoverable: creating the account again adopts this
-    // same auth user by the branch above. Saying so beats a silent retry
-    // that could double-create.
-    return fail(
-      `The sign-in was created but the person record was not: ${provisionError.message}. ` +
-        'Creating the account again with the same email will pick it up.',
-      500
-    )
-  }
-
-  return NextResponse.json({ email })
+  return NextResponse.json({ results })
 }
