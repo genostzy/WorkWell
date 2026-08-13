@@ -46,7 +46,6 @@ export default async function Hr() {
     { data: people, error: peopleError },
     { data: employment },
     { data: leave, error: leaveError },
-    { data: requests },
   ] = await Promise.all([
     supabase.from('people').select('id, full_name, status').order('full_name'),
     supabase.from('employment').select('person_id, job_title, department'),
@@ -54,11 +53,6 @@ export default async function Hr() {
       .from('leave_requests')
       .select('id, person_id, kind, starts_on, ends_on, note, status')
       .order('created_at', { ascending: false }),
-    supabase
-      .from('access_requests')
-      .select('id, email, full_name, note, created_at, status')
-      .eq('status', 'pending')
-      .order('created_at'),
   ])
 
   // An empty directory and a directory that would not load look identical
@@ -94,22 +88,16 @@ export default async function Hr() {
         <b>Employment data only.</b>{' '}
       </PrivacyNote>
 
-      {/* Requests moved to Accounts, where the rest of the access decisions
-          are. Leaving a copy here would mean two screens racing to decide
-          the same request. */}
+      {/* Access decisions all live on Accounts. Two screens able to create
+          or change the same account is how one of them ends up stale. */}
       <div className="card">
         <div className="card__head">
           <div>
             <div className="card__title">Accounts &amp; access</div>
             <div className="card__sub">
-              {(requests ?? []).length > 0
-                ? `${(requests ?? []).length} waiting to be let in`
-                : 'Who can get in, and what they can open'}
+              Create accounts, and choose what each one can open
             </div>
           </div>
-          {(requests ?? []).length > 0 && (
-            <span className="chip chip--accent">{(requests ?? []).length}</span>
-          )}
         </div>
         <Link className="btn btn--secondary btn--sm mt-3" href="/hr/accounts">
           Manage accounts

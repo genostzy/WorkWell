@@ -7,7 +7,7 @@ import {
   PrivacyNote,
   Shell,
 } from '@/components/chrome'
-import { AccessRequests } from '../requests'
+import { CreateAccount } from './create'
 import { Accounts, type Account } from './manage'
 
 /**
@@ -56,16 +56,10 @@ export default async function AccountsPage() {
     // Every role row in the org, now that HR can read them. Before 0019 this
     // returned only the caller's own, so "who else is HR" was unanswerable.
     { data: allRoles, error: rolesError },
-    { data: requests },
   ] = await Promise.all([
     supabase.from('people').select('id, full_name, status').order('full_name'),
     supabase.from('employment').select('person_id, job_title, department'),
     supabase.from('person_roles').select('person_id, role'),
-    supabase
-      .from('access_requests')
-      .select('id, email, full_name, note, created_at, status')
-      .eq('status', 'pending')
-      .order('created_at'),
   ])
 
   // Roles matter more than most reads here: if that one fails and is treated
@@ -116,7 +110,7 @@ export default async function AccountsPage() {
         <b>Changing access never opens a private plane.</b>{' '}
       </PrivacyNote>
 
-      <AccessRequests requests={requests ?? []} />
+      <CreateAccount />
 
       <div className="grid grid--3 mb-5">
         <div className="stat">

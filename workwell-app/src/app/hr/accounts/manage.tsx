@@ -20,13 +20,14 @@ export type Account = {
  *  by a mis-click hands someone the whole directory, and closing an account
  *  by a mis-click locks a colleague out of their own week. Neither looks
  *  wrong afterwards, so neither gets a bare button. */
-type Action = 'hr' | 'private' | 'close' | 'reopen'
+type Action = 'hr' | 'private' | 'close' | 'reopen' | 'reset'
 
 const WORD: Record<Action, string> = {
   hr: 'hr',
   private: 'private',
   close: 'close',
   reopen: 'reopen',
+  reset: 'reset',
 }
 
 const ASKS: Record<Action, string> = {
@@ -34,6 +35,7 @@ const ASKS: Record<Action, string> = {
   private: 'They keep their own private plane and lose the directory, leave decisions and group patterns.',
   close: 'They stop being able to open WorkWell. Their own check-ins are not deleted — they are theirs, and closing an account is not permission to destroy them.',
   reopen: 'They can open WorkWell again, with whatever access they had.',
+  reset: 'Their current password stops working immediately, and they choose a new one the next time they sign in. Nothing they have recorded is touched.',
 }
 
 function Confirm({
@@ -41,11 +43,13 @@ function Confirm({
   person,
   onCancel,
   onDone,
+  onPassword,
 }: {
   action: Action
   person: Account
   onCancel: () => void
   onDone: () => void
+  onPassword: (password: string) => void
 }) {
   const router = useRouter()
   const [typed, setTyped] = useState('')
@@ -59,6 +63,33 @@ function Confirm({
     if (!ok) return
     setBusy(true)
     setError(null)
+
+    // A reset needs the Admin API, so it goes through the route that holds
+    // the service-role key rather than straight at the database like the
+    // other three.
+    if (action === 'reset') {
+      let res: Response
+      try {
+        res = await fetch('/api/hr/accounts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'reset', personId: person.id }),
+        })
+      } catch {
+        setBusy(false)
+        setError('Could not reach the server. Check your connection.')
+        return
+      }
+      const body = await res.json().catch(() => ({}))
+      setBusy(false)
+      if (!res.ok) {
+        setError(body.error ?? 'The password could not be reset.')
+        return
+      }
+      onPassword(body.password)
+      router.refresh()
+      return
+    }
 
     const supabase = createClient()
     const { error } =
@@ -130,12 +161,56 @@ function Confirm({
 
 function Manage({ person }: { person: Account }) {
   const [action, setAction] = useState<Action | null>(null)
+  const [password, setPassword] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   // You cannot change your own access or close your own account. The
   // database refuses both, so this is not the guard — it is the reason the
   // buttons are not there to press.
   if (person.isSelf) {
     return <span className="t-subtle">This is you</span>
+  }
+
+  if (password) {
+    return (
+      <div className="card card--accent mt-3" style={{ margin: 0 }}>
+        <div className="card__title mb-2">New temporary password</div>
+        <div className="row" style={{ gap: 'var(--s-2)' }}>
+          <code className="input" style={{ flex: 1, letterSpacing: '0.04em' }}>
+            {password}
+          </code>
+          <button
+            className="btn btn--secondary btn--sm"
+            type="button"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(password)
+                setCopied(true)
+              } catch {
+                setCopied(false)
+              }
+            }}
+          >
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+        </div>
+        <p className="field__hint mt-3">
+          <b>Shown once.</b> {person.full_name} chooses their own the next
+          time they sign in.
+        </p>
+        <button
+          className="btn btn--primary btn--sm mt-3"
+          type="button"
+          onClick={() => {
+            setPassword(null)
+            setCopied(false)
+            setAction(null)
+          }}
+        >
+          Done
+        </button>
+      </div>
+    )
   }
 
   if (action) {
@@ -145,6 +220,7 @@ function Manage({ person }: { person: Account }) {
         person={person}
         onCancel={() => setAction(null)}
         onDone={() => setAction(null)}
+        onPassword={setPassword}
       />
     )
   }
@@ -159,6 +235,13 @@ function Manage({ person }: { person: Account }) {
         onClick={() => setAction(person.isHr ? 'private' : 'hr')}
       >
         {person.isHr ? 'Remove HR access' : 'Give HR access'}
+      </button>
+      <button
+        className="btn btn--secondary btn--sm"
+        type="button"
+        onClick={() => setAction('reset')}
+      >
+        Reset password
       </button>
       <button
         className="btn btn--ghost btn--sm"

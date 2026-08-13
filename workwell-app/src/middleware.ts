@@ -33,8 +33,7 @@ export async function middleware(request: NextRequest) {
   // fetches before checking sits on a loading state forever when signed
   // out, and each new page would have to remember its own guard.
   const path = request.nextUrl.pathname
-  const isPublic =
-    path === '/' || path.startsWith('/sign-in') || path.startsWith('/auth')
+  const isPublic = path === '/' || path.startsWith('/sign-in')
 
   if (!data && !isPublic) {
     const url = request.nextUrl.clone()
@@ -42,6 +41,31 @@ export async function middleware(request: NextRequest) {
     // Come back to where they were headed once they are signed in.
     url.searchParams.set('next', path)
     return NextResponse.redirect(url)
+  }
+
+  // A password HR read out to someone is a handoff token, not a secret. It
+  // must not survive first contact, so an account still carrying the flag
+  // gets exactly one destination until it clears.
+  //
+  // The API route is exempt on purpose: it is how HR resets a password, and
+  // an HR account that was itself just reset must still be able to do that
+  // for whoever is locked out behind them. Its own HR check is the gate
+  // there, not this one.
+  if (data && !path.startsWith('/set-password') && !path.startsWith('/api/')) {
+    const { data: me } = await supabase
+      .from('me')
+      .select('must_change_password')
+      .maybeSingle()
+
+    // A read that failed is not a person who must change their password.
+    // Redirecting on a failed read would lock the whole app behind a screen
+    // that cannot succeed either, so only a definite `true` diverts.
+    if (me?.must_change_password === true) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/set-password'
+      url.search = ''
+      return NextResponse.redirect(url)
+    }
   }
 
   return response

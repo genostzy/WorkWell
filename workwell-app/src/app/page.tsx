@@ -2,7 +2,6 @@ import { createClient } from '@/lib/supabase/server'
 import { Office } from '@/components/office'
 import { SignInRoom } from '@/components/sign-in-room'
 import { Shell, PageHead } from '@/components/chrome'
-import { RequestAccess } from '@/components/request-access'
 
 export default async function Home() {
   const supabase = await createClient()
@@ -43,14 +42,28 @@ export default async function Home() {
     )
   }
 
+  // A sign-in with no person behind it. Under the old self-service flow this
+  // was the normal first visit, with a form to ask for access. Accounts are
+  // made by HR now, so there is nothing here for someone to do — the only
+  // honest thing is to say who can fix it. It still happens: an auth user
+  // left over from the magic-link era, or a creation that failed halfway.
   if (!me) {
     return (
       <Shell current="home">
-        <PageHead
-          title="You're signed in"
-          lead="An account is not access yet. Ask, and whoever runs WorkWell where you work decides."
-        />
-        <RequestAccess />
+        <PageHead title="You're signed in, but this account has no access" />
+        <div className="card">
+          <div className="state">
+            <div className="state__icon" aria-hidden="true">
+              🔑
+            </div>
+            <h2 className="state__title">Nothing is set up for you yet</h2>
+            <p className="state__text">
+              Accounts here are created by whoever runs WorkWell where you
+              work. Ask them to set yours up — there is nothing you can do
+              from this screen.
+            </p>
+          </div>
+        </div>
       </Shell>
     )
   }

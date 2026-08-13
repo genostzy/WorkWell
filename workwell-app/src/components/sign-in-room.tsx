@@ -15,35 +15,30 @@ import { hideSky, showSky } from '@/lib/sky'
  * plain list sits beside the room for anyone who cannot use the picture,
  * with its own way in — the room must never be the only door.
  *
- * The prototype signed in by picking a demo account. Here the same sheet
- * asks for an address and sends a real magic link, so the three steps are
- * ask, send, then wait for the mail.
+ * There is no sign-up. Accounts are made by HR, which is why the sheet asks
+ * for a password rather than emailing a link, and why an address it does not
+ * recognise is pointed at HR rather than offered a way to make one.
  */
 
-type Step = 'ask' | 'sending' | 'sent'
-type Mode = 'login' | 'signup'
-
 const REMEMBER = 'ww.email'
-const RESEND_SECONDS = 45
 
-/** Supabase's messages are written for developers. These are the ones a
- *  person at the door can actually act on.
+/**
+ * Supabase's messages are written for developers. These are the ones a
+ * person at the door can act on.
  *
- *  The one that matters is "signups not allowed for otp". On log in it does
- *  not mean signups are disabled — it is what shouldCreateUser: false
- *  returns for an address with no account, which is exactly the check log in
- *  is for. Passing that sentence through would send someone to ask IT about
- *  a setting when what they need is the Sign up tab. */
-function readable(message: string, mode: Mode): string {
+ * "Invalid login credentials" covers both a wrong password and an address
+ * with no account at all — deliberately, so the form cannot be used to
+ * discover who works here. The replacement has to stay just as vague while
+ * still saying what to do next.
+ */
+function readable(message: string): string {
   const m = message.toLowerCase()
   if (m.includes('rate limit') || /after \d+ seconds/.test(m))
-    return 'Too many requests just now. Give it a minute and try again.'
-  if (m.includes('signups not allowed') || m.includes('not authorized'))
-    return mode === 'login'
-      ? 'No WorkWell account for that address yet. Sign up instead — it takes the same email.'
-      : 'That address cannot be signed up here. Speak to whoever runs WorkWell where you work.'
-  if (m.includes('invalid') && m.includes('email'))
-    return 'That does not look like an email address.'
+    return 'Too many attempts just now. Give it a minute and try again.'
+  if (m.includes('invalid login credentials'))
+    return 'That email and password do not match an account. If you have never signed in, ask HR — they create the accounts here.'
+  if (m.includes('email not confirmed'))
+    return 'That account is not active yet. Ask whoever set it up.'
   return message
 }
 
@@ -52,7 +47,7 @@ export function SignInRoom({
   notice,
 }: {
   openOnLoad?: boolean
-  /** Something that went wrong before this page loaded — a dead link, say. */
+  /** Something that went wrong before this page loaded. */
   notice?: string
 }) {
   const roomRef = useRef<HTMLDivElement>(null)
@@ -62,11 +57,10 @@ export function SignInRoom({
 
   const [view, setView] = useState<'room' | 'list'>('room')
   const [open, setOpen] = useState(openOnLoad)
-  const [mode, setMode] = useState<Mode>('login')
-  const [step, setStep] = useState<Step>('ask')
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(notice ?? null)
-  const [cooldown, setCooldown] = useState(0)
 
   /* ------------------------------------------------------------- The room */
 
@@ -116,13 +110,9 @@ export function SignInRoom({
 
   /* ------------------------------------------------------------ The sheet */
 
-  const openSheet = useCallback((from?: Element | null, as?: Mode) => {
+  const openSheet = useCallback((from?: Element | null) => {
     doorRef.current = from ?? null
     setError(null)
-    if (as) setMode(as)
-    // Reopening after a sent link should ask again, not sit on someone
-    // else's confirmation screen.
-    setStep((s) => (s === 'sent' && as ? 'ask' : s === 'sending' ? 'ask' : s))
     setOpen(true)
   }, [])
 
@@ -139,73 +129,57 @@ export function SignInRoom({
 
   useEffect(() => {
     if (!open) return
-    if (step === 'ask') emailRef.current?.focus()
+    emailRef.current?.focus()
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeSheet()
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [open, step, closeSheet])
+  }, [open, closeSheet])
 
-  // Resending immediately does nothing useful — the first mail is usually
-  // still in flight — and Supabase refuses it anyway. Say how long instead
-  // of letting the button fail.
-  useEffect(() => {
-    if (cooldown <= 0) return
-    const id = window.setTimeout(() => setCooldown((c) => c - 1), 1000)
-    return () => window.clearTimeout(id)
-  }, [cooldown])
+  const signIn = useCallback(async (address: string, secret: string) => {
+    const clean = address.trim().toLowerCase()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) {
+      setError('That does not look like an email address.')
+      return
+    }
+    if (!secret) {
+      setError('Enter your password.')
+      return
+    }
 
-  const send = useCallback(
-    async (address: string, as: Mode) => {
-      const clean = address.trim().toLowerCase()
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) {
-        setError('That does not look like an email address.')
-        return
-      }
+    setError(null)
+    setBusy(true)
 
-      setError(null)
-      setStep('sending')
+    const supabase = createClient()
+    const { error } = await supabase.auth.signInWithPassword({
+      email: clean,
+      password: secret,
+    })
 
-      // `next` is read from the URL rather than with useSearchParams, which
-      // would make this page dynamic for something only needed at submit.
-      const next = new URLSearchParams(location.search).get('next')
-      const callback = new URL('/auth/callback', location.origin)
-      if (next) callback.searchParams.set('next', next)
+    if (error) {
+      setBusy(false)
+      setError(readable(error.message))
+      return
+    }
 
-      const supabase = createClient()
-      const { error } = await supabase.auth.signInWithOtp({
-        email: clean,
-        options: {
-          emailRedirectTo: callback.toString(),
-          // This one flag is the whole difference between the two doors.
-          // Log in refuses to create anything: only an address that already
-          // has an account — which, with magic links, means one that has
-          // proved it owns that inbox — gets a link at all. Without it, a
-          // typo in a work address quietly signs you up as a stranger and
-          // you sit forever in a queue nobody expects you in.
-          shouldCreateUser: as === 'signup',
-        },
-      })
+    try {
+      localStorage.setItem(REMEMBER, clean)
+    } catch {
+      // Private browsing again. Nothing to do.
+    }
 
-      if (error) {
-        setError(readable(error.message, as))
-        setStep('ask')
-        return
-      }
-
-      try {
-        localStorage.setItem(REMEMBER, clean)
-      } catch {
-        // Nothing to do; the address is still in state for this visit.
-      }
-      setEmail(clean)
-      setCooldown(RESEND_SECONDS)
-      setStep('sent')
-    },
-    []
-  )
+    // A full navigation rather than router.push: the session cookie was just
+    // set, and middleware has to see it to choose between the office and the
+    // set-password screen. `next` is read from the URL rather than with
+    // useSearchParams, which would make the page dynamic for something only
+    // needed at submit.
+    const next = new URLSearchParams(location.search).get('next')
+    const to =
+      next && next.startsWith('/') && !next.startsWith('//') ? next : '/'
+    window.location.assign(to)
+  }, [])
 
   /* ------------------------------------------------------------- Wiring */
 
@@ -264,22 +238,13 @@ export function SignInRoom({
               List
             </button>
           </div>
-          <div className="row" style={{ gap: 'var(--s-2)' }}>
-            <button
-              className="btn btn--ghost btn--sm"
-              type="button"
-              onClick={() => openSheet(null, 'signup')}
-            >
-              Sign up
-            </button>
-            <button
-              className="btn btn--primary btn--sm"
-              type="button"
-              onClick={() => openSheet(null, 'login')}
-            >
-              Log in
-            </button>
-          </div>
+          <button
+            className="btn btn--primary btn--sm"
+            type="button"
+            onClick={() => openSheet(null)}
+          >
+            Sign in
+          </button>
         </header>
 
         <main className="room-stage">
@@ -311,18 +276,11 @@ export function SignInRoom({
             </h1>
             <p className="t-subtle mb-4">Sign in at the front door first.</p>
             <button
-              className="btn btn--primary btn--block mb-2"
+              className="btn btn--primary btn--block mb-4"
               type="button"
-              onClick={() => openSheet(null, 'login')}
+              onClick={() => openSheet(null)}
             >
-              Log in
-            </button>
-            <button
-              className="btn btn--secondary btn--block mb-4"
-              type="button"
-              onClick={() => openSheet(null, 'signup')}
-            >
-              Sign up
+              Sign in
             </button>
             <div ref={listRef} />
           </div>
@@ -344,158 +302,89 @@ export function SignInRoom({
             style={{ maxWidth: 420 }}
           >
             <div className="auth__card" style={{ padding: 'var(--s-6)' }}>
-              {step === 'ask' && (
-                <>
-                  <div className="wordmark mb-5">
-                    <Wordmark size={34} />
-                  </div>
+              <div className="wordmark mb-5">
+                <Wordmark size={34} />
+              </div>
 
-                  {/* Both doors take an email and send a link, so the only
-                      thing telling them apart is which one is selected.
-                      Naming that in the control, rather than relying on the
-                      heading below it, is what stops someone signing up a
-                      second account when they meant to come back. */}
-                  <div
-                    className="segmented mb-5"
-                    role="group"
-                    aria-label="Log in or sign up"
-                    style={{ width: '100%' }}
-                  >
-                    <button
-                      type="button"
-                      aria-pressed={mode === 'login'}
-                      onClick={() => {
-                        setMode('login')
-                        setError(null)
-                      }}
-                      style={{ flex: 1 }}
-                    >
-                      Log in
-                    </button>
-                    <button
-                      type="button"
-                      aria-pressed={mode === 'signup'}
-                      onClick={() => {
-                        setMode('signup')
-                        setError(null)
-                      }}
-                      style={{ flex: 1 }}
-                    >
-                      Sign up
-                    </button>
-                  </div>
+              <h2 className="auth__title">Welcome back</h2>
+              <p className="auth__sub">
+                Sign in with the email and password your workplace gave you.
+              </p>
 
-                  <h2 className="auth__title">
-                    {mode === 'login' ? 'Welcome back' : 'Create an account'}
-                  </h2>
-                  <p className="auth__sub">
-                    {mode === 'login'
-                      ? 'We email a link to an address that already has an account. No password to remember, none to leak.'
-                      : 'Same as logging in — we email you a link. Then HR decides what you can open.'}
-                  </p>
-
-                  {error && (
-                    <div className="banner banner--error mb-4" role="alert">
-                      {error}
-                    </div>
-                  )}
-
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault()
-                      send(email, mode)
-                    }}
-                  >
-                    <div className="field">
-                      <label className="field__label" htmlFor="signin-email">
-                        Work email
-                      </label>
-                      <input
-                        className="input"
-                        id="signin-email"
-                        ref={emailRef}
-                        type="email"
-                        name="email"
-                        autoComplete="email"
-                        inputMode="email"
-                        enterKeyHint="send"
-                        spellCheck={false}
-                        placeholder="you@company.com"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                      />
-                    </div>
-                    <button
-                      className="btn btn--primary btn--block mt-4"
-                      type="submit"
-                    >
-                      {mode === 'login' ? 'Send me a link' : 'Sign me up'}
-                    </button>
-                  </form>
-
-                  <p className="auth__foot mt-4">
-                    🔒 What you record in WorkWell is yours. Your employer
-                    never sees it.
-                  </p>
-
-                  <button
-                    className="auth__alt"
-                    type="button"
-                    onClick={closeSheet}
-                  >
-                    Not now
-                  </button>
-                </>
-              )}
-
-              {step === 'sending' && (
-                <div className="state">
-                  <div className="auth__spinner" aria-hidden="true" />
-                  <p className="state__text" role="status">
-                    Sending your link…
-                  </p>
+              {error && (
+                <div className="banner banner--error mb-4" role="alert">
+                  {error}
                 </div>
               )}
 
-              {step === 'sent' && (
-                <div className="state state--info">
-                  <div className="state__icon" aria-hidden="true">
-                    ✉️
-                  </div>
-                  <h2 className="state__title">Check your email</h2>
-                  <p className="state__text" role="status">
-                    The link is on its way to <b>{email}</b>.{' '}
-                    {mode === 'login'
-                      ? 'Opening it brings you straight in.'
-                      : 'Opening it creates your account, and then you can ask HR for access.'}
-                  </p>
-                  <p className="t-subtle">
-                    Nothing yet? It can take a minute, and it sometimes lands
-                    in spam.
-                  </p>
-                  <div className="state__actions row">
-                    <button
-                      className="btn btn--secondary btn--sm"
-                      type="button"
-                      disabled={cooldown > 0}
-                      onClick={() => send(email, mode)}
-                    >
-                      {cooldown > 0 ? `Send again in ${cooldown}s` : 'Send again'}
-                    </button>
-                    <button
-                      className="btn btn--ghost btn--sm"
-                      type="button"
-                      onClick={() => {
-                        setStep('ask')
-                        setError(null)
-                      }}
-                    >
-                      Use a different address
-                    </button>
-                  </div>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  signIn(email, password)
+                }}
+              >
+                <div className="field">
+                  <label className="field__label" htmlFor="signin-email">
+                    Work email
+                  </label>
+                  <input
+                    className="input"
+                    id="signin-email"
+                    ref={emailRef}
+                    type="email"
+                    name="email"
+                    autoComplete="username"
+                    inputMode="email"
+                    spellCheck={false}
+                    placeholder="you@company.com"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
                 </div>
-              )}
+
+                <div className="field mt-4">
+                  <label className="field__label" htmlFor="signin-password">
+                    Password
+                  </label>
+                  <input
+                    className="input"
+                    id="signin-password"
+                    type="password"
+                    name="password"
+                    autoComplete="current-password"
+                    enterKeyHint="go"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
+
+                <button
+                  className="btn btn--primary btn--block mt-4"
+                  type="submit"
+                  disabled={busy}
+                >
+                  {busy ? 'Signing in…' : 'Sign in'}
+                </button>
+              </form>
+
+              {/* No self-service reset, on purpose: HR decides who gets in,
+                  and that carries through to who gets back in. Saying where
+                  to go beats a dead "forgot password?" link. */}
+              <p className="auth__foot mt-4">
+                Forgotten it, or never had one? Ask whoever runs WorkWell
+                where you work — they create the accounts.
+              </p>
+
+              <p className="auth__foot mt-3">
+                🔒 What you record in WorkWell is yours. Your employer never
+                sees it.
+              </p>
+
+              <button className="auth__alt" type="button" onClick={closeSheet}>
+                Not now
+              </button>
             </div>
           </div>
         </div>
