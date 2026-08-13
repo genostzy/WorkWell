@@ -12,16 +12,14 @@
 
 /* The prototype is a multi-page app whose shell is injected by app.js.
    Here the shell is a React component, so a couple of its layout rules
-   need restating for a single-column app with no sidebar. */
+   need restating. The grid layout from layout.css handles the two-column
+   sidebar — do not override .app to flex here or the room sidebar breaks. */
 .app {
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
 }
 
 .main {
-  flex: 1;
-  display: block;
+  min-width: 0;
 }
 
 .content {

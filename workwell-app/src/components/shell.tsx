@@ -82,7 +82,7 @@ export function Shell({
   const badge = BADGE[plane]
 
   return (
-    <div className="app" data-plane={plane}>
+    <div className="app app--room" data-plane={plane}>
       <Suspense fallback={<aside className="room-sidebar" aria-hidden="true" />}>
         <RoomSidebarData />
       </Suspense>

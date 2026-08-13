@@ -97,7 +97,7 @@
   --ease: cubic-bezier(.32, .72, .35, 1);
 
   /* ---- Layout ---- */
-  --sidebar-w: 264px;
+  --sidebar-w: 25vw;
   --topbar-h:  64px;
   --tabbar-h:  64px;
   --content-max: 1180px;
