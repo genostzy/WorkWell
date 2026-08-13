@@ -1,12 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
-import {
-  Empty,
-  LoadError,
-  PageHead,
-  PlaneBadge,
-  PrivacyNote,
-  Shell,
-} from '@/components/chrome'
+import { Empty, LoadError, PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
+import { Shell } from '@/components/shell'
 
 const METRICS = [
   { key: 'mood', label: 'Mood' },

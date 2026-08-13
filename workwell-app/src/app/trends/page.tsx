@@ -1,13 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import {
-  Empty,
-  LoadError,
-  PageHead,
-  PlaneBadge,
-  PrivacyNote,
-  Shell,
-} from '@/components/chrome'
+import { Empty, LoadError, PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
+import { Shell } from '@/components/shell'
 
 /** The PRD is explicit that we say "not enough data yet" rather than
  *  guess. Four entries cannot describe a pattern. */

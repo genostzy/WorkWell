@@ -1,12 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import {
-  LoadError,
-  PageHead,
-  PlaneBadge,
-  PrivacyNote,
-  Shell,
-} from '@/components/chrome'
+import { LoadError, PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
+import { Shell } from '@/components/shell'
 import { CreateAccount } from './create'
 import { Accounts, type Account } from './manage'
 

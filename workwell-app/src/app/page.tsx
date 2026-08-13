@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { Office } from '@/components/office'
 import { SignInRoom } from '@/components/sign-in-room'
-import { Shell, PageHead } from '@/components/chrome'
+import { PageHead } from '@/components/chrome'
+import { Shell } from '@/components/shell'
 
 export default async function Home() {
   const supabase = await createClient()

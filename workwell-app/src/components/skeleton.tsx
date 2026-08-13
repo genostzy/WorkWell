@@ -1,4 +1,5 @@
-import { Shell, type Page, type Plane } from '@/components/chrome'
+import { type Page, type Plane } from '@/components/chrome'
+import { Shell } from '@/components/shell'
 
 /**
  * What a screen looks like while its data is still in flight.
