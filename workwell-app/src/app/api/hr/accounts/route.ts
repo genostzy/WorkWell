@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient, generatePassword } from '@/lib/supabase/admin'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 /**
  * Creating an account, and resetting a password.
@@ -12,8 +12,13 @@ import { createAdminClient, generatePassword } from '@/lib/supabase/admin'
  * database functions below check `is_hr()` again on their own account. The
  * key is powerful enough that one gate in front of it is not enough.
  *
- * Nothing here logs the generated password. It is returned once, in the
- * response body, and never written down on this side.
+ * Nobody here ever sees or hands over a password. Account creation sends an
+ * invite email; a reset sends a recovery email. Both links land the person
+ * on /set-password, which is the only route in the app reachable without an
+ * existing session — see middleware.ts. Supabase's own invite/recovery
+ * verification does not support PKCE, so the session it grants arrives as
+ * an access/refresh token pair in the URL fragment rather than a server-
+ * exchangeable code; /set-password is what picks that up client-side.
  */
 
 type Body = {
@@ -63,6 +68,8 @@ export async function POST(request: NextRequest) {
     return fail(e instanceof Error ? e.message : 'Admin access unavailable.', 500)
   }
 
+  const redirectTo = `${request.nextUrl.origin}/set-password`
+
   /* ------------------------------------------------------------- Reset */
 
   if (body.action === 'reset') {
@@ -75,18 +82,22 @@ export async function POST(request: NextRequest) {
     })
     if (error) return fail(error.message)
 
-    const password = generatePassword()
-    const { error: updateError } = await admin.auth.admin.updateUserById(
-      authId as string,
-      { password }
+    const { data: authUser, error: getError } = await admin.auth.admin.getUserById(
+      authId as string
     )
-    // The flag is already true at this point. That is the safe way round:
-    // an account flagged to change a password that did not change is a
-    // nuisance, where the reverse would be a changed password nobody is
-    // asked to replace.
-    if (updateError) return fail(updateError.message, 502)
+    if (getError || !authUser.user.email) return fail('That account has no email on file.', 502)
 
-    return NextResponse.json({ password })
+    // The flag is already true at this point. That is the safe way round:
+    // an account flagged to change a password that did not get reset is a
+    // nuisance, where the reverse would be a changed password nobody was
+    // ever asked to replace.
+    const { error: sendError } = await admin.auth.resetPasswordForEmail(
+      authUser.user.email,
+      { redirectTo }
+    )
+    if (sendError) return fail(sendError.message, 502)
+
+    return NextResponse.json({ email: authUser.user.email })
   }
 
   /* ------------------------------------------------------------ Create */
@@ -99,24 +110,20 @@ export async function POST(request: NextRequest) {
     return fail('That does not look like an email address.')
   if (!fullName) return fail('A name is required.')
 
-  const password = generatePassword()
-
-  // email_confirm: HR vouching for the address in person is the
-  // confirmation. There is no inbox round-trip in this flow to do it.
-  const { data: created, error: createError } =
-    await admin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-    })
+  const { data: created, error: createError } = await admin.auth.admin.inviteUserByEmail(
+    email,
+    { redirectTo, data: { full_name: fullName } }
+  )
 
   let authUserId = created?.user?.id ?? null
 
   if (createError) {
     // An address can already have an auth account without having access —
-    // anyone who signed in under the old magic-link flow has one. That is a
-    // reason to adopt it, not to refuse: refusing would leave those people
-    // permanently un-addable while their email looks free in the directory.
+    // anyone who signed in under the old magic-link flow has one, and so
+    // does anyone HR is re-inviting after they lost the first email. That is
+    // a reason to send them a fresh link, not to refuse: refusing would
+    // leave those people permanently un-addable while their email looks
+    // free in the directory.
     const alreadyExists =
       createError.status === 422 ||
       /already (been )?registered|already exists/i.test(createError.message)
@@ -132,11 +139,10 @@ export async function POST(request: NextRequest) {
     if (!existing)
       return fail('That address is taken but its account could not be found.', 502)
 
-    const { error: pwError } = await admin.auth.admin.updateUserById(
-      existing.id,
-      { password, email_confirm: true }
-    )
-    if (pwError) return fail(pwError.message, 502)
+    const { error: sendError } = await admin.auth.resetPasswordForEmail(email, {
+      redirectTo,
+    })
+    if (sendError) return fail(sendError.message, 502)
     authUserId = existing.id
   }
 
@@ -163,5 +169,5 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  return NextResponse.json({ password })
+  return NextResponse.json({ email })
 }

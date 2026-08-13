@@ -22,63 +22,16 @@ const GRANTS: Record<Grant, { title: string; word: string; desc: string }> = {
   },
 }
 
-/**
- * The one-time password, shown once.
- *
- * It is never stored in readable form anywhere — Supabase has the hash and
- * this component has the only plaintext copy that will ever exist. Saying so
- * is the point: someone who closes this card without copying it has to reset
- * rather than look it up.
- */
-function Handoff({
-  name,
-  password,
-  onDone,
-}: {
-  name: string
-  password: string
-  onDone: () => void
-}) {
-  const [copied, setCopied] = useState(false)
-
+/** Confirms the invite went out. No password ever passes through here — the
+ *  employee sets their own by following the link in their inbox. */
+function Sent({ name, email, onDone }: { name: string; email: string; onDone: () => void }) {
   return (
     <div className="card card--accent">
-      <div className="card__title mb-2">{name}’s temporary password</div>
-      <p className="t-subtle mb-4">
-        Hand this to them however you normally would. They will be made to
-        choose their own the first time they sign in.
+      <div className="card__title mb-2">Invite sent</div>
+      <p className="t-subtle">
+        {name} will get an email at <b>{email}</b> to set their password and
+        sign in.
       </p>
-
-      <div className="row" style={{ gap: 'var(--s-2)' }}>
-        <code
-          className="input"
-          style={{ flex: 1, fontSize: 'var(--fs-lg)', letterSpacing: '0.04em' }}
-        >
-          {password}
-        </code>
-        <button
-          className="btn btn--secondary"
-          type="button"
-          onClick={async () => {
-            try {
-              await navigator.clipboard.writeText(password)
-              setCopied(true)
-            } catch {
-              // Clipboard can be blocked. The password is on screen either
-              // way, so this is a convenience failing, not the handoff.
-              setCopied(false)
-            }
-          }}
-        >
-          {copied ? 'Copied' : 'Copy'}
-        </button>
-      </div>
-
-      <p className="field__hint mt-3">
-        <b>This is the only time it is shown.</b> If it is lost, reset the
-        password rather than trying to recover it — nothing stores it.
-      </p>
-
       <button className="btn btn--primary btn--sm mt-4" type="button" onClick={onDone}>
         Done
       </button>
@@ -97,9 +50,7 @@ export function CreateAccount() {
   const [typed, setTyped] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [handoff, setHandoff] = useState<{ name: string; password: string } | null>(
-    null
-  )
+  const [sent, setSent] = useState<{ name: string; email: string } | null>(null)
 
   // Case is not the point — deliberateness is. Someone who types "HR" has
   // read the word either way.
@@ -151,20 +102,14 @@ export function CreateAccount() {
       return
     }
 
-    setHandoff({ name: fullName, password: body.password })
+    setSent({ name: fullName, email: body.email })
     setOpen(false)
     reset()
     router.refresh()
   }
 
-  if (handoff) {
-    return (
-      <Handoff
-        name={handoff.name}
-        password={handoff.password}
-        onDone={() => setHandoff(null)}
-      />
-    )
+  if (sent) {
+    return <Sent name={sent.name} email={sent.email} onDone={() => setSent(null)} />
   }
 
   if (!open) {
@@ -192,10 +137,7 @@ export function CreateAccount() {
   return (
     <form className="card" onSubmit={submit}>
       <div className="card__title mb-2">Create account</div>
-      <p className="card__sub mb-4">
-        They get a one-time password and must choose their own on first
-        sign-in.
-      </p>
+      <p className="card__sub mb-4">They get an email to set their password.</p>
 
       {error && (
         <div className="banner banner--error mb-4" role="alert">
