@@ -1,6 +1,9 @@
 import Link from 'next/link'
+import { Suspense } from 'react'
 import { SignOut } from '@/components/sign-out'
 import { Brandmark } from '@/components/brandmark'
+import { RoomSidebar } from '@/components/room-sidebar'
+import { createClient } from '@/lib/supabase/server'
 
 export type Page = 'home' | 'check-in' | 'trends' | 'leave' | 'hr' | 'org'
 
@@ -80,11 +83,50 @@ const TITLES: Record<Page, string> = {
 }
 
 /**
+ * Fetches what the sidebar room needs and renders it, isolated behind its
+ * own Suspense boundary so a slow read here never holds up the rest of the
+ * screen — Shell itself stays synchronous, which is what lets loading.tsx's
+ * skeleton keep appearing instantly on navigation.
+ *
+ * Nothing is rendered for an account with no active person behind it (a
+ * signed-in auth user waiting on HR, or a closed account) — there is no one
+ * for the room to represent, and `.app` only reserves the sidebar column
+ * when a `.room-sidebar` actually exists, so those screens just stay full
+ * width rather than showing a hollow column.
+ */
+async function RoomSidebarData() {
+  const supabase = await createClient()
+  const { data: claims } = await supabase.auth.getClaims()
+  if (!claims) return null
+
+  const [{ data: me }, { data: roles }, { data: profile }] = await Promise.all([
+    supabase.from('me').select('full_name, status').maybeSingle(),
+    supabase.from('person_roles').select('role'),
+    supabase
+      .from('profile')
+      .select('preferred_name, avatar_initials, avatar_colour')
+      .maybeSingle(),
+  ])
+
+  if (!me || me.status === 'left') return null
+
+  return (
+    <RoomSidebar
+      isHr={(roles ?? []).some((r) => r.role === 'hr')}
+      name={profile?.preferred_name || me.full_name}
+      initials={profile?.avatar_initials ?? null}
+      colour={profile?.avatar_colour ?? 'accent'}
+    />
+  )
+}
+
+/**
  * The shell for every screen that is not the office itself.
  *
- * There is deliberately no nav bar. The office is the navigation surface,
- * so every screen carries a floating button back to it — the prototype's
- * pattern, and the reason the room is worth having at all.
+ * The office room now rides along on the left of every one of these too —
+ * the same picture, scaled down, doubling as navigation the whole time
+ * rather than only when you go back to it. The floating hub button still
+ * carries that job on narrow screens, where the room does not fit.
  */
 export function Shell({
   children,
@@ -99,6 +141,10 @@ export function Shell({
 
   return (
     <div className="app" data-plane={plane}>
+      <Suspense fallback={<aside className="room-sidebar" aria-hidden="true" />}>
+        <RoomSidebarData />
+      </Suspense>
+
       <div className="main">
         <header className="topbar">
           {/* The mark is the way back. It was already a link to the office,

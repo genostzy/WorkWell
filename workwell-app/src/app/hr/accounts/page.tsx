@@ -77,6 +77,13 @@ export default async function AccountsPage() {
   }
 
   const job = new Map((employment ?? []).map((e) => [e.person_id, e]))
+  const departments = [
+    ...new Set(
+      (employment ?? [])
+        .map((e) => e.department)
+        .filter((d): d is string => Boolean(d && d.trim()))
+    ),
+  ].sort()
   const hrIds = new Set(
     (allRoles ?? []).filter((r) => r.role === 'hr').map((r) => r.person_id)
   )
@@ -110,7 +117,7 @@ export default async function AccountsPage() {
         <b>Changing access never opens a private plane.</b>{' '}
       </PrivacyNote>
 
-      <CreateAccount />
+      <CreateAccount departments={departments} />
 
       <div className="grid grid--3 mb-5">
         <div className="stat">

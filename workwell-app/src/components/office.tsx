@@ -12,7 +12,7 @@ import { Wordmark } from '@/components/brandmark'
  *  which this maps onto the app's routes. Anything not built yet is absent
  *  here and its spot is rendered as coming soon rather than as a dead
  *  link — a room object that does nothing is worse than one that says so. */
-const ROUTES: Record<string, string> = {
+export const ROUTES: Record<string, string> = {
   'trends.html': '/trends',
   'check-in.html': '/check-in',
   'onboarding.html': '/check-in',
@@ -63,7 +63,7 @@ function reducedMotion() {
 }
 
 /** "Wilson Dayrit" → "WD". One letter is better than a wrong two. */
-function initialsOf(name: string) {
+export function initialsOf(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean)
   if (parts.length === 0) return '?'
   const first = parts[0][0]

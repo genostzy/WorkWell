@@ -205,6 +205,37 @@
   border-top: 1px solid var(--border);
 }
 
+/* ---------------------------------------------------------- Room sidebar */
+
+/* Reactivates the two-column grid above, but only where a room actually
+   rendered into it: sign-in and set-password use this same .app shell for
+   a centred form and must not gain a hollow reserved column when there is
+   no .room-sidebar child to fill it. */
+.app:has(.room-sidebar) {
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+}
+.app:has(.room-sidebar) .main { grid-column: 2; }
+
+.room-sidebar {
+  grid-column: 1;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s-6) var(--s-5);
+  overflow: hidden;
+}
+
+/* The room's own viewBox does the scaling — width:100% and an unset height
+   are all it takes for every piece of furniture to stay in frame at
+   whatever width the column above settles on. */
+.room-sidebar .room { width: 100%; max-width: none; margin: 0; }
+.room-sidebar .room__svg { height: auto; }
+
 /* --------------------------------------------------------------- Topbar */
 
 .main { grid-column: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -279,6 +310,12 @@
   .app { grid-template-columns: minmax(0, 1fr); }
   .sidebar { display: none; }
   .main { grid-column: 1; }
+
+  /* The room does not fit a phone-width column — the floating hub button
+     (re-enabled below, in room.css) is the way back down here instead. */
+  .app:has(.room-sidebar) { grid-template-columns: minmax(0, 1fr); }
+  .app:has(.room-sidebar) .main { grid-column: 1; }
+  .room-sidebar { display: none; }
 
   /* Clear both the tab bar and the hub button floating above it, or the
      hub lands on whatever sits at the bottom of the page. */

@@ -416,13 +416,16 @@ a.roomlist__item:hover { border-color: var(--accent); background: var(--accent-q
 
 /* --------------------------------------------------------------- Nav hub */
 
-/* Replaces the sidebar on the inner screens: one button that opens the room. */
+/* The way back on narrow screens, where the room sidebar in layout.css does
+   not fit and is hidden. On wider screens the sidebar is always in view and
+   already the way back, so the hub stays hidden there rather than floating
+   a second, redundant button over it. */
 .hub {
   position: fixed;
   left: var(--s-5);
   bottom: var(--s-5);
   z-index: 70;
-  display: inline-flex;
+  display: none;
   align-items: center;
   gap: var(--s-3);
   padding: var(--s-3) var(--s-5) var(--s-3) var(--s-3);
@@ -472,6 +475,7 @@ a.roomlist__item:hover { border-color: var(--accent); background: var(--accent-q
    same breakpoint — not 760, which left them overlapping in between. */
 @media (max-width: 860px) {
   .hub {
+    display: inline-flex;
     left: 50%;
     transform: translateX(-50%);
     bottom: calc(var(--tabbar-h) + var(--s-3));

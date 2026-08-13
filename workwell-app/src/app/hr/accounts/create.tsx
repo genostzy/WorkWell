@@ -24,8 +24,11 @@ type Row = {
   key: string
   fullName: string
   email: string
+  emailTouched: boolean
   jobTitle: string
+  jobTitleCustom: boolean
   department: string
+  departmentCustom: boolean
   grant: Grant | null
 }
 
@@ -34,10 +37,132 @@ function blankRow(): Row {
     key: crypto.randomUUID(),
     fullName: '',
     email: '',
+    emailTouched: false,
     jobTitle: '',
+    jobTitleCustom: false,
     department: '',
+    departmentCustom: false,
     grant: null,
   }
+}
+
+/** Every account created here shares one domain — there is no per-person
+ *  inbox behind it to get right, since the password is handed over on
+ *  screen rather than emailed. Change this if the org's real domain
+ *  differs. */
+const EMAIL_DOMAIN = 'workwell.com'
+
+/** "Celine Nolasco" → "celine.nolasco". Kept editable rather than final:
+ *  two people sharing a first and last name would otherwise collide
+ *  silently, so this is a starting point HR can overwrite, not a promise. */
+function emailFromName(fullName: string) {
+  const slug = fullName
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z\s'-]/g, '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .join('.')
+  return slug ? `${slug}@${EMAIL_DOMAIN}` : ''
+}
+
+const JOB_TITLES = [
+  'Software Engineer',
+  'Product Manager',
+  'Designer',
+  'Data Analyst',
+  'Marketing Specialist',
+  'Sales Representative',
+  'Customer Support Specialist',
+  'HR Specialist',
+  'Operations Manager',
+  'Finance Analyst',
+  'Recruiter',
+  'Administrative Assistant',
+]
+
+const CUSTOM = '__custom__'
+
+/** A select with an escape hatch. Job title and department both need one:
+ *  a fixed list covers the common case, but nobody's list covers everyone,
+ *  and a dropdown with no way out is worse than a plain text field. */
+function PickOrCustom({
+  idPrefix,
+  label,
+  value,
+  custom,
+  options,
+  customOptionLabel,
+  onChange,
+  onToggleCustom,
+  onCustomBlur,
+}: {
+  idPrefix: string
+  label: string
+  value: string
+  custom: boolean
+  options: string[]
+  customOptionLabel: string
+  onChange: (value: string) => void
+  onToggleCustom: (custom: boolean) => void
+  onCustomBlur?: (value: string) => void
+}) {
+  if (custom) {
+    return (
+      <div className="field" style={{ flex: 1, minWidth: 140 }}>
+        <label className="field__label" htmlFor={idPrefix}>
+          {label}
+        </label>
+        <input
+          id={idPrefix}
+          className="input"
+          value={value}
+          autoFocus
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={(e) => onCustomBlur?.(e.target.value)}
+        />
+        <button
+          className="btn btn--ghost btn--sm mt-2"
+          type="button"
+          onClick={() => {
+            onToggleCustom(false)
+            onChange('')
+          }}
+        >
+          Choose from list instead
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="field" style={{ flex: 1, minWidth: 140 }}>
+      <label className="field__label" htmlFor={idPrefix}>
+        {label}
+      </label>
+      <select
+        id={idPrefix}
+        className="select"
+        value={value}
+        onChange={(e) => {
+          if (e.target.value === CUSTOM) {
+            onToggleCustom(true)
+            onChange('')
+          } else {
+            onChange(e.target.value)
+          }
+        }}
+      >
+        <option value="">Select…</option>
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+        <option value={CUSTOM}>{customOptionLabel}</option>
+      </select>
+    </div>
+  )
 }
 
 type Result = {
@@ -139,10 +264,12 @@ function Results({ results, onDone }: { results: Result[]; onDone: () => void })
   )
 }
 
-export function CreateAccount() {
+export function CreateAccount({ departments = [] }: { departments?: string[] }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [rows, setRows] = useState<Row[]>([blankRow()])
+  const [customDepartments, setCustomDepartments] = useState<string[]>([])
+  const departmentOptions = [...new Set([...departments, ...customDepartments])].sort()
   const [typed, setTyped] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -282,7 +409,15 @@ export function CreateAccount() {
                 value={row.fullName}
                 required
                 autoFocus={i === 0}
-                onChange={(e) => updateRow(row.key, { fullName: e.target.value })}
+                onChange={(e) =>
+                  updateRow(row.key, {
+                    fullName: e.target.value,
+                    // Auto-filled from the name until HR types into the
+                    // email field directly — after that it is theirs to
+                    // keep, since two people can share a name.
+                    email: row.emailTouched ? row.email : emailFromName(e.target.value),
+                  })
+                }
               />
             </div>
 
@@ -298,33 +433,40 @@ export function CreateAccount() {
                 spellCheck={false}
                 value={row.email}
                 required
-                onChange={(e) => updateRow(row.key, { email: e.target.value })}
+                onChange={(e) =>
+                  updateRow(row.key, { email: e.target.value, emailTouched: true })
+                }
               />
+              <span className="field__hint">
+                Filled in from the name — edit it if two people would collide.
+              </span>
             </div>
 
             <div className="row mt-3" style={{ gap: 'var(--s-3)' }}>
-              <div className="field" style={{ flex: 1, minWidth: 140 }}>
-                <label className="field__label" htmlFor={`job-${row.key}`}>
-                  Job title
-                </label>
-                <input
-                  id={`job-${row.key}`}
-                  className="input"
-                  value={row.jobTitle}
-                  onChange={(e) => updateRow(row.key, { jobTitle: e.target.value })}
-                />
-              </div>
-              <div className="field" style={{ flex: 1, minWidth: 140 }}>
-                <label className="field__label" htmlFor={`dept-${row.key}`}>
-                  Department
-                </label>
-                <input
-                  id={`dept-${row.key}`}
-                  className="input"
-                  value={row.department}
-                  onChange={(e) => updateRow(row.key, { department: e.target.value })}
-                />
-              </div>
+              <PickOrCustom
+                idPrefix={`job-${row.key}`}
+                label="Job title"
+                value={row.jobTitle}
+                custom={row.jobTitleCustom}
+                options={JOB_TITLES}
+                customOptionLabel="Custom title…"
+                onChange={(v) => updateRow(row.key, { jobTitle: v })}
+                onToggleCustom={(c) => updateRow(row.key, { jobTitleCustom: c })}
+              />
+              <PickOrCustom
+                idPrefix={`dept-${row.key}`}
+                label="Department"
+                value={row.department}
+                custom={row.departmentCustom}
+                options={departmentOptions}
+                customOptionLabel="+ Add department"
+                onChange={(v) => updateRow(row.key, { department: v })}
+                onToggleCustom={(c) => updateRow(row.key, { departmentCustom: c })}
+                onCustomBlur={(v) => {
+                  const name = v.trim()
+                  if (name) setCustomDepartments((ds) => [...new Set([...ds, name])])
+                }}
+              />
             </div>
 
             <fieldset className="mt-3" style={{ border: 0, padding: 0, margin: 0 }}>
