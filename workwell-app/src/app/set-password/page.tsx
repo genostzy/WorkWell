@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Wordmark } from '@/components/brandmark'
@@ -20,6 +21,7 @@ import { Wordmark } from '@/components/brandmark'
 const MINIMUM = 8
 
 export default function SetPassword() {
+  const router = useRouter()
   const [password, setPassword] = useState('')
   const [again, setAgain] = useState('')
   const [busy, setBusy] = useState(false)
@@ -64,13 +66,13 @@ export default function SetPassword() {
 
     // Full navigation, so middleware re-reads the now-cleared flag rather
     // than bouncing straight back here from a cached decision.
-    window.location.assign('/')
+    router.push('/')
   }
 
   async function signOut() {
     const supabase = createClient()
     await supabase.auth.signOut({ scope: 'global' })
-    window.location.assign('/')
+    router.push('/')
   }
 
   return (

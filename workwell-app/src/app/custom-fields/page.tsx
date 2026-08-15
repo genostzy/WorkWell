@@ -10,8 +10,7 @@ export default function CustomFields() {
       />
       <PlaneBadge plane="work" />
       <Empty icon="🧩" title="Not built yet">
-        An admin screen for defining extra fields — and where they'd show up
-        on People — will live here.
+        An admin screen for defining extra fields — and where they&apos;ll show up on People — will live here.
       </Empty>
     </Shell>
   )

@@ -84,8 +84,35 @@ export default function RecognitionClient() {
   }, [])
 
   useEffect(() => {
-    load()
-  }, [load])
+    ;(async () => {
+      const supabase = createClient()
+
+      const { data: mine, error: meError } = await supabase
+        .from('me')
+        .select('id')
+        .maybeSingle()
+      setMe(mine?.id ?? null)
+
+      const [{ data: ppl }, { data: apps, error: appError }, { data: reqs, error: reqError }] =
+        await Promise.all([
+          supabase.from('people').select('id, full_name').order('full_name'),
+          supabase
+            .from('appreciations')
+            .select('id, from_person, to_person, message, created_at')
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('support_requests')
+            .select('id, body, route, status, created_at')
+            .order('created_at', { ascending: false }),
+        ])
+
+      setLoadError((meError ?? appError ?? reqError)?.message ?? null)
+      setPeople((ppl ?? []).filter((p) => p.id !== mine?.id))
+      setReceived((apps ?? []).filter((a) => a.to_person === mine?.id))
+      setRequests(reqs ?? [])
+      setLoading(false)
+    })()
+  }, [])
 
   // Without a person row every insert below fails on a not-null constraint,
   // and a constraint violation is a poor way to learn you have no access yet.

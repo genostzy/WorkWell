@@ -58,8 +58,17 @@ export default function NudgesClient() {
   }, [])
 
   useEffect(() => {
-    loadDelivered()
-  }, [loadDelivered])
+    ;(async () => {
+      const supabase = createClient()
+      const today = new Date().toISOString().slice(0, 10)
+      const { data, error } = await supabase
+        .from('nudge_log')
+        .select('id, kind, action')
+        .eq('sent_on', today)
+      setLogError(error?.message ?? null)
+      setDelivered(data ?? [])
+    })()
+  }, [])
 
   // Answering used to ignore its own result, so a failed write left the
   // nudge sitting there and the three buttons doing nothing visible. A

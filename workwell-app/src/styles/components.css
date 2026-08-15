@@ -952,3 +952,90 @@ details.table-view summary:hover { color: var(--text); }
 .mb-4 { margin-bottom: var(--s-4) } .mb-5 { margin-bottom: var(--s-5) }
 .grow { flex: 1; min-width: 0; }
 .nowrap { white-space: nowrap; }
+
+/* ==========================================================================
+   Fast smooth animations — entrance, cards, page transitions
+   ========================================================================== */
+
+/* ---- Card entrance ----
+   Cards fade + slide up on mount. Stagger via inline style or CSS var. */
+.card {
+  animation: card-in var(--dur-med) var(--ease) both;
+}
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+:root[data-motion="reduced"] .card { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  :root:where(:not([data-motion="full"])) .card { animation: none; }
+}
+
+/* ---- Page head entrance ---- */
+.page-head {
+  animation: fade-up var(--dur-med) var(--ease) both;
+}
+
+/* ---- Generic fade-up utility ---- */
+.fade-up { animation: fade-up var(--dur-med) var(--ease) both; }
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+:root[data-motion="reduced"] .fade-up,
+:root[data-motion="reduced"] .page-head { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  :root:where(:not([data-motion="full"])) .fade-up,
+  :root:where(:not([data-motion="full"])) .page-head { animation: none; }
+}
+
+/* ---- Smooth link/button transitions ----
+   All interactive elements get smooth color/background transitions. */
+a, button {
+  transition:
+    color var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease),
+    opacity var(--dur-fast) var(--ease);
+}
+
+/* ---- Topbar entrance ---- */
+.topbar {
+  animation: slide-down var(--dur-med) var(--ease) both;
+}
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: none; }
+}
+:root[data-motion="reduced"] .topbar { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  :root:where(:not([data-motion="full"])) .topbar { animation: none; }
+}
+
+/* ---- Chip entrance ---- */
+.chip {
+  animation: pop-in var(--dur-med) var(--ease) both;
+}
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(.9); }
+  to   { opacity: 1; transform: none; }
+}
+:root[data-motion="reduced"] .chip { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  :root:where(:not([data-motion="full"])) .chip { animation: none; }
+}
+
+/* ---- Hub button pulse on entrance ---- */
+.hub {
+  animation: hub-in var(--dur-slow) var(--ease) both;
+}
+@keyframes hub-in {
+  from { opacity: 0; transform: scale(.85); }
+  to   { opacity: 1; transform: none; }
+}
+:root[data-motion="reduced"] .hub { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  :root:where(:not([data-motion="full"])) .hub { animation: none; }
+}

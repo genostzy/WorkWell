@@ -11,7 +11,7 @@ export default function Holidays() {
       <PlaneBadge plane="work" />
       <Empty icon="📅" title="Not built yet">
         Public holidays and any company-wide closures will live here once
-        it's built, separate from the leave you book yourself.
+        it&apos;s built, separate from the leave you book yourself.
       </Empty>
     </Shell>
   )

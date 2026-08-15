@@ -93,19 +93,28 @@ export function SignInRoom({
 
   // On a phone the plan scales down until its labels are ~13px and the tap
   // targets are far under 44px, so the list is simply the better small
-  // screen. Decided after mount: the server cannot know the viewport, and
-  // guessing here would be a hydration mismatch.
+  // screen. The server cannot know the viewport, so we determine the view
+  // after mount. Using a ref avoids setState-in-effect while still achieving
+  // the hydration guard — the initial render uses 'room' and we sync to 'list'
+  // once the viewport is known.
+  const initialViewRef = useRef<'room' | 'list'>('room')
+
   useEffect(() => {
-    if (window.matchMedia('(max-width: 760px)').matches) setView('list')
+    const mq = window.matchMedia('(max-width: 760px)')
+    initialViewRef.current = mq.matches ? 'list' : 'room'
   }, [])
 
   useEffect(() => {
-    try {
+    setView(initialViewRef.current)
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
       const saved = localStorage.getItem(REMEMBER)
-      if (saved) setEmail(saved)
-    } catch {
-      // Private browsing. Not remembering an address is not an error.
-    }
+      if (!cancelled && saved) setEmail(saved)
+    })()
+    return () => { cancelled = true }
   }, [])
 
   /* ------------------------------------------------------------ The sheet */

@@ -223,145 +223,377 @@
 
 /* Reactivates the two-column grid above, but only on Shell's own .app —
    sign-in and set-password hand-roll their own centred-form .app and never
-   carry this modifier, so they don't gain a hollow reserved column.
-   Originally gated on :has(.room-sidebar) instead of this explicit class,
-   which silently fell back to a single column (with the sidebar and the
-   page's own content stacking in the same track, one below the other) the
-   moment that selector failed to match — an unconditional class driven by
-   Shell, which always attempts a sidebar, is not conditional on anything
-   that can go quietly wrong the same way. */
+   carry this modifier, so they don't gain a hollow reserved column. */
 .app.app--room {
   grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
 }
 .app.app--room .main { grid-column: 2; }
 
+/* ---- Sidebar shell ---- */
 .room-sidebar {
   grid-column: 1;
-  background: var(--glass-sheen), var(--noise), var(--surface);
-  backdrop-filter: var(--glass-filter-3);
-  border-right: 1px solid var(--border);
-  box-shadow: var(--shadow-2);
   position: sticky;
   top: 0;
   height: 100vh;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   overscroll-behavior: contain;
-  padding-bottom: var(--s-6);
+
+  /* Glass depth tier 3 — chrome that sits alongside content */
+  background:
+    var(--glass-sheen),
+    var(--noise),
+    linear-gradient(180deg, rgba(255,255,255,.12) 0%, transparent 40%),
+    var(--surface);
+  backdrop-filter: var(--glass-filter-3);
+  border-right: 1px solid var(--border);
+  box-shadow: var(--shadow-3);
 }
 
-/* The room sits at its own natural height — full width, no forced
-   height:100%, since a directory board of everything else follows below
-   it and the two share one scrolling column rather than the room being
-   stretched to fill a space a noticeboard now shares. */
-.room-sidebar .room {
-  width: 100%;
-  max-width: none;
-  margin: 0;
-}
-.room-sidebar .room__svg {
-  width: 100%;
-  height: auto;
-  max-width: none;
-}
-
-/* ------------------------------------------------------- Directory board */
-
-.room-directory { padding: 0 var(--s-4); }
-
-.room-directory__title {
-  padding: var(--s-5) var(--s-2) var(--s-3);
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-bold);
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--text-subtle);
-  border-top: 1px solid var(--border);
-}
-
-.room-directory__section + .room-directory__section {
-  margin-top: var(--s-4);
-}
-
-.room-directory__heading {
-  padding: 0 var(--s-2) var(--s-2);
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-bold);
-  letter-spacing: .05em;
-  text-transform: uppercase;
-  color: var(--text-subtle);
-}
-
-.room-directory__tiles {
+/* ---- Internal layout ----
+   Flex column: fixed items at top, two nav sections take natural height,
+   footer pinned at bottom. No scrolling — tiles are sized to fit. */
+.sidebar-inner {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  height: 100%;
+  padding: var(--s-3);
+  box-sizing: border-box;
 }
 
-.room-tile {
+/* ---- Brand header ---- */
+.sidebar-brand {
   display: flex;
   align-items: center;
   gap: var(--s-3);
+  padding: var(--s-2) var(--s-2) var(--s-3);
+  flex-shrink: 0;
+}
+
+.sidebar-brand__mark {
+  width: 30px;
+  height: 30px;
+  flex: none;
+}
+.sidebar-brand__mark svg {
   width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.sidebar-brand__text {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-heavy);
+  letter-spacing: -0.03em;
+  color: var(--text);
+  line-height: var(--lh-tight);
+}
+
+.sidebar-brand__sub {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-normal);
+  color: var(--text-subtle);
+  letter-spacing: 0;
+}
+
+/* ---- Avatar well ----
+   Also a button — clicking the avatar goes to Leave & profile. */
+.sidebar-avatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--s-2) var(--s-2) var(--s-2);
+  flex-shrink: 0;
+  position: relative;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+.sidebar-avatar:hover { opacity: .85; }
+.sidebar-avatar:active { opacity: .7; }
+.sidebar-avatar:focus-visible {
+  outline: var(--focus-ring-w) solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/* Soft ambient glow behind the avatar */
+.sidebar-avatar__circle::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  background: inherit;
+  opacity: 0.15;
+  filter: blur(14px);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.sidebar-avatar__circle {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+
+  /* Frosted circle with beveled edge */
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,.25), transparent 60%),
+    var(--avatar-ink, var(--accent));
+  box-shadow:
+    0 2px 8px rgba(17,17,16,.12),
+    inset 0 1px 0 rgba(255,255,255,.30),
+    inset 0 -1px 0 rgba(17,17,16,.10);
+  transition: transform var(--dur-med) var(--ease),
+              box-shadow var(--dur-med) var(--ease);
+}
+
+.sidebar-avatar__circle[data-avatar-colour] {
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,.25), transparent 60%),
+    var(--avatar-ink);
+}
+
+.sidebar-avatar__circle:hover {
+  transform: scale(1.06);
+  box-shadow:
+    0 4px 16px rgba(17,17,16,.18),
+    inset 0 1px 0 rgba(255,255,255,.35),
+    inset 0 -1px 0 rgba(17,17,16,.12);
+}
+
+.sidebar-avatar__initials {
+  color: var(--text-on-accent);
+  font-size: 16px;
+  font-weight: var(--fw-heavy);
+  line-height: 1;
+  user-select: none;
+}
+
+.sidebar-avatar__name {
+  margin-top: var(--s-1);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  color: var(--text);
+  text-align: center;
+  line-height: var(--lh-tight);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- Section labels ---- */
+.sidebar-section {
+  padding: 2px var(--s-2) 0;
+  flex-shrink: 0;
+}
+
+.sidebar-section__label {
+  font-size: 10px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+  padding-left: 2px;
+}
+
+/* ---- Sidebar entrance animation ---- */
+.room-sidebar {
+  animation: sidebar-in var(--dur-slow) var(--ease) both;
+}
+@keyframes sidebar-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: none; }
+}
+:root[data-motion="reduced"] .room-sidebar { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  :root:where(:not([data-motion="full"])) .room-sidebar { animation: none; }
+}
+
+/* ---- Staggered tile entrance ----
+   Each tile fades + slides in with a delay set via inline style. */
+.sidebar-tile {
+  animation: tile-in var(--dur-med) var(--ease) both;
+}
+@keyframes tile-in {
+  from { opacity: 0; transform: translateY(6px) scale(.97); }
+  to   { opacity: 1; transform: none; }
+}
+:root[data-motion="reduced"] .sidebar-tile { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  :root:where(:not([data-motion="full"])) .sidebar-tile { animation: none; }
+}
+
+/* ---- Navigation grids ----
+   Each nav is a 2-column CSS grid. grid-auto-rows: minmax(0, auto)
+   lets tiles size naturally without stretching or overflow. */
+.sidebar-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-auto-rows: minmax(0, auto);
+  gap: 5px;
+}
+
+/* ---- Glass tile ---- */
+.sidebar-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1px;
   padding: var(--s-2) var(--s-3);
-  background: var(--surface-2);
-  backdrop-filter: var(--glass-filter-1);
+  height: 52px;
+  box-sizing: border-box;
+
+  /* Glass surface with depth */
+  background:
+    var(--glass-sheen),
+    var(--noise),
+    var(--surface-2);
+  backdrop-filter: var(--glass-filter);
   border: 1px solid var(--border);
-  border-radius: var(--r-md);
+  border-radius: var(--r-sm);
   box-shadow: var(--shadow-1);
+
+  cursor: pointer;
   text-align: left;
   color: var(--text);
-  transition: background var(--dur-fast) var(--ease),
-              border-color var(--dur-fast) var(--ease),
-              box-shadow var(--dur-fast) var(--ease),
-              transform var(--dur-fast) var(--ease);
+  text-decoration: none;
+  overflow: hidden;
+
+  transition:
+    background var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
 }
-.room-tile:hover:not(:disabled) {
-  background: var(--accent-quiet);
+
+.sidebar-tile:hover:not(:disabled) {
+  background:
+    var(--glass-sheen),
+    var(--noise),
+    var(--accent-quiet-2);
   border-color: var(--accent-border);
   box-shadow: var(--shadow-2);
   transform: translateY(-1px);
 }
-.room-tile:active:not(:disabled) { transform: translateY(0) scale(.985); }
-.room-tile:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 
-.room-tile__icon {
-  width: 20px;
-  height: 20px;
-  flex: none;
+.sidebar-tile:active:not(:disabled) {
+  transform: translateY(0) scale(.97);
+  box-shadow: var(--shadow-1);
+}
+
+.sidebar-tile:focus-visible {
+  outline: var(--focus-ring-w) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Active indicator — accent tint when on current page */
+.sidebar-tile[aria-current="page"] {
+  background:
+    var(--glass-sheen),
+    var(--noise),
+    var(--accent-quiet);
+  border-color: var(--accent-border);
+  box-shadow:
+    var(--shadow-1),
+    inset 0 0 0 1px var(--accent-ring);
+}
+.sidebar-tile[aria-current="page"] .sidebar-tile__label {
   color: var(--accent-text);
 }
 
-.room-tile__text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
+/* Locked state */
+.sidebar-tile--locked {
+  opacity: .40;
+  cursor: not-allowed;
 }
-.room-tile__label {
-  font-size: var(--fs-sm);
+.sidebar-tile--locked:hover {
+  background: var(--glass-sheen), var(--noise), var(--surface-2);
+  transform: none;
+  box-shadow: var(--shadow-1);
+}
+
+/* ---- Tile internals ---- */
+.sidebar-tile__label {
+  font-size: 12.5px;
   font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 100%;
 }
-.room-tile__sub {
-  font-size: var(--fs-xs);
+.sidebar-tile__sub {
+  font-size: 10.5px;
+  font-weight: var(--fw-normal);
   color: var(--text-subtle);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 100%;
+  line-height: 1.3;
 }
 
-.room-tile--locked {
-  cursor: not-allowed;
-  opacity: .55;
+/* ---- Divider ---- */
+.sidebar-divider {
+  height: 1px;
+  background: var(--border);
+  margin: var(--s-1) var(--s-2);
+  flex-shrink: 0;
 }
-.room-tile--locked:hover { background: var(--surface-2); border-color: var(--border); }
-.room-tile--locked .room-tile__icon { color: var(--text-subtle); }
+
+/* ---- Footer (version / copyright) ---- */
+.sidebar-foot {
+  padding: var(--s-2) var(--s-3);
+  text-align: center;
+  flex-shrink: 0;
+}
+.sidebar-foot__text {
+  font-size: 10px;
+  color: var(--text-subtle);
+  line-height: 1.4;
+}
 
 /* --------------------------------------------------------------- Topbar */
 
 .main { grid-column: 1; min-width: 0; display: flex; flex-direction: column; }
+
+/* Content entrance animation — smooth transition when navigating from office */
+@keyframes content-enter {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.content {
+  /* Bottom padding also clears the floating hub button. */
+  padding: var(--s-7) var(--s-6) var(--s-10);
+  padding-bottom: 104px;
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  flex: 1;
+  animation: content-enter var(--dur-slow) var(--ease) both;
+}
+
+:root[data-motion="reduced"] .content { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  :root:where(:not([data-motion="full"])) .content { animation: none; }
+}
 
 .topbar__home {
   display: inline-flex;
