@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Nunito } from 'next/font/google'
+import { CursorGlass } from '@/components/cursor-glass'
 
 // Order matters: tokens define the variables everything else reads, base
 // resets and sets typography, layout builds the shell, components sit on
@@ -31,7 +32,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html lang="en" className={nunito.variable}>
-      <body>{children}</body>
+      <body>
+        <CursorGlass />
+        {children}
+      </body>
     </html>
   )
 }

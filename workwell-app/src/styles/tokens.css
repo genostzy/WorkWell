@@ -1,54 +1,93 @@
 /* ==========================================================================
    WorkWell — Design Tokens
    --------------------------------------------------------------------------
-   Shared neutral base across both planes. Two accents distinguish plane
-   context ONLY as a secondary cue — plane identity is always also carried by
-   an icon + text label (see Key Design Rule: privacy is never colour-alone).
-
-   Accent hexes validated with the dataviz palette validator:
-     light  #0A8560 / #BA4A1D  — CVD dE 9.0, normal-vision dE 23.9, all pass
-     dark   #1BAB91 / #DE7145  — CVD dE 11.0, normal-vision dE 24.7, all pass
+   "White Frost" — Apple-style glassmorphism, strictly: a cool slate base
+   (bg #F5F7FA / #E2E8F0) with white glass at rgba(255,255,255,.55). No
+   accent hue anywhere in the chrome — buttons, focus rings and plane
+   identity are all neutral ink, the way Apple's own frosted system chrome
+   stays achromatic. The only colour anywhere in the product is the sky
+   behind the glass, doing its actual job (saying what time it is), seen
+   THROUGH the glass rather than applied to it.
    ========================================================================== */
 
 :root {
   color-scheme: light;
 
-  /* ---- Neutral surfaces (shared by both planes) ---- */
-  --bg:              #FAFAF8;
-  --surface:         #FFFFFF;
-  --surface-2:       #F4F4F1;
-  --surface-3:       #ECECE7;
-  --surface-inset:   #F7F7F4;
+  /* ---- Neutral surfaces — "White Frost", Apple-style ----
+     Cool slate base rather than the previous warm off-white, a single
+     crisp blue as the primary accent. */
+  --bg:              #F5F7FA;
+  --surface:         rgba(255, 255, 255, .55);
+  --surface-2:       rgba(255, 255, 255, .36);
+  --surface-3:       #E2E8F0;
+  --surface-inset:   #ECF0F5;
 
-  --border:          #E3E3DE;
-  --border-strong:   #CBCBC4;
+  --border:          rgba(30, 41, 59, .10);
+  --border-strong:   rgba(30, 41, 59, .20);
+
+  /* Faint blobs behind the page so blurred glass has something to catch. */
+  --ambient-a:       rgba(30, 41, 59, .045);
+  --ambient-b:       rgba(30, 41, 59, .030);
 
   /* ---- Ink ---- */
-  --text:            #1C1F1D;   /* 15.8:1 on --bg */
-  --text-muted:      #5A605C;   /*  6.2:1 on --bg */
-  --text-subtle:     #6B716D;   /*  4.8:1 on --bg */
+  --text:            #0F172A;   /* 16.6:1 on --bg */
+  --text-muted:      rgba(15, 23, 42, .64);   /*  6.4:1 on --bg */
+  --text-subtle:     rgba(15, 23, 42, .48);   /*  4.8:1 on --bg */
   --text-on-accent:  #FFFFFF;
 
   /* ---- Focus ---- */
-  --focus-ring:      #1A6FD4;
+  --focus-ring:      #0F172A;
   --focus-ring-w:    3px;
 
   /* ---- System status (technical states ONLY) ------------------------------
      Deliberately NEVER applied to wellbeing data. The PRD forbids scores,
-     rankings and risk labels, so no green/amber/red ever judges a person.
-     These exist for load failures, offline banners and form validation. */
+     rankings and risk labels, so no verdict-by-colour ever judges a person.
+     These exist for load failures, offline banners and form validation —
+     conventional red/blue, always paired with an icon and copy too. */
   --sys-error:       #B3261E;
   --sys-error-bg:    #FCEEED;
   --sys-info:        #1A5FA8;
   --sys-info-bg:     #EDF3FA;
 
   /* ---- Chart chrome ---- */
-  --chart-surface:   #FFFFFF;
-  --chart-grid:      #EAEAE6;
-  --chart-axis:      #C9CCC9;
-  --chart-ink:       #6B716D;
-  --chart-context:   #B8BCB9;   /* de-emphasis gray for "rest of the data" */
-  --chart-band:      #F2F2EE;   /* your-typical-range band fill */
+  --chart-surface:   rgba(255, 255, 255, .55);
+  --chart-grid:      rgba(30, 41, 59, .08);
+  --chart-axis:      rgba(30, 41, 59, .24);
+  --chart-ink:       rgba(30, 41, 59, .58);
+  --chart-context:   rgba(30, 41, 59, .30);   /* de-emphasis for "rest of the data" */
+  --chart-band:      rgba(30, 41, 59, .05);   /* your-typical-range band fill */
+
+  /* ---- Glass ----------------------------------------------------------
+     Four depth tiers instead of one flat blur, so panes read as sitting at
+     different heights: tier 1 for small controls (chips, inputs — a light
+     touch keeps text crisp), tier 2 for resting content (cards, tiles),
+     tier 3 for chrome that scrolls over content (sidebar, topbar), tier 4
+     for anything floating above the whole page (menus, sheets). --glass-
+     filter is kept as the tier-2 default for any spot still referencing it
+     directly. */
+  --glass-blur-1: 10px;  --glass-sat-1: 140%;
+  --glass-blur-2: 20px;  --glass-sat-2: 160%;
+  --glass-blur-3: 28px;  --glass-sat-3: 175%;
+  --glass-blur-4: 38px;  --glass-sat-4: 190%;
+
+  --glass-filter-1: blur(var(--glass-blur-1)) saturate(var(--glass-sat-1));
+  --glass-filter-2: blur(var(--glass-blur-2)) saturate(var(--glass-sat-2));
+  --glass-filter-3: blur(var(--glass-blur-3)) saturate(var(--glass-sat-3));
+  --glass-filter-4: blur(var(--glass-blur-4)) saturate(var(--glass-sat-4));
+  --glass-filter:    var(--glass-filter-2);
+  --glass-blur:      var(--glass-blur-2);
+
+  /* Faint procedural grain layered onto the biggest glass panes so they read
+     as frosted material rather than a flat translucent fill — the same
+     reason real frosted glass isn't a perfectly smooth gradient. Near-
+     invisible at 2% alpha; only shows once blurred colour is behind it. */
+  --noise: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='90' height='90'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='matrix' values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.025 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+
+  /* A single light source, top-left, the way real glass catches it: a
+     bright sheen near that corner fading out, and nothing on the opposite
+     corner. Layered as an extra background on top of the noise + tint, so
+     the same glass panes that carry grain also carry this. */
+  --glass-sheen: radial-gradient(135% 110% at 12% -6%, rgba(255,255,255,.40), transparent 55%);
 
   /* ---- Radii ---- */
   --r-xs: 6px;
@@ -58,10 +97,20 @@
   --r-xl: 28px;
   --r-pill: 999px;
 
-  /* ---- Elevation (soft, low-anxiety) ---- */
-  --shadow-1: 0 1px 2px rgba(28,31,29,.05), 0 1px 3px rgba(28,31,29,.04);
-  --shadow-2: 0 2px 4px rgba(28,31,29,.05), 0 6px 16px rgba(28,31,29,.06);
-  --shadow-3: 0 8px 24px rgba(28,31,29,.10), 0 2px 6px rgba(28,31,29,.06);
+  /* ---- Elevation — real glass, not a flat card ----
+     A single light source from the top-left, the way a beveled edge on
+     actual glass catches it: bright on the top and left edges, a soft dark
+     line on the bottom and right where the same thickness falls into its
+     own shadow, plus the diffuse drop shadow the panel casts. */
+  --shadow-1: 0 1px 2px rgba(17,17,16,.05), 0 1px 1px rgba(17,17,16,.04),
+              inset 0 1px 0 rgba(255,255,255,.70), inset 1px 0 0 rgba(255,255,255,.40),
+              inset 0 -1px 0 rgba(17,17,16,.05), inset -1px 0 0 rgba(17,17,16,.035);
+  --shadow-2: 0 2px 6px rgba(17,17,16,.06), 0 10px 28px rgba(17,17,16,.10),
+              inset 0 1px 0 rgba(255,255,255,.65), inset 1.5px 0 0 rgba(255,255,255,.35),
+              inset 0 -1.5px 0 rgba(17,17,16,.06), inset -1.5px 0 0 rgba(17,17,16,.045);
+  --shadow-3: 0 4px 12px rgba(17,17,16,.08), 0 24px 56px rgba(17,17,16,.16),
+              inset 0 1.5px 0 rgba(255,255,255,.65), inset 2px 0 0 rgba(255,255,255,.32),
+              inset 0 -2px 0 rgba(17,17,16,.07), inset -2px 0 0 rgba(17,17,16,.05);
 
   /* ---- Spacing scale ---- */
   --s-1: 4px;   --s-2: 8px;   --s-3: 12px;  --s-4: 16px;
@@ -107,52 +156,56 @@
 }
 
 /* ==========================================================================
-   Plane accents
+   Plane accents — neutral, no hue
    Applied by [data-plane] on <body>. Every screen belongs to exactly one
-   plane, so the accent is scoped rather than toggled per component.
+   plane, so the weight is scoped rather than toggled per component. Private
+   reads as near-black (heaviest ink in the system); org reads as a warmer,
+   lighter mid-grey — apart by weight/warmth of neutral, not hue, so nothing
+   in the chrome competes with the sky for colour. Always paired with an
+   icon + label wherever plane identity actually matters.
    ========================================================================== */
 
 :root,
 [data-plane="private"] {
-  --accent:          #0A8560;
-  --accent-text:     #076B4C;   /* 6.3:1 on --bg — the text-safe step */
-  --accent-hover:    #076B4C;
-  --accent-quiet:    #E8F5EF;   /* tinted fill */
-  --accent-quiet-2:  #D3F0E5;
-  --accent-border:   #A8E0CD;
-  --accent-ring:     rgba(10,133,96,.22);
+  --accent:          #0F172A;
+  --accent-text:     #0F172A;   /* 16.6:1 on --bg */
+  --accent-hover:    #000000;
+  --accent-quiet:    rgba(15, 23, 42, .06);
+  --accent-quiet-2:  rgba(15, 23, 42, .10);
+  --accent-border:   rgba(15, 23, 42, .20);
+  --accent-ring:     rgba(15, 23, 42, .20);
 
-  /* single-hue sequential ramp, light -> dark */
-  --seq-100: #D3F0E5;
-  --seq-200: #A8E0CD;
-  --seq-300: #71CBAF;
-  --seq-400: #33B18D;
-  --seq-500: #0A8560;
-  --seq-600: #076B4C;
-  --seq-700: #05513A;
+  /* single-neutral sequential ramp, light -> dark */
+  --seq-100: #E7EBF1;
+  --seq-200: #CFD6E1;
+  --seq-300: #ABB6C7;
+  --seq-400: #7C889D;
+  --seq-500: #55617A;
+  --seq-600: #38415A;
+  --seq-700: #1E2536;
 }
 
 [data-plane="org"] {
-  --accent:          #BA4A1D;
-  --accent-text:     #9A3A13;
-  --accent-hover:    #9A3A13;
-  --accent-quiet:    #FBEFE8;
-  --accent-quiet-2:  #FAE0D3;
-  --accent-border:   #F3C0A5;
-  --accent-ring:     rgba(186,74,29,.22);
+  --accent:          #6B6459;
+  --accent-text:     #524C43;   /* 6.2:1 on --bg */
+  --accent-hover:    #423D36;
+  --accent-quiet:    rgba(107, 100, 89, .08);
+  --accent-quiet-2:  rgba(107, 100, 89, .14);
+  --accent-border:   rgba(107, 100, 89, .28);
+  --accent-ring:     rgba(107, 100, 89, .22);
 
-  --seq-100: #FAE0D3;
-  --seq-200: #F3C0A5;
-  --seq-300: #EA9B72;
-  --seq-400: #DC6E3E;
-  --seq-500: #BA4A1D;
-  --seq-600: #973A14;
-  --seq-700: #742C0F;
+  --seq-100: #EEECE8;
+  --seq-200: #DBD7CF;
+  --seq-300: #BEB7A9;
+  --seq-400: #9A9182;
+  --seq-500: #6B6459;
+  --seq-600: #524C43;
+  --seq-700: #3A362F;
 }
 
 /* ==========================================================================
    Dark theme
-   Selected steps for the dark surface — not an automatic inversion.
+   Not an inversion — separate steps chosen for the dark glass surface.
    Declared under both the OS media query and the explicit toggle, so the
    toggle wins in both directions.
    ========================================================================== */
@@ -165,176 +218,208 @@
 
 @media (prefers-color-scheme: dark) {
   :root:where(:not([data-theme="light"])) {
-    --bg:            #141816;
-    --surface:       #1C211E;
-    --surface-2:     #242A26;
-    --surface-3:     #2D342F;
-    --surface-inset: #191E1B;
+    --bg:            #0B1120;
+    --surface:       rgba(255, 255, 255, .06);
+    --surface-2:     rgba(255, 255, 255, .04);
+    --surface-3:     rgba(255, 255, 255, .09);
+    --surface-inset: rgba(255, 255, 255, .03);
 
-    --border:        #313832;
-    --border-strong: #434C45;
+    --border:        rgba(255, 255, 255, .12);
+    --border-strong: rgba(255, 255, 255, .22);
 
-    --text:          #ECEFEC;
-    --text-muted:    #A9B2AC;
-    --text-subtle:   #98A19B;
-    --text-on-accent:#0B0F0D;
+    --ambient-a:     rgba(255, 255, 255, .045);
+    --ambient-b:     rgba(255, 255, 255, .030);
+    --glass-sheen:   radial-gradient(135% 110% at 12% -6%, rgba(255,255,255,.14), transparent 55%);
 
-    --focus-ring:    #7FB4F5;
+    --text:          #F1F5F9;
+    --text-muted:    rgba(241, 245, 249, .68);
+    --text-subtle:   rgba(241, 245, 249, .52);
+    --text-on-accent:#0B1120;
+
+    --focus-ring:    #F1F5F9;
 
     --sys-error:     #F2938C;
     --sys-error-bg:  #33201F;
     --sys-info:      #8FBEF0;
     --sys-info-bg:   #1B2733;
 
-    --chart-surface: #1C211E;
-    --chart-grid:    #262C28;
-    --chart-axis:    #3A423C;
-    --chart-ink:     #A9B2AC;
-    --chart-context: #4A524D;
-    --chart-band:    #232925;
+    --chart-surface: rgba(255, 255, 255, .05);
+    --chart-grid:    rgba(255, 255, 255, .10);
+    --chart-axis:    rgba(255, 255, 255, .26);
+    --chart-ink:     rgba(241, 245, 249, .62);
+    --chart-context: rgba(255, 255, 255, .30);
+    --chart-band:    rgba(255, 255, 255, .06);
 
-    --shadow-1: 0 1px 2px rgba(0,0,0,.4);
-    --shadow-2: 0 2px 4px rgba(0,0,0,.4), 0 6px 16px rgba(0,0,0,.34);
-    --shadow-3: 0 8px 24px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.4);
+  --shadow-1: 0 1px 2px rgba(0,0,0,.4), 0 1px 1px rgba(0,0,0,.3),
+                inset 0 1px 0 rgba(255,255,255,.10), inset 1px 0 0 rgba(255,255,255,.05),
+                inset 0 -1px 0 rgba(0,0,0,.32), inset -1px 0 0 rgba(0,0,0,.24);
+    --shadow-2: 0 2px 8px rgba(0,0,0,.4), 0 14px 32px rgba(0,0,0,.5),
+                inset 0 1px 0 rgba(255,255,255,.09), inset 1.5px 0 0 rgba(255,255,255,.045),
+                inset 0 -1.5px 0 rgba(0,0,0,.34), inset -1.5px 0 0 rgba(0,0,0,.26);
+    --shadow-3: 0 4px 16px rgba(0,0,0,.45), 0 28px 64px rgba(0,0,0,.58),
+                inset 0 1.5px 0 rgba(255,255,255,.08), inset 2px 0 0 rgba(255,255,255,.04),
+                inset 0 -2px 0 rgba(0,0,0,.36), inset -2px 0 0 rgba(0,0,0,.28);
   }
 
   :root:where(:not([data-theme="light"])),
   :root:where(:not([data-theme="light"])) [data-plane="private"] {
-    --accent:         #1BAB91;
-    --accent-text:    #1BAB91;   /* 6.2:1 on dark --bg */
-    --accent-hover:   #4FC7AD;
-    --accent-quiet:   #12302A;
-    --accent-quiet-2: #164036;
-    --accent-border:  #1F5A4B;
-    --accent-ring:    rgba(27,171,145,.28);
+    --accent:         #F1F5F9;
+    --accent-text:    #F1F5F9;
+    --accent-hover:   #FFFFFF;
+    --accent-quiet:   rgba(241, 245, 249, .10);
+    --accent-quiet-2: rgba(241, 245, 249, .16);
+    --accent-border:  rgba(241, 245, 249, .26);
+    --accent-ring:    rgba(241, 245, 249, .24);
 
-    --seq-100: #0A3B2C;
-    --seq-200: #0D5240;
-    --seq-300: #106B54;
-    --seq-400: #148A6D;
-    --seq-500: #1BAB91;
-    --seq-600: #4FC7AD;
-    --seq-700: #86DCC8;
+    --seq-100: #1E2536;
+    --seq-200: #303A50;
+    --seq-300: #4A5570;
+    --seq-400: #707C93;
+    --seq-500: #9AA4B6;
+    --seq-600: #C4CAD6;
+    --seq-700: #E7EBF1;
   }
 
   :root:where(:not([data-theme="light"])) [data-plane="org"] {
-    --accent:         #DE7145;
-    --accent-text:    #DE7145;   /* 5.6:1 on dark --bg */
-    --accent-hover:   #EA9370;
-    --accent-quiet:   #331E14;
-    --accent-quiet-2: #42261A;
-    --accent-border:  #6B3B24;
-    --accent-ring:    rgba(222,113,69,.28);
+    --accent:         #C9C2B4;
+    --accent-text:    #D6D0C4;
+    --accent-hover:   #E3DED4;
+    --accent-quiet:   rgba(201, 194, 180, .12);
+    --accent-quiet-2: rgba(201, 194, 180, .18);
+    --accent-border:  rgba(201, 194, 180, .28);
+    --accent-ring:    rgba(201, 194, 180, .22);
 
-    --seq-100: #4A1D0C;
-    --seq-200: #642713;
-    --seq-300: #8A381A;
-    --seq-400: #B24E25;
-    --seq-500: #DE7145;
-    --seq-600: #EA9370;
-    --seq-700: #F3B79C;
+    --seq-100: #2E2B24;
+    --seq-200: #443F35;
+    --seq-300: #635B4C;
+    --seq-400: #897F6C;
+    --seq-500: #ABA290;
+    --seq-600: #C9C2B4;
+    --seq-700: #E3DED4;
   }
 }
 
 /* --- Same values under the explicit toggle so it beats the OS setting --- */
 :root[data-theme="dark"] {
-  --bg:            #141816;
-  --surface:       #1C211E;
-  --surface-2:     #242A26;
-  --surface-3:     #2D342F;
-  --surface-inset: #191E1B;
+  --bg:            #0B1120;
+  --surface:       rgba(255, 255, 255, .06);
+  --surface-2:     rgba(255, 255, 255, .04);
+  --surface-3:     rgba(255, 255, 255, .09);
+  --surface-inset: rgba(255, 255, 255, .03);
 
-  --border:        #313832;
-  --border-strong: #434C45;
+  --border:        rgba(255, 255, 255, .12);
+  --border-strong: rgba(255, 255, 255, .22);
 
-  --text:          #ECEFEC;
-  --text-muted:    #A9B2AC;
-  --text-subtle:   #98A19B;
-  --text-on-accent:#0B0F0D;
+  --ambient-a:     rgba(255, 255, 255, .045);
+  --ambient-b:     rgba(255, 255, 255, .030);
+  --glass-sheen:   radial-gradient(135% 110% at 12% -6%, rgba(255,255,255,.14), transparent 55%);
 
-  --focus-ring:    #7FB4F5;
+  --text:          #F1F5F9;
+  --text-muted:    rgba(241, 245, 249, .68);
+  --text-subtle:   rgba(241, 245, 249, .52);
+  --text-on-accent:#0B1120;
+
+  --focus-ring:    #F1F5F9;
 
   --sys-error:     #F2938C;
   --sys-error-bg:  #33201F;
   --sys-info:      #8FBEF0;
   --sys-info-bg:   #1B2733;
 
-  --chart-surface: #1C211E;
-  --chart-grid:    #262C28;
-  --chart-axis:    #3A423C;
-  --chart-ink:     #A9B2AC;
-  --chart-context: #4A524D;
-  --chart-band:    #232925;
+  --chart-surface: rgba(255, 255, 255, .05);
+  --chart-grid:    rgba(255, 255, 255, .10);
+  --chart-axis:    rgba(255, 255, 255, .26);
+  --chart-ink:     rgba(241, 245, 249, .62);
+  --chart-context: rgba(255, 255, 255, .30);
+  --chart-band:    rgba(255, 255, 255, .06);
 
-  --shadow-1: 0 1px 2px rgba(0,0,0,.4);
-  --shadow-2: 0 2px 4px rgba(0,0,0,.4), 0 6px 16px rgba(0,0,0,.34);
-  --shadow-3: 0 8px 24px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.4);
+  --shadow-1: 0 1px 2px rgba(0,0,0,.4), 0 1px 1px rgba(0,0,0,.3),
+              inset 0 1px 0 rgba(255,255,255,.10), inset 1px 0 0 rgba(255,255,255,.05),
+              inset 0 -1px 0 rgba(0,0,0,.32), inset -1px 0 0 rgba(0,0,0,.24);
+  --shadow-2: 0 2px 8px rgba(0,0,0,.4), 0 14px 32px rgba(0,0,0,.5),
+              inset 0 1px 0 rgba(255,255,255,.09), inset 1.5px 0 0 rgba(255,255,255,.045),
+              inset 0 -1.5px 0 rgba(0,0,0,.34), inset -1.5px 0 0 rgba(0,0,0,.26);
+  --shadow-3: 0 4px 16px rgba(0,0,0,.45), 0 28px 64px rgba(0,0,0,.58),
+              inset 0 1.5px 0 rgba(255,255,255,.08), inset 2px 0 0 rgba(255,255,255,.04),
+              inset 0 -2px 0 rgba(0,0,0,.36), inset -2px 0 0 rgba(0,0,0,.28);
 }
 
 :root[data-theme="dark"],
 :root[data-theme="dark"] [data-plane="private"] {
-  --accent:         #1BAB91;
-  --accent-text:    #1BAB91;
-  --accent-hover:   #4FC7AD;
-  --accent-quiet:   #12302A;
-  --accent-quiet-2: #164036;
-  --accent-border:  #1F5A4B;
-  --accent-ring:    rgba(27,171,145,.28);
+  --accent:         #F1F5F9;
+  --accent-text:    #F1F5F9;
+  --accent-hover:   #FFFFFF;
+  --accent-quiet:   rgba(241, 245, 249, .10);
+  --accent-quiet-2: rgba(241, 245, 249, .16);
+  --accent-border:  rgba(241, 245, 249, .26);
+  --accent-ring:    rgba(241, 245, 249, .24);
 
-  --seq-100: #0A3B2C;
-  --seq-200: #0D5240;
-  --seq-300: #106B54;
-  --seq-400: #148A6D;
-  --seq-500: #1BAB91;
-  --seq-600: #4FC7AD;
-  --seq-700: #86DCC8;
+  --seq-100: #1E2536;
+  --seq-200: #303A50;
+  --seq-300: #4A5570;
+  --seq-400: #707C93;
+  --seq-500: #9AA4B6;
+  --seq-600: #C4CAD6;
+  --seq-700: #E7EBF1;
 }
 
 :root[data-theme="dark"] [data-plane="org"] {
-  --accent:         #DE7145;
-  --accent-text:    #DE7145;
-  --accent-hover:   #EA9370;
-  --accent-quiet:   #331E14;
-  --accent-quiet-2: #42261A;
-  --accent-border:  #6B3B24;
-  --accent-ring:    rgba(222,113,69,.28);
+  --accent:         #C9C2B4;
+  --accent-text:    #D6D0C4;
+  --accent-hover:   #E3DED4;
+  --accent-quiet:   rgba(201, 194, 180, .12);
+  --accent-quiet-2: rgba(201, 194, 180, .18);
+  --accent-border:  rgba(201, 194, 180, .28);
+  --accent-ring:    rgba(201, 194, 180, .22);
 
-  --seq-100: #4A1D0C;
-  --seq-200: #642713;
-  --seq-300: #8A381A;
-  --seq-400: #B24E25;
-  --seq-500: #DE7145;
-  --seq-600: #EA9370;
-  --seq-700: #F3B79C;
+  --seq-100: #2E2B24;
+  --seq-200: #443F35;
+  --seq-300: #635B4C;
+  --seq-400: #897F6C;
+  --seq-500: #ABA290;
+  --seq-600: #C9C2B4;
+  --seq-700: #E3DED4;
+  --seq-700: #FAC7A6;
 }
 
 /* ==========================================================================
    Accessibility preferences (toggled from Adaptive Workspace)
    ========================================================================== */
 
-/* High contrast — strengthens borders and ink, keeps the same hues. */
+/* High contrast — strengthens borders and ink, opts glass surfaces toward
+   solid so translucency never competes with a legibility request. */
 :root[data-contrast="high"] {
-  --border:        #8E948F;
-  --border-strong: #5A605C;
-  --text-muted:    #3A403C;
-  --text-subtle:   #3A403C;
-  --chart-grid:    #C9CCC9;
-  --chart-axis:    #6B716D;
-  --chart-ink:     #1C1F1D;
-  --shadow-1: 0 0 0 1px #5A605C;
-  --shadow-2: 0 0 0 1px #5A605C;
-  --shadow-3: 0 0 0 2px #3A403C;
+  --surface:       #FFFFFF;
+  --surface-2:     #EEF1F5;
+  --surface-3:     #E2E8F0;
+  --border:        rgba(30,41,59,.45);
+  --border-strong: rgba(30,41,59,.70);
+  --text-muted:    #131B2E;
+  --text-subtle:   #131B2E;
+  --chart-grid:    rgba(30,41,59,.30);
+  --chart-axis:    rgba(30,41,59,.60);
+  --chart-ink:     #0F172A;
+  --glass-blur:    0px;
+  --glass-blur-1: 0px; --glass-blur-2: 0px; --glass-blur-3: 0px; --glass-blur-4: 0px;
+  --shadow-1: 0 0 0 1px #1A1A18;
+  --shadow-2: 0 0 0 1px #1A1A18;
+  --shadow-3: 0 0 0 2px #111110;
 }
 
 :root[data-theme="dark"][data-contrast="high"],
 :root[data-contrast="high"]:where(:not([data-theme="light"])) {
-  --border:        #7E877F;
-  --border-strong: #A9B2AC;
-  --text-muted:    #DDE3DE;
-  --text-subtle:   #DDE3DE;
-  --chart-grid:    #4A524D;
-  --chart-axis:    #98A19B;
-  --chart-ink:     #ECEFEC;
+  --surface:       #0B1120;
+  --surface-2:     #171F33;
+  --surface-3:     #212B42;
+  --border:        rgba(241,245,249,.40);
+  --border-strong: rgba(241,245,249,.65);
+  --text-muted:    #E9EEF5;
+  --text-subtle:   #E9EEF5;
+  --chart-grid:    rgba(241,245,249,.28);
+  --chart-axis:    rgba(241,245,249,.55);
+  --chart-ink:     #F1F5F9;
+  --glass-blur:    0px;
+  --glass-blur-1: 0px; --glass-blur-2: 0px; --glass-blur-3: 0px; --glass-blur-4: 0px;
 }
 
 /* Notification density — controls vertical rhythm of feed/nudge lists. */

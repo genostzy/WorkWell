@@ -94,6 +94,38 @@ const SPOTS = [
     label: 'Your locker',    sub: 'Leave & profile' },
   { id: 'files',   href: 'hr-people.html',  plane: 'org',
     label: 'HR office',      sub: 'People & records' },
+
+  /* The rest of a full HR system's worth of destinations — previously only
+     reachable from the plain directory list beside the room, never drawn as
+     furniture in the picture itself. `plane: 'org'` here means what it
+     means everywhere else in this list: locked to anyone without the org
+     capability, shown locked rather than hidden, same as the meeting room. */
+  { id: 'holidays',   href: 'holidays.html',   plane: 'private',
+    label: 'Holidays',        sub: 'Calendar' },
+  { id: 'attendance', href: 'attendance.html', plane: 'private',
+    label: 'Attendance',      sub: 'Check-ins' },
+  { id: 'payroll',    href: 'payroll.html',    plane: 'private',
+    label: 'Payroll',         sub: 'Payslips' },
+  { id: 'expenses',   href: 'expenses.html',   plane: 'private',
+    label: 'Expenses',        sub: 'Claims' },
+  { id: 'assets',     href: 'assets.html',     plane: 'private',
+    label: 'Assets',          sub: 'On loan' },
+  { id: 'news',       href: 'news.html',       plane: 'private',
+    label: 'News',            sub: 'Notices' },
+  { id: 'complaints', href: 'complaints.html', plane: 'private',
+    label: 'Complaints',      sub: 'File a case' },
+  { id: 'policies',   href: 'company-policies.html', plane: 'private',
+    label: 'Policies',        sub: 'Read once' },
+  { id: 'resignations', href: 'resignations.html', plane: 'private',
+    label: 'Resignations',    sub: 'Give notice' },
+  { id: 'letterheads', href: 'letter-heads.html', plane: 'org',
+    label: 'Letter heads',    sub: 'Templates' },
+  { id: 'customfields', href: 'custom-fields.html', plane: 'org',
+    label: 'Data fields',     sub: 'Extra fields' },
+  { id: 'offboarding', href: 'offboarding.html', plane: 'org',
+    label: 'Offboarding',     sub: 'Checklist' },
+  { id: 'warnings',   href: 'warnings.html',   plane: 'org',
+    label: 'Warnings',        sub: 'Records' },
 ];
 
 /* ------------------------------------------------------------------- Art */
@@ -150,109 +182,130 @@ function roomSVG(opts) {
      keyboard, because a lamp is not somewhere you can go. */
   const lights = `
     <g class="lamps" aria-hidden="true">
-      <g class="lamp" transform="translate(216 250)">
+      <g class="lamp" transform="translate(190 210)">
         <circle class="lamp__glow" r="120"/>
         <line class="lamp__flex" x1="0" y1="-46" x2="0" y2="-12"/>
         <path class="lamp__shade" d="M-26 0 L26 0 L15 -16 L-15 -16 Z"/>
         <circle class="lamp__bulb" cy="2" r="5"/>
       </g>
-      <g class="lamp" transform="translate(500 470)">
+      <g class="lamp" transform="translate(510 523)">
         <circle class="lamp__glow" r="132"/>
         <line class="lamp__flex" x1="0" y1="-52" x2="0" y2="-14"/>
         <path class="lamp__shade" d="M-30 0 L30 0 L17 -18 L-17 -18 Z"/>
         <circle class="lamp__bulb" cy="2" r="6"/>
       </g>
       ${org ? `
-      <g class="lamp" transform="translate(812 96)">
+      <g class="lamp" transform="translate(812 140)">
         <circle class="lamp__glow" r="118"/>
+        <line class="lamp__flex" x1="0" y1="-44" x2="0" y2="-12"/>
+        <path class="lamp__shade" d="M-26 0 L26 0 L15 -16 L-15 -16 Z"/>
+        <circle class="lamp__bulb" cy="2" r="5"/>
+      </g>
+      <g class="lamp" transform="translate(505 180)">
+        <circle class="lamp__glow" r="112"/>
         <line class="lamp__flex" x1="0" y1="-44" x2="0" y2="-12"/>
         <path class="lamp__shade" d="M-26 0 L26 0 L15 -16 L-15 -16 Z"/>
         <circle class="lamp__bulb" cy="2" r="5"/>
       </g>` : ''}
     </g>`;
 
-  /* --- desk (trends) --- */
+  /* ------------------------------------------------------------- Layout
+
+     The floor is divided into three walled areas and three open zones, and
+     every object below is placed on one grid so no two pieces of furniture
+     and — just as important — no two name tags ever overlap. A tag pill is
+     116 wide and 30 tall, which is what sets the minimum spacing: columns
+     need ~120px of pitch, rows ~95px.
+
+       HR office     x 360-660, y  24-350   (walled, org only)
+       Meeting room  x 660-976, y  24-270   (walled, org only)
+       Left strip    x  24-360, y  24-696   (open — the personal desk area)
+       Mid floor     x 360-660, y 350-696   (open — rug, cooler, front door)
+       Right floor   x 660-976, y 270-696   (open — sofa and the HR self-
+                                             service everyone can use)
+     --------------------------------------------------------------------- */
+
+  /* --- desk (trends), left strip --- */
   const desk = `
-    <rect class="furn" x="96" y="300" width="240" height="112" rx="12"/>
-    <rect class="furn-2" x="150" y="288" width="132" height="18" rx="6"/>
-    <rect class="screen" x="158" y="292" width="116" height="10" rx="4"/>
-    <circle class="furn-2" cx="216" cy="452" r="28"/>
-    <rect class="furn-2" x="192" y="470" width="48" height="12" rx="6"/>`;
+    <rect class="furn" x="70" y="312" width="240" height="112" rx="12"/>
+    <rect class="furn-2" x="124" y="300" width="132" height="18" rx="6"/>
+    <rect class="screen" x="132" y="304" width="116" height="10" rx="4"/>
+    <circle class="furn-2" cx="190" cy="464" r="28"/>
+    <rect class="furn-2" x="166" y="482" width="48" height="12" rx="6"/>`;
 
   /* --- journal on the desk (check-in) --- */
   const journal = `
-    <rect class="furn-3" x="270" y="322" width="52" height="66" rx="7"/>
-    <line class="ink" x1="282" y1="340" x2="310" y2="340"/>
-    <line class="ink" x1="282" y1="354" x2="310" y2="354"/>
-    <line class="ink" x1="282" y1="368" x2="300" y2="368"/>`;
+    <rect class="furn-3" x="244" y="336" width="52" height="66" rx="7"/>
+    <line class="ink" x1="256" y1="354" x2="284" y2="354"/>
+    <line class="ink" x1="256" y1="368" x2="284" y2="368"/>
+    <line class="ink" x1="256" y1="382" x2="274" y2="382"/>`;
 
-  /* --- water cooler + plant (nudges) --- */
+  /* --- water cooler + plant (nudges), mid floor --- */
   const cooler = `
-    <rect class="furn" x="470" y="452" width="54" height="76" rx="10"/>
-    <rect class="accent-soft" x="480" y="462" width="34" height="30" rx="6"/>
-    <circle class="plant" cx="566" cy="486" r="26"/>
-    <circle class="plant-2" cx="552" cy="474" r="13"/>
-    <circle class="plant-2" cx="580" cy="476" r="11"/>`;
+    <rect class="furn" x="400" y="390" width="54" height="76" rx="10"/>
+    <rect class="accent-soft" x="410" y="400" width="34" height="30" rx="6"/>
+    <circle class="plant" cx="495" cy="424" r="26"/>
+    <circle class="plant-2" cx="481" cy="412" r="13"/>
+    <circle class="plant-2" cx="509" cy="414" r="11"/>`;
 
   /* --- wall clock (boundaries) — hands show the actual time --- */
   const mins = o.minutes == null ? nowMinutes() : o.minutes;
   const hand = (lenPx, deg) => {
     const a = (deg - 90) * Math.PI / 180;
-    return { x: 330 + lenPx * Math.cos(a), y: 66 + lenPx * Math.sin(a) };
+    return { x: 245 + lenPx * Math.cos(a), y: 78 + lenPx * Math.sin(a) };
   };
   const hEnd = hand(11, ((mins / 60) % 12) * 30);
   const mEnd = hand(17, (mins % 60) * 6);
   const clock = `
-    <circle class="furn" cx="330" cy="66" r="30"/>
-    <circle class="furn-3" cx="330" cy="66" r="22"/>
-    <line class="ink-2" x1="330" y1="66" x2="${hEnd.x.toFixed(1)}" y2="${hEnd.y.toFixed(1)}"/>
-    <line class="ink-2" x1="330" y1="66" x2="${mEnd.x.toFixed(1)}" y2="${mEnd.y.toFixed(1)}"
+    <circle class="furn" cx="245" cy="78" r="30"/>
+    <circle class="furn-3" cx="245" cy="78" r="22"/>
+    <line class="ink-2" x1="245" y1="78" x2="${hEnd.x.toFixed(1)}" y2="${hEnd.y.toFixed(1)}"/>
+    <line class="ink-2" x1="245" y1="78" x2="${mEnd.x.toFixed(1)}" y2="${mEnd.y.toFixed(1)}"
           stroke-width="2.5"/>
-    <circle class="ink-dot" cx="330" cy="66" r="2.5"/>`;
+    <circle class="ink-dot" cx="245" cy="78" r="2.5"/>`;
 
-  /* --- lounge (recognition) --- */
+  /* --- lounge (recognition), right floor --- */
   const lounge = `
-    <rect class="furn" x="640" y="452" width="150" height="66" rx="18"/>
-    <rect class="furn-2" x="652" y="440" width="126" height="20" rx="10"/>
-    <ellipse class="furn-3" cx="715" cy="562" rx="48" ry="30"/>
-    <circle class="accent-soft" cx="698" cy="558" r="9"/>
-    <circle class="accent-soft" cx="732" cy="564" r="9"/>`;
+    <rect class="furn" x="665" y="300" width="130" height="55" rx="18"/>
+    <rect class="furn-2" x="677" y="288" width="106" height="18" rx="9"/>
+    <circle class="accent-soft" cx="700" cy="328" r="9"/>
+    <circle class="accent-soft" cx="760" cy="328" r="9"/>`;
 
-  /* --- personal shelf (workspace) --- */
+  /* --- personal shelf (workspace), left strip --- */
   const shelf = `
-    <rect class="furn" x="56" y="150" width="46" height="120" rx="10"/>
-    <line class="ink" x1="62" y1="190" x2="96" y2="190"/>
-    <line class="ink" x1="62" y1="230" x2="96" y2="230"/>
-    <circle class="accent-soft" cx="79" cy="170" r="9"/>`;
+    <rect class="furn" x="77" y="40" width="46" height="75" rx="10"/>
+    <line class="ink" x1="83" y1="70" x2="117" y2="70"/>
+    <line class="ink" x1="83" y1="94" x2="117" y2="94"/>
+    <circle class="accent-soft" cx="100" cy="55" r="7"/>`;
 
   /* --- locker: the employee's own employment self-service --- */
   const locker = `
-    <rect class="furn" x="404" y="452" width="46" height="88" rx="8"/>
-    <line class="ink" x1="412" y1="480" x2="442" y2="480"/>
-    <circle class="accent-soft" cx="441" cy="498" r="5"/>`;
+    <rect class="furn" x="77" y="570" width="46" height="60" rx="8"/>
+    <line class="ink" x1="85" y1="592" x2="115" y2="592"/>
+    <circle class="accent-soft" cx="114" cy="606" r="5"/>`;
 
-  /* --- filing cabinet: the HR system of record.
-         Sits below the meeting-room partition, in the space an organisation
-         account has to itself — clear of the meeting table above. --- */
+  /* --- filing cabinet: the HR system of record. Now literally inside the
+         HR office, rather than standing in the open floor beside it. --- */
   const files = `
-    <rect class="furn" x="736" y="392" width="96" height="126" rx="10"/>
-    <line class="ink" x1="750" y1="428" x2="818" y2="428"/>
-    <line class="ink" x1="750" y1="462" x2="818" y2="462"/>
-    <line class="ink" x1="750" y1="496" x2="818" y2="496"/>
-    <circle class="accent-soft" cx="784" cy="410" r="6"/>`;
+    <rect class="furn" x="408" y="58" width="48" height="58" rx="8"/>
+    <line class="ink" x1="418" y1="78" x2="446" y2="78"/>
+    <line class="ink" x1="418" y1="96" x2="446" y2="96"/>
+    <circle class="accent-soft" cx="432" cy="66" r="4"/>`;
 
   /* --- meeting room contents (org) --- */
   const meeting = `
-    <ellipse class="furn" cx="812" cy="150" rx="104" ry="58"/>
-    <circle class="furn-2" cx="716" cy="150" r="18"/>
-    <circle class="furn-2" cx="908" cy="150" r="18"/>
-    <circle class="furn-2" cx="770" cy="76"  r="18"/>
-    <circle class="furn-2" cx="854" cy="76"  r="18"/>
-    <circle class="furn-2" cx="770" cy="224" r="18"/>
-    <circle class="furn-2" cx="854" cy="224" r="18"/>`;
+    <ellipse class="furn" cx="812" cy="140" rx="100" ry="52"/>
+    <circle class="furn-2" cx="712" cy="140" r="18"/>
+    <circle class="furn-2" cx="912" cy="140" r="18"/>
+    <circle class="furn-2" cx="770" cy="66"  r="18"/>
+    <circle class="furn-2" cx="854" cy="66"  r="18"/>
+    <circle class="furn-2" cx="770" cy="214" r="18"/>
+    <circle class="furn-2" cx="854" cy="214" r="18"/>`;
 
   /* Resolve a spot's current destination — the journal points at setup until
-     it has been completed once, so onboarding is reachable from the room. */
+     it has been completed once, so onboarding is reachable from the room.
+     Defined here, ahead of the HR kit below, because that kit's spots need
+     it immediately rather than after the furniture is all built. */
   const by = (id) => {
     const s = SPOTS.find((x) => x.id === id);
     return (s.altWhen && s.altWhen())
@@ -260,14 +313,136 @@ function roomSVG(opts) {
       : s;
   };
 
+  /* --- the rest of the HR system, drawn as furniture ---
+     Small pieces, all built from the same three furn tones + ink already
+     used everywhere else in the room, at (x, y) centres so the whole set
+     reads as one consistent kit rather than one-off art per object. */
+  const kit = {
+    calendar: (x, y) => `
+      <rect class="furn" x="${x - 18}" y="${y - 20}" width="36" height="40" rx="6"/>
+      <rect class="accent-soft" x="${x - 11}" y="${y - 16}" width="22" height="7" rx="3"/>
+      <line class="ink" x1="${x - 11}" y1="${y - 2}" x2="${x + 11}" y2="${y - 2}"/>
+      <line class="ink" x1="${x - 11}" y1="${y + 9}" x2="${x + 11}" y2="${y + 9}"/>`,
+    check: (x, y) => `
+      <circle class="furn" cx="${x}" cy="${y}" r="20"/>
+      <circle class="furn-3" cx="${x}" cy="${y}" r="14"/>
+      <path class="ink-2" d="M${x - 7} ${y} L${x - 2} ${y + 6} L${x + 8} ${y - 7}" fill="none"/>`,
+    tray: (x, y) => `
+      <rect class="furn" x="${x - 22}" y="${y - 13}" width="44" height="28" rx="6"/>
+      <circle class="accent-soft" cx="${x}" cy="${y + 1}" r="9"/>`,
+    receipt: (x, y) => `
+      <rect class="furn-3" x="${x - 16}" y="${y - 21}" width="32" height="42" rx="5"/>
+      <line class="ink" x1="${x - 9}" y1="${y - 9}" x2="${x + 9}" y2="${y - 9}"/>
+      <line class="ink" x1="${x - 9}" y1="${y + 1}" x2="${x + 9}" y2="${y + 1}"/>
+      <line class="ink" x1="${x - 9}" y1="${y + 11}" x2="${x + 3}" y2="${y + 11}"/>`,
+    crate: (x, y) => `
+      <rect class="furn" x="${x - 24}" y="${y - 18}" width="48" height="38" rx="6"/>
+      <line class="ink" x1="${x - 24}" y1="${y}" x2="${x + 24}" y2="${y}"/>
+      <line class="ink" x1="${x}" y1="${y - 18}" x2="${x}" y2="${y + 20}"/>`,
+    board: (x, y) => `
+      <rect class="furn" x="${x - 26}" y="${y - 16}" width="52" height="34" rx="6"/>
+      <rect class="furn-3" x="${x - 18}" y="${y - 9}" width="15" height="12" rx="2"/>
+      <rect class="furn-3" x="${x + 3}" y="${y - 9}" width="15" height="12" rx="2"/>`,
+    dropbox: (x, y) => `
+      <rect class="furn" x="${x - 18}" y="${y - 20}" width="36" height="42" rx="8"/>
+      <rect class="ink" x="${x - 10}" y="${y - 10}" width="20" height="4" rx="2"/>`,
+    binder: (x, y) => `
+      <rect class="furn" x="${x - 16}" y="${y - 22}" width="32" height="44" rx="4"/>
+      <line class="ink-2" x1="${x - 16}" y1="${y - 14}" x2="${x - 16}" y2="${y + 14}" stroke-width="4"/>`,
+    stack: (x, y) => `
+      <rect class="furn" x="${x - 20}" y="${y - 15}" width="40" height="8" rx="3"/>
+      <rect class="furn-2" x="${x - 20}" y="${y - 4}" width="40" height="8" rx="3"/>
+      <rect class="furn-3" x="${x - 20}" y="${y + 7}" width="40" height="8" rx="3"/>`,
+    grid: (x, y) => `
+      <rect class="furn" x="${x - 20}" y="${y - 18}" width="40" height="36" rx="6"/>
+      <circle class="accent-soft" cx="${x - 8}" cy="${y - 5}" r="4"/>
+      <circle class="accent-soft" cx="${x + 8}" cy="${y - 5}" r="4"/>
+      <circle class="accent-soft" cx="${x - 8}" cy="${y + 7}" r="4"/>
+      <circle class="accent-soft" cx="${x + 8}" cy="${y + 7}" r="4"/>`,
+    caution: (x, y) => `
+      <path class="furn-2" d="M${x} ${y - 20} L${x + 20} ${y + 16} L${x - 20} ${y + 16} Z"/>
+      <line class="ink-2" x1="${x}" y1="${y - 5}" x2="${x}" y2="${y + 5}"/>
+      <circle class="ink-dot" cx="${x}" cy="${y + 11}" r="2"/>`,
+    outtray: (x, y) => `
+      <rect class="furn" x="${x - 20}" y="${y - 5}" width="40" height="20" rx="4"/>
+      <line class="ink-2" x1="${x}" y1="${y - 22}" x2="${x}" y2="${y - 8}"/>
+      <path class="ink-2" d="M${x - 7} ${y - 15} L${x} ${y - 22} L${x + 7} ${y - 15}" fill="none"/>`,
+    exit: (x, y) => `
+      <rect class="furn" x="${x - 16}" y="${y - 22}" width="28" height="44" rx="3"/>
+      <line class="ink-2" x1="${x + 16}" y1="${y}" x2="${x + 30}" y2="${y}"/>
+      <path class="ink-2" d="M${x + 23} ${y - 6} L${x + 30} ${y} L${x + 23} ${y + 6}" fill="none"/>`,
+  };
+
+  /* A shared counter/shelf under each related cluster — the same "furniture
+     an object sits on" language the desk already carries the journal with,
+     just wide enough to hold two or three objects instead of one. Purely
+     decorative: it never takes a tabindex or a data-go of its own. */
+  const surface = (x, y, w, h) => `
+      <rect class="furn-3" x="${x}" y="${y}" width="${w}" height="${h}" rx="14" aria-hidden="true"/>`;
+
+  /* The self-service everyone can use, grouped the way the directory beside
+     the room already groups them. Two pairs up the left strip (time, then
+     personal records at the bottom) and two pairs down the right floor
+     (money, then workplace) — a 120px column pitch and a 95px row pitch,
+     which is what a 116x30 tag pill needs to never touch its neighbour. */
+  const hrKit = own ? `
+    ${surface(55, 165, 235, 62)}
+    ${spotOpen(by('holidays'),   kit.calendar(100, 195), 100, 247)}
+    ${spotOpen(by('attendance'), kit.check(245, 195),    245, 247)}
+
+    ${surface(50, 560, 250, 70)}
+    ${spotOpen(by('locker'),     locker,                 100, 652)}
+    ${spotOpen(by('policies'),   kit.binder(245, 600),   245, 652)}
+
+    ${spotOpen(by('resignations'), kit.outtray(590, 420), 590, 510)}
+
+    ${surface(665, 418, 300, 62)}
+    ${spotOpen(by('expenses'),   kit.receipt(730, 450),  730, 502)}
+    ${spotOpen(by('assets'),     kit.crate(870, 450),    870, 502)}
+
+    ${surface(665, 540, 300, 62)}
+    ${spotOpen(by('news'),       kit.board(730, 570),    730, 622)}
+    ${spotOpen(by('complaints'), kit.dropbox(870, 570),  870, 622)}` : '';
+
+  /* The HR office — a second walled room, to the left of the meeting room
+     and sharing its partition wall. Everything in here is org-gated the
+     same way the meeting room already is: shown locked, with a reason, to
+     anyone without the org capability, rather than hidden — a closed door
+     is information too. Two columns of two along the back, then the exit
+     on its own centred row, all clear of each other and of the walls. */
+  const hrLocked = `
+    ${surface(385, 45, 250, 72)}
+    ${surface(385, 150, 250, 62)}
+    ${org
+      ? spotOpen(by('files'), files, 432, 137)
+      : spotLocked(by('files'), files, 432, 137,
+          'People and employment records. HR only.')}
+    ${org
+      ? spotOpen(by('letterheads'), kit.stack(578, 85), 578, 137)
+      : spotLocked(by('letterheads'), kit.stack(578, 85), 578, 137,
+          'HR documents only.')}
+    ${org
+      ? spotOpen(by('customfields'), kit.grid(432, 180), 432, 232)
+      : spotLocked(by('customfields'), kit.grid(432, 180), 432, 232,
+          'HR documents only.')}
+    ${org
+      ? spotOpen(by('warnings'), kit.caution(578, 180), 578, 232)
+      : spotLocked(by('warnings'), kit.caution(578, 180), 578, 232,
+          'HR records only.')}
+    ${org
+      ? spotOpen(by('offboarding'), kit.exit(505, 275), 505, 327)
+      : spotLocked(by('offboarding'), kit.exit(505, 275), 505, 327,
+          'HR records only.')}`;
+
   /* An organisation account gets the meeting room and nothing else. The
      employee floor is not drawn as furniture they cannot use — it is drawn
      as a sealed area, because an HR leader has no business seeing whose desk
      is whose. The wall is the point. */
   const employeeFloor = !own ? `
     <g class="sealed" aria-hidden="true">
-      <rect class="sealed__fill" x="52" y="52" width="546" height="616" rx="16"/>
-      <g transform="translate(325 330)">
+      <rect class="sealed__fill" x="44" y="44" width="308" height="632" rx="16"/>
+      <rect class="sealed__fill" x="368" y="360" width="588" height="316" rx="16"/>
+      <g transform="translate(660 500)">
         <rect class="sealed__badge" x="-118" y="-40" width="236" height="80" rx="18"/>
         <g transform="translate(0 -12)">
           <path class="sealed__icon" transform="translate(-11 -11) scale(0.92)"
@@ -278,15 +453,15 @@ function roomSVG(opts) {
         <text class="sealed__sub" x="0" y="32">Employees only — sealed from your account</text>
       </g>
     </g>` : `
-    ${spotOpen(by('desk'), desk, 216, 530)}
-    ${spotOpen(by('journal'), journal, 296, 300)}
-    ${spotOpen(by('cooler'), cooler, 520, 566)}
+    ${spotOpen(by('shelf'), shelf, 100, 132)}
     ${spotOpen(
         Object.assign({}, by('clock'), { sub: formatTime(mins) }),
-        clock, 330, 122)}
-    ${spotOpen(by('lounge'), lounge, 715, 624)}
-    ${spotOpen(by('shelf'), shelf, 79, 300)}
-    ${spotOpen(by('locker'), locker, 427, 578)}`;
+        clock, 245, 132)}
+    ${spotOpen(by('journal'), journal, 270, 282)}
+    ${spotOpen(by('desk'), desk, 190, 534)}
+    ${spotOpen(by('cooler'), cooler, 450, 510)}
+    ${spotOpen(by('lounge'), lounge, 730, 382)}
+    ${hrKit}`;
 
   return `
   <svg class="room__svg" viewBox="0 0 1000 720" role="img"
@@ -296,25 +471,37 @@ function roomSVG(opts) {
     <rect class="floor" x="24" y="24" width="952" height="672" rx="22"/>
     <rect class="wall"  x="24" y="24" width="952" height="672" rx="22"/>
 
-    ${own ? '<rect class="rug" x="360" y="300" width="230" height="150" rx="16"/>' : ''}
+    <!-- Centred on the open mid floor between the two rooms above and the
+         front door below, not on the whole plan — the plan is no longer one
+         open space, so the middle of the drawing is inside a wall. -->
+    ${own ? '<rect class="rug" x="395" y="448" width="230" height="150" rx="16"/>' : ''}
 
     <!-- lit pools go over the floor and under the furniture, so the light
          falls on the room rather than washing across the top of it -->
     ${lights}
 
-    <!-- meeting room partition, with its doorway gap -->
-    <path class="wall-inner" d="M626 24 L626 270 L700 270 M772 270 L976 270"/>
+    <!-- Two walled rooms across the top, sharing the partition at x=660:
+         the HR office on the left, the meeting room on the right. Each has
+         its own doorway gap — the HR office opens downward onto the mid
+         floor, the meeting room opens downward onto the right floor — so
+         they read as two rooms rather than one long one. -->
+    <path class="wall-inner"
+          d="M360 24 L360 350
+             M660 24 L660 350
+             M360 350 L480 350 M540 350 L660 350
+             M660 270 L790 270 M850 270 L976 270"/>
 
-    <!-- badge reader beside the meeting room door -->
-    <rect class="reader ${org ? 'is-open' : ''}" x="778" y="278" width="14" height="24" rx="4"/>
+    <!-- badge readers, each just outside its own door -->
+    <rect class="reader ${org ? 'is-open' : ''}" x="548" y="356" width="24" height="14" rx="4"/>
+    <rect class="reader ${org ? 'is-open' : ''}" x="856" y="278" width="24" height="14" rx="4"/>
 
     ${employeeFloor}
 
-    ${org ? spotOpen(by('files'), files, 784, 556) : ''}
+    ${hrLocked}
 
     ${org
-      ? spotOpen(by('meeting'), meeting, 812, 250)
-      : spotLocked(by('meeting'), meeting, 812, 250,
+      ? spotOpen(by('meeting'), meeting, 812, 252)
+      : spotLocked(by('meeting'), meeting, 812, 252,
           'Your account cannot open this room. It holds group data only.')}
 
     <!-- front doors: two leaves that swing inward on sign-in -->

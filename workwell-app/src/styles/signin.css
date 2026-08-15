@@ -99,6 +99,7 @@
   text-align: left;
   padding: var(--s-3) var(--s-4);
   background: var(--surface);
+  backdrop-filter: var(--glass-filter);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   transition: border-color var(--dur-fast) var(--ease),

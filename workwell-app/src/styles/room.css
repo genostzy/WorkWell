@@ -20,6 +20,37 @@
   overflow: hidden;
 }
 
+/* Looking at the room, the room is the whole screen — no bar across the
+   top of the picture. The header lifts out of flow and fades in only when
+   it's actually wanted (mouse near the top, or keyboard focus inside it —
+   sign-out/sign-in and the office wordmark stay one Tab away, never truly
+   gone), then fades back out. List view is untouched: is-fit is only set
+   for the room, so the header there keeps its normal place in the layout.
+   Mouse-only reveal is fine here — the room view isn't used on narrow
+   screens at all (auto-switched to List), where hover doesn't exist. */
+.room-shell.is-fit .room-top {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity var(--dur-med) var(--ease);
+  /* Not pointer-events:none — the header's own box is naturally just the
+     thin bar at the very top, not the whole screen, so it can stay
+     hoverable while invisible without ever sitting over the room's own
+     click targets below it. That's also why the trigger below is
+     `.room-top:hover`, not `.room-shell:hover`: the shell fills the whole
+     viewport, so hovering it would mean "the header shows whenever the
+     mouse is anywhere on the page at all" — not what "tucked away" means. */
+}
+.room-shell.is-fit .room-top:hover,
+.room-shell.is-fit .room-top:focus-within {
+  opacity: 1;
+}
+:root[data-motion="reduced"] .room-shell.is-fit .room-top { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  :root:where(:not([data-motion="full"])) .room-shell.is-fit .room-top { transition: none; }
+}
+
 .room-top {
   display: flex;
   align-items: center;
@@ -29,6 +60,30 @@
 .room-top__brand { display: flex; align-items: center; gap: var(--s-3); }
 .room-top__name { font-size: var(--fs-lg); font-weight: var(--fw-heavy); letter-spacing: -0.02em; }
 .room-top__spacer { margin-left: auto; }
+
+/* The Room/List switch stays fully functional — the page still auto-picks
+   List on a narrow screen, and it's still in the tab order for anyone who
+   needs an explicit way to it — but a sighted mouse user doesn't need to
+   see a toggle for a choice the page already makes for them most of the
+   time. Visible again the instant it's focused, so a keyboard user tabbing
+   through never loses track of where they landed. */
+.room-top .segmented {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.room-top .segmented:focus-within {
+  position: static;
+  width: auto; height: auto;
+  padding: 3px; margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
 
 /* The header sits at the top, so the account menu must drop downward and
    align right rather than use the sidebar's upward default. */
@@ -71,43 +126,89 @@
   width: 100%;
   max-width: 1100px;
   margin: 0 auto;
+  /* No background, shadow, or blur on this div itself, on purpose — the SVG
+     is letterboxed inside this box (it keeps its own aspect ratio), so
+     anything painted or blurred here shows up as a second, larger rectangle
+     floating behind the actual floor plan. The grounding tint and blur that
+     make the floor read as glass live on .floor itself instead, exactly
+     matching the drawn room's own shape. */
+}
+
+/* Furniture line art needs to hold up against anything from a night sky to
+   full midday blue behind the panel — meaningfully firmer than the app's
+   own --border-strong, which is tuned for sitting on a flat --bg. */
+:root {
+  --room-ink:  rgba(17, 17, 16, .56);
+  --room-fill: rgba(255, 255, 255, .42);
+  --room-fill-2: rgba(255, 255, 255, .26);
+}
+:root[data-theme="dark"] { --room-ink: rgba(255, 255, 255, .52); --room-fill: rgba(255, 255, 255, .14); --room-fill-2: rgba(255, 255, 255, .09); }
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) { --room-ink: rgba(255, 255, 255, .52); --room-fill: rgba(255, 255, 255, .14); --room-fill-2: rgba(255, 255, 255, .09); }
 }
 
 .room__svg { display: block; width: 100%; height: 100%; }
 
 /* --------------------------------------------------------------- Surfaces */
 
-.floor      { fill: var(--surface-2); }
-.wall       { fill: none; stroke: var(--border-strong); stroke-width: 14; }
-.wall-inner { fill: none; stroke: var(--border-strong); stroke-width: 12; stroke-linecap: round; }
+/* The floor carries the grounding tint, drawn at exactly the room's own
+   bounds so nothing shows past the walls the way a div-level background
+   did. Legible over anything from a night sky to full midday blue; the
+   app's flat --surface tokens alone weren't opaque enough for that range.
+   No backdrop-filter here: this renderer silently fails to paint large
+   parts of the page whenever an SVG shape combines backdrop-filter with
+   anything else in the scene using `filter` — not worth a literal gaussian
+   blur when a solid-enough tint reads as glass on its own (the same
+   opaque-over-translucent tradeoff sky.css already makes for the list view,
+   for the same reason: legibility over a moving sky beats literal blur). */
+.floor {
+  fill: color-mix(in srgb, var(--bg) 28%, transparent);
+}
+.wall       { fill: none; stroke: var(--room-ink); stroke-width: 14; filter: drop-shadow(0 10px 28px rgba(17,17,16,.16)); }
+:root[data-theme="dark"] .wall { filter: drop-shadow(0 14px 34px rgba(0,0,0,.5)); }
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .wall { filter: drop-shadow(0 14px 34px rgba(0,0,0,.5)); }
+}
+.wall-inner { fill: none; stroke: var(--room-ink); stroke-width: 12; stroke-linecap: round; }
 .rug        { fill: var(--accent-quiet); opacity: .7; }
 
-.furn    { fill: var(--surface); stroke: var(--border-strong); stroke-width: 3; }
-.furn-2  { fill: var(--surface-3); stroke: var(--border-strong); stroke-width: 2.5; }
-.furn-3  { fill: var(--surface); stroke: var(--border-strong); stroke-width: 2.5; }
+/* A soft cast shadow under each piece — the same glass-furniture-floating
+   look as the panel it sits on, at the scale a hand-drawn icon can carry. */
+.furn    { fill: var(--room-fill); stroke: var(--room-ink); stroke-width: 3; filter: drop-shadow(0 3px 4px rgba(17,17,16,.10)); }
+.furn-2  { fill: var(--room-fill-2); stroke: var(--room-ink); stroke-width: 2.5; filter: drop-shadow(0 2px 3px rgba(17,17,16,.08)); }
+.furn-3  { fill: var(--room-fill); stroke: var(--room-ink); stroke-width: 2.5; filter: drop-shadow(0 3px 4px rgba(17,17,16,.10)); }
+
+:root[data-theme="dark"] .furn,
+:root[data-theme="dark"] .furn-3 { filter: drop-shadow(0 3px 6px rgba(0,0,0,.45)); }
+:root[data-theme="dark"] .furn-2 { filter: drop-shadow(0 2px 4px rgba(0,0,0,.4)); }
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .furn,
+  :root:where(:not([data-theme="light"])) .furn-3 { filter: drop-shadow(0 3px 6px rgba(0,0,0,.45)); }
+  :root:where(:not([data-theme="light"])) .furn-2 { filter: drop-shadow(0 2px 4px rgba(0,0,0,.4)); }
+}
 .screen  { fill: var(--accent); }
-.ink     { stroke: var(--border-strong); stroke-width: 3; stroke-linecap: round; }
+.ink     { stroke: var(--room-ink); stroke-width: 3; stroke-linecap: round; }
 .ink-2   { stroke: var(--text); stroke-width: 3.5; stroke-linecap: round; }
 .plant   { fill: var(--accent); opacity: .5; }
 .plant-2 { fill: var(--accent); opacity: .8; }
 .accent-soft { fill: var(--accent); opacity: .35; }
 
-.reader { fill: var(--border-strong); }
+.reader { fill: var(--room-ink); }
 .reader.is-open { fill: var(--accent); }
 .ink-dot { fill: var(--text); }
 
 /* Sealed employee floor, shown to organisation accounts. Deliberately blank:
    an HR leader has no business seeing whose desk is whose. */
 .sealed__fill {
-  fill: var(--surface-3);
-  stroke: var(--border-strong);
+  fill: var(--room-fill-2);
+  stroke: var(--room-ink);
   stroke-width: 3;
   stroke-dasharray: 10 8;
   opacity: .55;
 }
 .sealed__badge {
-  fill: var(--surface);
-  stroke: var(--border-strong);
+  fill: var(--room-fill);
+  stroke: var(--room-ink);
   stroke-width: 2;
 }
 .sealed__icon {
@@ -244,9 +345,18 @@
 /* ------------------------------------------------------------------ Spots */
 
 .spot { cursor: pointer; outline: none; }
-.spot__art { transition: transform var(--dur-med) var(--ease); transform-box: fill-box; transform-origin: center; }
+.spot__art { transition: transform var(--dur-med) var(--ease), filter var(--dur-med) var(--ease); transform-box: fill-box; transform-origin: center; }
 .spot:hover .spot__art,
-.spot:focus-visible .spot__art { transform: scale(1.045); }
+.spot:focus-visible .spot__art {
+  transform: scale(1.06) translateY(-2px);
+  filter: drop-shadow(0 6px 10px rgba(17,17,16,.16));
+}
+:root[data-theme="dark"] .spot:hover .spot__art,
+:root[data-theme="dark"] .spot:focus-visible .spot__art { filter: drop-shadow(0 6px 12px rgba(0,0,0,.5)); }
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .spot:hover .spot__art,
+  :root:where(:not([data-theme="light"])) .spot:focus-visible .spot__art { filter: drop-shadow(0 6px 12px rgba(0,0,0,.5)); }
+}
 
 .spot__tagbg {
   fill: var(--surface);

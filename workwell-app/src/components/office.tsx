@@ -23,6 +23,19 @@ export const ROUTES: Record<string, string> = {
   'workspace.html': '/workspace',
   'hr-people.html': '/hr',
   'org-diagnostics.html': '/org',
+  'holidays.html': '/holidays',
+  'attendance.html': '/attendance',
+  'payroll.html': '/payroll',
+  'expenses.html': '/expenses',
+  'assets.html': '/assets',
+  'news.html': '/news',
+  'complaints.html': '/complaints',
+  'company-policies.html': '/company-policies',
+  'resignations.html': '/resignations',
+  'letter-heads.html': '/letter-heads',
+  'custom-fields.html': '/custom-fields',
+  'offboarding.html': '/offboarding',
+  'warnings.html': '/warnings',
 }
 
 declare global {

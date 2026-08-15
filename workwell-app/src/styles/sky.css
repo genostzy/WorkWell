@@ -33,7 +33,8 @@ body.has-sky .room-shell { position: relative; z-index: 1; }
 }
 .sky__body svg { display: block; width: 100%; height: 100%; }
 
-/* A soft halo, kept well behind the pixel edges so they stay crisp. */
+/* A soft halo behind the disc — its own bloom, separate from the sun/moon's
+   own radial-gradient shading. */
 .sky__body::before {
   content: "";
   position: absolute;
@@ -54,7 +55,9 @@ body.has-sky .room-shell { position: relative; z-index: 1; }
 .sky__star {
   position: absolute;
   display: block;
-  background: #FFFFFF;          /* square, not round — pixel style */
+  border-radius: 50%;
+  background: #FFFFFF;
+  box-shadow: 0 0 4px 1px rgba(255, 255, 255, .55);
 }
 
 /* --------------------------------------------------------------- Clouds */
@@ -66,29 +69,41 @@ body.has-sky .room-shell { position: relative; z-index: 1; }
 }
 .sky__cloud {
   position: absolute;
-  left: -160px;
-  width: 110px;
-  height: 36px;
+  left: -200px;
+  width: 114px;
+  height: 58px;
   animation: skyDrift var(--dur, 220s) linear infinite;
 }
+/* Overlapping blurred circles, softly shaded top-light/underside-shadow, so
+   the silhouette reads as a fluffy cumulus puff rather than a stacked block. */
 .sky__cloud span {
   position: absolute;
   display: block;
-  background: rgba(255, 255, 255, .82);
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%,
+    rgba(255,255,255,.98) 0%,
+    rgba(255,255,255,.86) 55%,
+    rgba(224,230,240,.62) 100%);
+  filter: blur(2.5px);
 }
 @keyframes skyDrift {
   from { transform: translateX(0) scale(var(--s, 1)); }
-  to   { transform: translateX(calc(100vw + 320px)) scale(var(--s, 1)); }
+  to   { transform: translateX(calc(100vw + 360px)) scale(var(--s, 1)); }
 }
 
 /* --------------------------------------- Keeping the interface readable */
 
 /* The sky is behind the whole page, so anything carrying text gets a scrim.
-   Without these the caption and topbar would sit straight on a sunset. */
+   Without these the caption and topbar would sit straight on a sunset.
+   Glass here too, but a firmer one than the app's own chrome: a header
+   fixed over a sky that swings from midday to full night needs more backing
+   than a header sitting on a flat --bg ever does — same reasoning as the
+   office floor plan itself. */
 body.has-sky .room-top {
-  background: color-mix(in srgb, var(--bg) 82%, transparent);
-  backdrop-filter: blur(14px);
+  background: var(--glass-sheen), var(--noise), color-mix(in srgb, var(--bg) 80%, transparent);
+  backdrop-filter: var(--glass-filter-4);
   border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-1);
 }
 
 body.has-sky [data-room-caption],
@@ -96,28 +111,33 @@ body.has-sky [data-room-hint] {
   display: inline-block;
   padding: var(--s-2) var(--s-4);
   border-radius: var(--r-pill);
-  background: color-mix(in srgb, var(--bg) 84%, transparent);
-  backdrop-filter: blur(10px);
+  background: var(--glass-sheen), var(--noise), color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: var(--glass-filter-3);
   border: 1px solid var(--border);
+  box-shadow: var(--shadow-1);
 }
 
 body.has-sky .room-note {
-  background: color-mix(in srgb, var(--surface-2) 92%, transparent);
-  backdrop-filter: blur(10px);
+  background: var(--glass-sheen), var(--noise), color-mix(in srgb, var(--surface-2) 90%, transparent);
+  backdrop-filter: var(--glass-filter-3);
 }
 
-/* The list view scrolls over the sky. Its items and its heading both get real
-   backing — a text-shadow is not a contrast strategy, and this text would
-   otherwise sit straight on a sunset. */
-/* Opaque, not translucent. A sunset tints a translucent panel enough to drop
-   secondary text under 4.5:1 — measured at 4.17. Keeping content surfaces
-   solid means the token contrasts already validated hold exactly, and the sky
-   frames the panel instead of bleeding through it. */
-body.has-sky .roomlist__item { background: var(--surface); }
+/* The list view scrolls over the sky. Its items and its heading both need
+   real backing — a text-shadow is not a contrast strategy, and this text
+   would otherwise sit straight on a sunset.
+   Glass, not flat opaque: a firmly-tinted translucency (90%+) rather than
+   the low opacity that measured under 4.5:1 in the earlier pass — close
+   enough to solid that the token contrasts already validated still hold,
+   while still reading as frosted rather than a flat card. */
+body.has-sky .roomlist__item {
+  background: var(--glass-sheen), var(--noise), color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: var(--glass-filter-2);
+}
 body.has-sky [data-view-panel="list"].is-on {
   padding: var(--s-5);
   border-radius: var(--r-lg);
-  background: var(--bg);
+  background: var(--glass-sheen), var(--noise), color-mix(in srgb, var(--bg) 94%, transparent);
+  backdrop-filter: var(--glass-filter-3);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-2);
 }
