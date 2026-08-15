@@ -3,36 +3,30 @@
 import Script from 'next/script'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import { initialsOf } from '@/components/office'
 
 /**
  * The office, always in view — drawn as its own compact layout rather than
- * a shrunk copy of the office screen's room.
+ * a shrunk copy of the office screen's room, and in two parts.
  *
- * That room is a wide floor plan (a 1000×720 viewBox) and this column is
- * the opposite shape — narrow and as tall as the viewport. Neither scaling
- * it to the width nor to the height alone fills the column: one leaves a
- * band empty, the other overflows or crops. The viewBox below is sized in
- * JS from the sidebar's own measured box, every render, so the SVG's own
- * aspect ratio always matches the space it has to fill exactly — no
- * letterboxing on either axis, and no guessing at a "typical" screen size.
+ * The top part is the room itself: the same seven personal stops the office
+ * screen draws (desk, journal, water cooler, …) plus the meeting room and
+ * HR office, built the same way — furniture with a name tag beneath it,
+ * reusing room.css's classes so hover, focus and quiet-hours dimming all
+ * work without any of that being redefined here. room.js stays untouched
+ * on purpose (see office.tsx), so this does not reach for roomSVG() at
+ * all; it borrows the classes, not the generator.
  *
- * room.js stays untouched on purpose — see office.tsx — so this does not
- * reach for roomSVG() at all. Each stop is drawn as furniture with a name
- * tag beneath it, the same visual grammar as the office screen's room,
- * just stacked in one column instead of spread across a floor. It borrows
- * room.css's classes throughout (.spot, .furn, .spot__tagbg, …) so hover,
- * focus and quiet-hours dimming all work without any of that being
- * redefined here, and it still reads the clock from room.js rather than
- * duplicating that logic.
+ * Below it is a directory board — everything that is not a personal desk
+ * or a floor-plan room in its own right (payroll, holidays, warnings, and
+ * the rest of a full HR system's worth of destinations). Trying to draw
+ * two dozen more pieces of furniture by hand, in coordinates nobody could
+ * see rendered before shipping them, was the wrong place to spend that
+ * risk — plain rows read perfectly well as a noticeboard on the same wall.
  */
 
-type CompactSpot = {
-  id: string
-  href: string
-  label: string
-  sub: string
-}
+type CompactSpot = { id: string; href: string; label: string; sub: string }
 
 const SPOTS: CompactSpot[] = [
   { id: 'desk', href: '/trends', label: 'Your desk', sub: 'Trends' },
@@ -48,8 +42,7 @@ const ZONE_H = 132
 const GAP = 10
 const TOP_PAD = 92
 const BOTTOM_PAD = 24
-/** Where the tag pill sits within a zone, relative to its own top. Fixed
- *  regardless of zone width, since the pill's own size is fixed too. */
+const W = 280
 const ICON_Y = 46
 const TAG_Y = 100
 
@@ -117,8 +110,7 @@ function icon(id: string, cx: number, cy: number, minutes: number) {
 }
 
 /** The office screen's own name-tag pill — same shape, same classes, just
- *  reused here rather than redrawn, so a change to how a tag looks there
- *  keeps looking the same way here. */
+ *  reused here rather than redrawn. */
 function tag(cx: number, cy: number, label: string, sub: string) {
   return `
     <g class="spot__tag" transform="translate(${cx} ${cy})">
@@ -139,27 +131,12 @@ function zone(spot: CompactSpot, cx: number, top: number, minutes: number, locke
     </g>`
 }
 
-function compactRoomSVG(opts: {
-  minutes: number
-  isHr: boolean
-  aspect: number
-  formatTime: (m: number) => string
-}) {
+function compactRoomSVG(opts: { minutes: number; isHr: boolean; formatTime: (m: number) => string }) {
   const spots = [...SPOTS]
   spots[3] = { ...spots[3], sub: opts.formatTime(opts.minutes) }
 
-  const meeting: CompactSpot = {
-    id: 'meeting',
-    href: '/org',
-    label: 'Meeting room',
-    sub: 'Structural load',
-  }
-  const files: CompactSpot = {
-    id: 'files',
-    href: '/hr',
-    label: 'HR office',
-    sub: 'People & records',
-  }
+  const meeting: CompactSpot = { id: 'meeting', href: '/org', label: 'Meeting room', sub: 'Structural load' }
+  const files: CompactSpot = { id: 'files', href: '/hr', label: 'HR office', sub: 'People & records' }
 
   const rows: { spot: CompactSpot; locked?: string }[] = [
     ...spots.map((spot) => ({ spot })),
@@ -168,21 +145,17 @@ function compactRoomSVG(opts: {
   ]
 
   const height = TOP_PAD + rows.length * ZONE_H + (rows.length - 1) * GAP + BOTTOM_PAD
-  // The sidebar's own measured width÷height, so the viewBox always has the
-  // same shape as the box it is about to fill — the fix for the empty
-  // bands down each side that a fixed, guessed ratio left behind.
-  const width = Math.round(height * opts.aspect)
-  const cx = width / 2
+  const cx = W / 2
 
   const zones = rows
     .map((r, i) => zone(r.spot, cx, TOP_PAD + i * (ZONE_H + GAP), opts.minutes, r.locked))
     .join('')
 
   return `
-    <svg class="room__svg" viewBox="0 0 ${width} ${height}" role="img"
-         aria-label="The office. Use the destination buttons, or open List view for the same links as text.">
-      <rect class="floor" x="4" y="4" width="${width - 8}" height="${height - 8}" rx="18"/>
-      <rect class="wall" x="4" y="4" width="${width - 8}" height="${height - 8}" rx="18"/>
+    <svg class="room__svg" viewBox="0 0 ${W} ${height}" role="img"
+         aria-label="Your office. Use the destination buttons, or open List view for the same links as text.">
+      <rect class="floor" x="4" y="4" width="${W - 8}" height="${height - 8}" rx="18"/>
+      <rect class="wall" x="4" y="4" width="${W - 8}" height="${height - 8}" rx="18"/>
 
       <g class="room-avatar" aria-hidden="true" style="opacity:1;transform:none">
         <circle class="room-avatar__dot" cx="${cx}" cy="42" r="24"/>
@@ -193,30 +166,224 @@ function compactRoomSVG(opts: {
     </svg>`
 }
 
-/** Measures the sidebar's actual box, and only that — width and height in
- *  real pixels, from which the SVG derives its aspect ratio. Re-measures on
- *  resize rather than once at mount, since --sidebar-w changes at the
- *  1080px breakpoint and a phone rotating changes the height. */
-function useAspect(ref: React.RefObject<HTMLElement | null>) {
-  const [aspect, setAspect] = useState(0.42)
+/* ------------------------------------------------------- Directory board */
 
-  useEffect(() => {
-    const el = ref.current
-    if (!el || typeof ResizeObserver === 'undefined') return
-
-    const measure = () => {
-      const { width, height } = el.getBoundingClientRect()
-      if (width > 0 && height > 0) setAspect(width / height)
-    }
-
-    measure()
-    const ro = new ResizeObserver(measure)
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [ref])
-
-  return aspect
+type DirItem = {
+  id: string
+  href?: string
+  action?: 'signout'
+  label: string
+  sub: string
+  hrOnly?: boolean
 }
+
+type DirSection = { title: string; items: DirItem[] }
+
+const DIRECTORY: DirSection[] = [
+  {
+    title: 'Time & leave',
+    items: [
+      { id: 'holidays', href: '/holidays', label: 'Holidays', sub: 'Company calendar' },
+      { id: 'attendance', href: '/attendance', label: 'Attendance', sub: 'Details & summary' },
+    ],
+  },
+  {
+    title: 'Money',
+    items: [
+      { id: 'payroll', href: '/payroll', label: 'Payroll', sub: 'Pre-payments, increments' },
+      { id: 'expenses', href: '/expenses', label: 'Expenses', sub: 'Claim something back' },
+    ],
+  },
+  {
+    title: 'Records',
+    items: [
+      { id: 'assets', href: '/assets', label: 'Assets', sub: 'Equipment on loan' },
+      { id: 'letter-heads', href: '/letter-heads', label: 'Letter heads', sub: 'HR document templates', hrOnly: true },
+      { id: 'company-policies', href: '/company-policies', label: 'Company policies', sub: 'What everyone reads once' },
+      { id: 'custom-fields', href: '/custom-fields', label: 'Custom data fields', sub: 'Extend an employment record', hrOnly: true },
+    ],
+  },
+  {
+    title: 'Workplace',
+    items: [
+      { id: 'news', href: '/news', label: 'News', sub: 'Announcements' },
+      { id: 'complaints', href: '/complaints', label: 'Complaints', sub: 'A formal, tracked case' },
+    ],
+  },
+  {
+    title: 'Leaving',
+    items: [
+      { id: 'resignations', href: '/resignations', label: 'Resignations', sub: 'Hand in notice' },
+      { id: 'offboarding', href: '/offboarding', label: 'Offboarding', sub: 'HR checklist', hrOnly: true },
+      { id: 'warnings', href: '/warnings', label: 'Warnings', sub: 'Disciplinary records', hrOnly: true },
+    ],
+  },
+  {
+    title: 'Account',
+    items: [{ id: 'logout', action: 'signout', label: 'Log out', sub: 'Ends every session' }],
+  },
+]
+
+/** Plain-shape line icons — rects, circles and straight-line paths only, no
+ *  curves, so each one is simple enough to be confident is correct without
+ *  seeing it rendered first. */
+const DIR_ICON: Record<string, React.ReactNode> = {
+  holidays: (
+    <>
+      <rect x="4" y="6" width="16" height="14" rx="2" />
+      <path d="M4 10h16M8 4v4M16 4v4" />
+    </>
+  ),
+  attendance: (
+    <>
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 8v4l3 2" />
+    </>
+  ),
+  payroll: (
+    <>
+      <rect x="3" y="7" width="18" height="11" rx="2" />
+      <circle cx="12" cy="12.5" r="2.6" />
+      <path d="M6 7v11M18 7v11" />
+    </>
+  ),
+  expenses: (
+    <>
+      <path d="M6 3h12v18l-2.5-1.5L13 21l-2.5-1.5L8 21l-2-1.5V3Z" />
+      <path d="M9 8h6M9 12h6" />
+    </>
+  ),
+  assets: (
+    <>
+      <rect x="4" y="8" width="16" height="12" rx="1.5" />
+      <path d="M4 8l8-4 8 4" />
+    </>
+  ),
+  'letter-heads': (
+    <>
+      <rect x="5" y="3" width="14" height="18" rx="1.5" />
+      <path d="M8 8h8M8 12h8M8 16h5" />
+    </>
+  ),
+  'company-policies': (
+    <>
+      <path d="M4 5.5C4 4.7 4.7 4 5.5 4H12v16H5.5A1.5 1.5 0 0 1 4 18.5v-13Z" />
+      <path d="M20 5.5c0-.8-.7-1.5-1.5-1.5H12v16h6.5a1.5 1.5 0 0 0 1.5-1.5v-13Z" />
+    </>
+  ),
+  'custom-fields': (
+    <>
+      <path d="M6 4v16M12 4v16M18 4v16" />
+      <circle cx="6" cy="9" r="2" />
+      <circle cx="12" cy="15" r="2" />
+      <circle cx="18" cy="7" r="2" />
+    </>
+  ),
+  news: (
+    <>
+      <path d="M3 11v3a2 2 0 0 0 2 2h1l9 4V5L6 9H5a2 2 0 0 0-2 2Z" />
+      <path d="M17 9.5a4 4 0 0 1 0 5" />
+    </>
+  ),
+  complaints: (
+    <>
+      <path d="M5 3v18" />
+      <path d="M5 4h11l-2.5 3.5L16 11H5" />
+    </>
+  ),
+  resignations: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3 6l9 7 9-7" />
+    </>
+  ),
+  offboarding: (
+    <>
+      <rect x="4" y="3" width="12" height="18" rx="1.5" />
+      <path d="M16 12h5M18 9.5 20.5 12 18 14.5" />
+    </>
+  ),
+  warnings: (
+    <>
+      <path d="M12 3 2 20h20L12 3Z" />
+      <path d="M12 10v4" />
+      <circle cx="12" cy="17" r="0.5" />
+    </>
+  ),
+  logout: (
+    <>
+      <path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3" />
+      <path d="M13 8l4 4-4 4M9 12h8" />
+    </>
+  ),
+}
+
+function DirIcon({ id }: { id: string }) {
+  return (
+    <svg
+      className="room-tile__icon"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {DIR_ICON[id] ?? <circle cx="12" cy="12" r="7" />}
+    </svg>
+  )
+}
+
+function Directory({
+  isHr,
+  onGo,
+  onSignOut,
+}: {
+  isHr: boolean
+  onGo: (href: string) => void
+  onSignOut: () => void
+}) {
+  return (
+    <nav className="room-directory" aria-label="Directory">
+      <div className="room-directory__title">Building directory</div>
+      {DIRECTORY.map((section) => (
+        <div className="room-directory__section" key={section.title}>
+          <div className="room-directory__heading">{section.title}</div>
+          <div className="room-directory__tiles">
+            {section.items.map((item) => {
+              const locked = Boolean(item.hrOnly) && !isHr
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`room-tile${locked ? ' room-tile--locked' : ''}`}
+                  disabled={locked}
+                  aria-disabled={locked || undefined}
+                  onClick={() => {
+                    if (locked) return
+                    if (item.action === 'signout') onSignOut()
+                    else if (item.href) onGo(item.href)
+                  }}
+                >
+                  <DirIcon id={item.id} />
+                  <span className="room-tile__text">
+                    <span className="room-tile__label">{item.label}</span>
+                    <span className="room-tile__sub">
+                      {locked ? 'HR only' : item.sub}
+                    </span>
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+    </nav>
+  )
+}
+
+/* --------------------------------------------------------------- Sidebar */
 
 export function RoomSidebar({
   isHr,
@@ -230,17 +397,16 @@ export function RoomSidebar({
   colour?: string
 }) {
   const router = useRouter()
-  const asideRef = useRef<HTMLElement>(null)
   const roomRef = useRef<HTMLDivElement>(null)
   const [loaded, setLoaded] = useState(false)
-  const aspect = useAspect(asideRef)
+  const [signingOut, setSigningOut] = useState(false)
 
   const build = useCallback(() => {
     const WW = window.WW
     if (!WW?.room || !roomRef.current) return
 
     const minutes = WW.room.nowMinutes()
-    const svg = compactRoomSVG({ minutes, isHr, aspect, formatTime: WW.room.formatTime })
+    const svg = compactRoomSVG({ minutes, isHr, formatTime: WW.room.formatTime })
 
     roomRef.current.innerHTML = svg
     roomRef.current.dataset.phase = WW.room.phaseAt(minutes)
@@ -250,7 +416,7 @@ export function RoomSidebar({
     roomRef.current.dataset.avatarColour = colour
 
     setLoaded(true)
-  }, [isHr, name, initials, colour, aspect])
+  }, [isHr, name, initials, colour])
 
   useEffect(() => {
     // The script may already be present on a client-side navigation to
@@ -287,10 +453,21 @@ export function RoomSidebar({
     [navigate]
   )
 
+  // Same scope as the SignOut button elsewhere in the app: every session,
+  // not just this tab's.
+  async function signOut() {
+    if (signingOut) return
+    setSigningOut(true)
+    const supabase = createClient()
+    await supabase.auth.signOut({ scope: 'global' })
+    router.push('/')
+    router.refresh()
+  }
+
   return (
     <>
       <Script src="/prototype/room.js" strategy="afterInteractive" onReady={build} />
-      <aside className="room-sidebar" aria-label="The office, and where to go" ref={asideRef}>
+      <aside className="room-sidebar" aria-label="The office, and where to go">
         <div
           className="room"
           data-room
@@ -300,6 +477,8 @@ export function RoomSidebar({
           onKeyDown={onKey}
         />
         {!loaded && <p className="sr-only">Loading the office…</p>}
+
+        <Directory isHr={isHr} onGo={(href) => router.push(href)} onSignOut={signOut} />
       </aside>
     </>
   )

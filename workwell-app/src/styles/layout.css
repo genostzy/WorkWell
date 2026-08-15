@@ -228,32 +228,109 @@
   position: sticky;
   top: 0;
   height: 100vh;
-  display: flex;
-  align-items: stretch;
-  justify-content: stretch;
-  padding: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  padding-bottom: var(--s-6);
 }
 
-/* The room fills the entire sidebar — no margins, no max-width, no
-   centering. The SVG's viewBox handles the scaling so every piece of
-   furniture stays in frame at whatever width the column settles on. */
+/* The room sits at its own natural height — full width, no forced
+   height:100%, since a directory board of everything else follows below
+   it and the two share one scrolling column rather than the room being
+   stretched to fill a space a noticeboard now shares. */
 .room-sidebar .room {
   width: 100%;
-  height: 100%;
   max-width: none;
-  max-height: none;
   margin: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 .room-sidebar .room__svg {
   width: 100%;
-  height: 100%;
+  height: auto;
   max-width: none;
-  max-height: none;
 }
+
+/* ------------------------------------------------------- Directory board */
+
+.room-directory { padding: 0 var(--s-4); }
+
+.room-directory__title {
+  padding: var(--s-5) var(--s-2) var(--s-3);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+  border-top: 1px solid var(--border);
+}
+
+.room-directory__section + .room-directory__section {
+  margin-top: var(--s-4);
+}
+
+.room-directory__heading {
+  padding: 0 var(--s-2) var(--s-2);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+.room-directory__tiles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.room-tile {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  width: 100%;
+  padding: var(--s-2) var(--s-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  text-align: left;
+  color: var(--text);
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.room-tile:hover:not(:disabled) { background: var(--accent-quiet); border-color: var(--accent-border); }
+.room-tile:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+.room-tile__icon {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  color: var(--accent-text);
+}
+
+.room-tile__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.room-tile__label {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.room-tile__sub {
+  font-size: var(--fs-xs);
+  color: var(--text-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-tile--locked {
+  cursor: not-allowed;
+  opacity: .55;
+}
+.room-tile--locked:hover { background: var(--surface-2); border-color: var(--border); }
+.room-tile--locked .room-tile__icon { color: var(--text-subtle); }
 
 /* --------------------------------------------------------------- Topbar */
 
