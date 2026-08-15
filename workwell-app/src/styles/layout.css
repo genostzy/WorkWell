@@ -15,8 +15,10 @@
 
 .sidebar {
   grid-column: 1;
-  background: var(--surface);
+  background: var(--glass-sheen), var(--noise), var(--surface);
+  backdrop-filter: var(--glass-filter-3);
   border-right: 1px solid var(--border);
+  box-shadow: var(--shadow-2);
   display: flex;
   flex-direction: column;
   position: sticky;
@@ -59,6 +61,7 @@
   margin: 0 var(--s-4) var(--s-4);
   padding: var(--s-3) var(--s-4);
   background: var(--accent-quiet);
+  backdrop-filter: var(--glass-filter);
   border: 1px solid var(--accent-border);
   border-radius: var(--r-md);
 }
@@ -160,12 +163,23 @@
   left: 0; right: 0;
   z-index: 80;
   padding: var(--s-2);
-  background: var(--surface);
+  background: var(--glass-sheen), var(--noise), var(--surface);
+  backdrop-filter: var(--glass-filter-4);
   border: 1px solid var(--border-strong);
   border-radius: var(--r-md);
   box-shadow: var(--shadow-3);
+  animation: glass-rise var(--dur-med) var(--ease);
 }
 .account__menu[hidden] { display: none; }
+
+@keyframes glass-rise {
+  from { opacity: 0; transform: translateY(6px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+:root[data-motion="reduced"] .account__menu { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  :root:where(:not([data-motion="full"])) .account__menu { animation: none; }
+}
 
 .account__head {
   display: flex;
@@ -223,8 +237,10 @@
 
 .room-sidebar {
   grid-column: 1;
-  background: var(--surface);
+  background: var(--glass-sheen), var(--noise), var(--surface);
+  backdrop-filter: var(--glass-filter-3);
   border-right: 1px solid var(--border);
+  box-shadow: var(--shadow-2);
   position: sticky;
   top: 0;
   height: 100vh;
@@ -289,13 +305,24 @@
   width: 100%;
   padding: var(--s-2) var(--s-3);
   background: var(--surface-2);
+  backdrop-filter: var(--glass-filter-1);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
+  box-shadow: var(--shadow-1);
   text-align: left;
   color: var(--text);
-  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+  transition: background var(--dur-fast) var(--ease),
+              border-color var(--dur-fast) var(--ease),
+              box-shadow var(--dur-fast) var(--ease),
+              transform var(--dur-fast) var(--ease);
 }
-.room-tile:hover:not(:disabled) { background: var(--accent-quiet); border-color: var(--accent-border); }
+.room-tile:hover:not(:disabled) {
+  background: var(--accent-quiet);
+  border-color: var(--accent-border);
+  box-shadow: var(--shadow-2);
+  transform: translateY(-1px);
+}
+.room-tile:active:not(:disabled) { transform: translateY(0) scale(.985); }
 .room-tile:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 
 .room-tile__icon {
@@ -353,8 +380,8 @@
   align-items: center;
   gap: var(--s-4);
   padding: 0 var(--s-6);
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
-  backdrop-filter: blur(12px);
+  background: var(--glass-sheen), var(--noise), var(--surface-2);
+  backdrop-filter: var(--glass-filter-3);
   border-bottom: 1px solid var(--border);
 }
 
@@ -436,8 +463,8 @@
     z-index: 60;
     height: var(--tabbar-h);
     padding-bottom: env(safe-area-inset-bottom, 0);
-    background: color-mix(in srgb, var(--surface) 94%, transparent);
-    backdrop-filter: blur(14px);
+    background: var(--surface);
+    backdrop-filter: var(--glass-filter);
     border-top: 1px solid var(--border);
   }
   .tabbar a {
@@ -463,6 +490,7 @@
     gap: var(--s-2);
     padding: var(--s-2) var(--s-4);
     background: var(--accent-quiet);
+    backdrop-filter: var(--glass-filter);
     border-bottom: 1px solid var(--accent-border);
     font-size: var(--fs-xs);
     font-weight: var(--fw-bold);
@@ -477,7 +505,8 @@
   position: fixed;
   inset: 0;
   z-index: 90;
-  background: rgba(16, 20, 18, .48);
+  background: rgba(10, 10, 10, .48);
+  backdrop-filter: blur(4px);
   display: grid;
   place-items: center;
   padding: var(--s-4);
@@ -486,7 +515,8 @@
 @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
 
 .sheet {
-  background: var(--surface);
+  background: var(--glass-sheen), var(--noise), var(--surface);
+  backdrop-filter: var(--glass-filter-4);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-3);

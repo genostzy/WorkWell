@@ -13,7 +13,16 @@ html { -webkit-text-size-adjust: 100%; }
 
 body {
   margin: 0;
-  background: var(--bg);
+  /* Soft, colourless blobs behind the page — the glass panels above them
+     (sidebar, topbar, cards, sheets) have something to catch when they blur
+     the backdrop, instead of frosting a perfectly flat fill. */
+  background:
+    radial-gradient(1100px 760px at 12% -8%, var(--ambient-a), transparent 60%),
+    radial-gradient(900px 680px at 104% 12%, var(--ambient-b), transparent 55%),
+    radial-gradient(1400px 600px at 50% 120%, var(--ambient-b), transparent 60%),
+    linear-gradient(180deg, var(--ambient-a) 0%, transparent 18%),
+    var(--bg);
+  background-attachment: fixed;
   color: var(--text);
   font-family: var(--font-sans);
   font-size: var(--fs-md);
@@ -50,13 +59,18 @@ button, input, select, textarea {
 
 button { cursor: pointer; background: none; border: none; padding: 0; }
 
-/* --- Focus: always visible, never removed ------------------------------- */
+/* --- Focus: always visible, never removed --------------------------------
+   The outline alone carries the WCAG contrast requirement; the box-shadow
+   glow around it is decorative polish only, so a browser that ignores one
+   still gets full a11y compliance from the other. */
 :focus-visible {
   outline: var(--focus-ring-w) solid var(--focus-ring);
   outline-offset: 2px;
   border-radius: var(--r-xs);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--focus-ring) 14%, transparent);
+  transition: box-shadow var(--dur-fast) var(--ease);
 }
-:focus:not(:focus-visible) { outline: none; }
+:focus:not(:focus-visible) { outline: none; box-shadow: none; }
 
 /* --- Screen-reader-only, but focusable when it is a skip link ------------ */
 .sr-only {
@@ -116,4 +130,50 @@ button { cursor: pointer; background: none; border: none; padding: 0; }
 @media (forced-colors: active) {
   .card, .btn, .chip { border: 1px solid CanvasText; }
   .chart svg [data-mark] { forced-color-adjust: none; }
+  /* Glass reads as translucency, which forced-colors mode overrides anyway —
+     drop the blur so nothing looks like a rendering glitch under it. */
+  body { background: Canvas; }
+  .sidebar, .room-sidebar, .topbar, .card, .sheet,
+  .account__menu, .room-tile, .banner, .insight, .nudge, .feed__item {
+    backdrop-filter: none;
+    background: Canvas;
+  }
+  .cursor-glass { display: none; }
+}
+
+/* --------------------------------------------------- Cursor-cleared glass
+   A frost layer over the page's own ambient background. Sits behind every
+   screen's real content (z-index 0, same level as the sky, which paints
+   first and so sits beneath this); the mask leaves a soft circle around the
+   pointer transparent, so moving the cursor "wipes" the fog off the ground
+   underneath. --cx/--cy are written every frame by CursorGlass in script —
+   until it mounts and picks a first position, the mask centres near the top
+   so the fog still frames the page rather than fully hiding it. */
+.cursor-glass {
+  position: fixed;
+  inset: 0;
+  /* Negative, not 0 — a static block (.content, .card, most of the page)
+     paints ABOVE a same-level positioned layer per the CSS stacking order,
+     so 0 would put this frost over real content on any screen that doesn't
+     happen to promote its content to its own stacking context. Negative
+     always paints behind normal flow, everywhere, with no coordination
+     needed from the rest of the page. (On the office/sign-in screen this
+     also means it sits behind the opaque sky gradient — fine, that screen
+     already carries its own living backdrop; this one is for the plainer
+     ground every other screen sits on.) */
+  z-index: -1;
+  pointer-events: none;
+  background: var(--noise), color-mix(in srgb, var(--text) 4%, transparent);
+  /* Visible from first paint — no JS-dependent class needed, so there is no
+     window where a slow hydration leaves this stuck invisible. --cx/--cy
+     default near the top of the page until CursorGlass's effect starts
+     writing real coordinates on pointer move. */
+  -webkit-mask-image: radial-gradient(circle 260px at var(--cx, 50%) var(--cy, 30%), transparent 0%, black 65%);
+  mask-image: radial-gradient(circle 260px at var(--cx, 50%) var(--cy, 30%), transparent 0%, black 65%);
+}
+
+:root[data-motion="reduced"] .cursor-glass,
+:root[data-contrast="high"] .cursor-glass { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  :root:where(:not([data-motion="full"])) .cursor-glass { display: none; }
 }

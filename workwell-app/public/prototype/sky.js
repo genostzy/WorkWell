@@ -4,8 +4,13 @@
    A living backdrop for the office: sunrise, day, sunset and night, driven by
    the same clock as the room, so the sky and the wall clock always agree.
 
-   Style is blocky on purpose — stepped colour bands and pixel-grid sun, moon
-   and stars, drawn from scratch rather than lifted from anywhere.
+   Realistic, not blocky: a smooth continuous gradient rather than stepped
+   colour bands, a soft radial sun/moon instead of a pixel grid, and clouds
+   built from overlapping blurred circles rather than stacked rectangles.
+   The palette is muted/atmospheric on purpose — a hazy, photographed sky
+   rather than a saturated cartoon one — since colour here is the one place
+   in the product that still carries it, and it should read as weather, not
+   as a UI accent.
 
    It is decoration and must never cost legibility: the sky sits behind
    everything, all text-bearing chrome keeps an opaque-ish scrim, and the
@@ -17,23 +22,25 @@ window.WW = window.WW || {};
 (function (WW) {
 'use strict';
 
-/* Colour stops through the day: [top of sky, middle, horizon].
-   Interpolated between, so the sky changes continuously rather than
-   snapping between four states. */
+/* Colour stops through the day: [top of sky, middle, horizon]. Muted and
+   atmospheric — every stop desaturated a step from a "pure" sunrise/sky
+   blue/sunset, the way haze and distance actually mute a real sky, and so
+   daytime doesn't read as a wall of saturated blue. Interpolated between,
+   so the sky changes continuously rather than snapping between states. */
 const STOPS = [
-  { t:    0, c: ['#080C1E', '#101637', '#19204A'] },  // deep night
-  { t:  270, c: ['#0C1228', '#1A2148', '#2E2C57'] },  // 4:30 am, first shift
-  { t:  345, c: ['#1B2B52', '#4A3A66', '#8A5A6B'] },  // 5:45 pre-dawn
-  { t:  400, c: ['#2E4C82', '#B06E52', '#F0A25C'] },  // 6:40 sunrise
-  { t:  460, c: ['#3F73B4', '#7FADD8', '#DCC9A6'] },  // 7:40 early morning
-  { t:  600, c: ['#3A78BE', '#6BA5DA', '#A9CDEA'] },  // 10:00 morning
-  { t:  780, c: ['#3271BC', '#63A0D8', '#9FC7E8'] },  // 1:00 pm full day
-  { t:  960, c: ['#3D79BB', '#7CACDC', '#C6CFC6'] },  // 4:00 pm
-  { t: 1050, c: ['#41608F', '#B07A62', '#E8B173'] },  // 5:30 pm going gold
-  { t: 1110, c: ['#2A3C6E', '#C4653C', '#F09A55'] },  // 6:30 sunset
-  { t: 1170, c: ['#1C2A55', '#5E3A5E', '#96556A'] },  // 7:30 dusk
-  { t: 1260, c: ['#0F1636', '#1E2547', '#33305C'] },  // 9:00 pm
-  { t: 1440, c: ['#080C1E', '#101637', '#19204A'] },  // wraps to night
+  { t:    0, c: ['#12162C', '#1C2140', '#262A4A'] },  // deep night
+  { t:  270, c: ['#151A32', '#232948', '#302D4E'] },  // 4:30 am, first shift
+  { t:  345, c: ['#332C4C', '#5A4459', '#93615F'] },  // 5:45 pre-dawn
+  { t:  400, c: ['#4A4E76', '#B5786A', '#E7A672'] },  // 6:40 sunrise
+  { t:  460, c: ['#5D7CA3', '#96AFC4', '#E3CBA9'] },  // 7:40 early morning
+  { t:  600, c: ['#5E88B0', '#8FB2C9', '#C9DCE0'] },  // 10:00 morning
+  { t:  780, c: ['#5A84AE', '#89AEC6', '#C1D6DC'] },  // 1:00 pm full day
+  { t:  960, c: ['#628AAE', '#93B4C6', '#D3DED3'] },  // 4:00 pm
+  { t: 1050, c: ['#556487', '#B08D77', '#E5BE93'] },  // 5:30 pm going gold
+  { t: 1110, c: ['#3E4368', '#B3715C', '#E29A72'] },  // 6:30 sunset
+  { t: 1170, c: ['#332C58', '#5F4460', '#8F5D68'] },  // 7:30 dusk
+  { t: 1260, c: ['#1B1E3C', '#282A4C', '#38344F'] },  // 9:00 pm
+  { t: 1440, c: ['#12162C', '#1C2140', '#262A4A'] },  // wraps to night
 ];
 
 const SUNRISE = 360;    // 6:00 am
@@ -85,44 +92,39 @@ function bodyAt(mins) {
 
 /* ------------------------------------------------------------------- Art */
 
-/** Pixel-grid sun. Blocky by design — no gradients, no glow bloom. */
+/** Soft radial sun — a warm core fading through the disc, the glow bloom
+ *  handled separately by the CSS halo behind it. */
 function sunSVG() {
-  const px = [
-    '..YYYY..',
-    '.YYWWYY.',
-    'YYWWWWYY',
-    'YWWWWWWY',
-    'YWWWWWWY',
-    'YYWWWWYY',
-    '.YYWWYY.',
-    '..YYYY..',
-  ];
-  const fill = { Y: '#F2B33D', W: '#FFE07A' };
-  let r = '';
-  px.forEach((row, y) => [...row].forEach((ch, x) => {
-    if (fill[ch]) r += `<rect x="${x}" y="${y}" width="1" height="1" fill="${fill[ch]}"/>`;
-  }));
-  return `<svg viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">${r}</svg>`;
+  return `<svg viewBox="0 0 100 100" aria-hidden="true">
+    <defs>
+      <radialGradient id="wwSun" cx="42%" cy="38%" r="62%">
+        <stop offset="0%" stop-color="#FFF6DC"/>
+        <stop offset="55%" stop-color="#FFDD82"/>
+        <stop offset="100%" stop-color="#F0AE45"/>
+      </radialGradient>
+    </defs>
+    <circle cx="50" cy="50" r="42" fill="url(#wwSun)"/>
+  </svg>`;
 }
 
-/** Pixel-grid moon with a few craters. */
+/** Soft radial moon, a few blurred crater shadows rather than flat cutouts. */
 function moonSVG() {
-  const px = [
-    '..MMMM..',
-    '.MMMMMM.',
-    'MMCMMMMM',
-    'MMMMMCMM',
-    'MMMMMMMM',
-    'MMCMMMMM',
-    '.MMMMMM.',
-    '..MMMM..',
-  ];
-  const fill = { M: '#E8EAF2', C: '#BFC4D6' };
-  let r = '';
-  px.forEach((row, y) => [...row].forEach((ch, x) => {
-    if (fill[ch]) r += `<rect x="${x}" y="${y}" width="1" height="1" fill="${fill[ch]}"/>`;
-  }));
-  return `<svg viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">${r}</svg>`;
+  return `<svg viewBox="0 0 100 100" aria-hidden="true">
+    <defs>
+      <radialGradient id="wwMoon" cx="38%" cy="34%" r="68%">
+        <stop offset="0%" stop-color="#FFFFFF"/>
+        <stop offset="55%" stop-color="#E7EAF3"/>
+        <stop offset="100%" stop-color="#C3C9DE"/>
+      </radialGradient>
+      <filter id="wwMoonBlur"><feGaussianBlur stdDeviation="1.6"/></filter>
+    </defs>
+    <circle cx="50" cy="50" r="42" fill="url(#wwMoon)"/>
+    <g filter="url(#wwMoonBlur)" fill="#B6BCD4" opacity="0.55">
+      <circle cx="35" cy="38" r="7"/>
+      <circle cx="61" cy="57" r="5.5"/>
+      <circle cx="44" cy="66" r="4"/>
+    </g>
+  </svg>`;
 }
 
 /* Deterministic star field — same every load, so screenshots are stable. */
@@ -136,27 +138,33 @@ function stars(n) {
   for (let i = 0; i < n; i++) {
     const x = rand() * 100;
     const y = rand() * 62;                 // keep them off the horizon
-    const s = rand() < 0.22 ? 3 : 2;       // a few brighter, blockier ones
-    const o = 0.45 + rand() * 0.55;
+    const s = rand() < 0.18 ? 2.4 : 1.4;   // a few brighter, most a soft pinprick
+    const o = 0.35 + rand() * 0.55;
     out += `<i class="sky__star" style="left:${x.toFixed(2)}%;top:${y.toFixed(2)}%;
              width:${s}px;height:${s}px;opacity:${o.toFixed(2)}"></i>`;
   }
   return out;
 }
 
-/* Blocky clouds, built from a few stacked rectangles each. */
+/* Soft cumulus clouds — a handful of overlapping, blurred circles rather
+   than stacked rectangles, so the silhouette reads as fluffy rather than
+   architectural. */
 function clouds() {
   const shapes = [
     { top: 14, dur: 190, delay: 0,   scale: 1.0 },
     { top: 26, dur: 260, delay: -70, scale: 0.72 },
     { top: 8,  dur: 320, delay: -160, scale: 0.55 },
   ];
+  const puffs = [
+    { left: 0,   top: 18, w: 62, h: 46 },
+    { left: 32,  top: 2,  w: 54, h: 54 },
+    { left: 66,  top: 14, w: 46, h: 40 },
+    { left: 14,  top: 26, w: 100, h: 32 },
+  ];
   return shapes.map((c) => `
     <div class="sky__cloud" style="top:${c.top}%;--dur:${c.dur}s;
          animation-delay:${c.delay}s;transform:scale(${c.scale})">
-      <span style="left:0;   top:14px; width:96px; height:20px"></span>
-      <span style="left:22px;top:0;    width:52px; height:20px"></span>
-      <span style="left:60px;top:8px;  width:44px; height:16px"></span>
+      ${puffs.map((p) => `<span style="left:${p.left}px;top:${p.top}px;width:${p.w}px;height:${p.h}px"></span>`).join('')}
     </div>`).join('');
 }
 
@@ -187,12 +195,10 @@ function mountSky() {
     })();
 
     const [top, mid, horizon] = skyAt(mins);
-    // Stepped bands rather than a smooth wash — the blocky look.
+    // A smooth continuous wash, the way an actual sky's colour changes with
+    // altitude — no hard steps between bands.
     grad.style.background =
-      `linear-gradient(to bottom,
-         ${top} 0%, ${top} 26%,
-         ${mid} 42%, ${mid} 62%,
-         ${horizon} 82%, ${horizon} 100%)`;
+      `linear-gradient(to bottom, ${top} 0%, ${mid} 55%, ${horizon} 100%)`;
 
     const day = daylight(mins);
     starLayer.style.opacity = String(1 - day);
