@@ -24,7 +24,7 @@ const PRIVATE_SPOTS: Spot[] = [
 
 /** Workplace items — visible to everyone, some HR-only. */
 const WORK_SPOTS: Spot[] = [
-  { id: 'meeting', href: '/org', label: 'Meeting room', sub: 'Structural load' },
+  { id: 'meeting', href: '/org', label: 'Meeting room', sub: 'Structural load', hrOnly: true },
   { id: 'files', href: '/hr', label: 'HR office', sub: 'People & records', hrOnly: true },
   { id: 'holidays', href: '/holidays', label: 'Holidays', sub: 'Calendar' },
   { id: 'attendance', href: '/attendance', label: 'Attendance', sub: 'Check-ins' },
@@ -84,15 +84,6 @@ export function RoomSidebar({
   const pathname = usePathname()
   const displayInitials = initials?.trim() || initialsOf(name)
 
-  const workSpots = WORK_SPOTS.filter((s) => !s.hrOnly && s.id !== 'meeting' && s.id !== 'files')
-  const meeting = isHr
-    ? [{ id: 'meeting', href: '/org', label: 'Meeting room', sub: 'Structural load' }]
-    : []
-  const files = isHr
-    ? [{ id: 'files', href: '/hr', label: 'HR office', sub: 'People & records' }]
-    : []
-  const allWorkSpots = [...workSpots, ...meeting, ...files]
-
   return (
     <aside className="room-sidebar" aria-label="The office, and where to go">
       <div className="sidebar-inner">
@@ -122,35 +113,34 @@ export function RoomSidebar({
 
         <div className="sidebar-divider" />
 
-        {/* Private section — hidden for HR users */}
-        {!isHr && (
-          <>
-            <div className="sidebar-section">
-              <span className="sidebar-section__label">Your space</span>
-            </div>
-            <nav className="sidebar-nav" aria-label="Personal navigation">
-              {PRIVATE_SPOTS.map((s, i) => (
-                <SidebarTile
-                  key={s.id}
-                  spot={s}
-                  active={pathname === s.href}
-                  locked={false}
-                  index={i}
-                  onClick={() => { if (s.href) router.push(s.href) }}
-                />
-              ))}
-            </nav>
-            <div className="sidebar-divider" />
-          </>
-        )}
+        {/* Private section — an HR leader is an employee too, and their own
+            check-ins are as unreadable to their employer as anyone else's,
+            so this stays visible regardless of role. */}
+        <div className="sidebar-section">
+          <span className="sidebar-section__label">Your space</span>
+        </div>
+        <nav className="sidebar-nav" aria-label="Personal navigation">
+          {PRIVATE_SPOTS.map((s, i) => (
+            <SidebarTile
+              key={s.id}
+              spot={s}
+              active={pathname === s.href}
+              locked={false}
+              index={i}
+              onClick={() => { if (s.href) router.push(s.href) }}
+            />
+          ))}
+        </nav>
+        <div className="sidebar-divider" />
 
-        {/* Workplace section */}
+        {/* Workplace section — hrOnly destinations stay in the list and show
+            locked rather than disappearing, matching room.js's own spots. */}
         <div className="sidebar-section">
           <span className="sidebar-section__label">Workplace</span>
         </div>
         <nav className="sidebar-nav" aria-label="Workplace navigation">
-          {allWorkSpots.map((s, i) => {
-            const locked = s.id === 'meeting' && !isHr
+          {WORK_SPOTS.map((s, i) => {
+            const locked = !!s.hrOnly && !isHr
             return (
               <SidebarTile
                 key={s.id}

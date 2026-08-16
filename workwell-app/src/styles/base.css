@@ -134,7 +134,7 @@ button { cursor: pointer; background: none; border: none; padding: 0; }
      drop the blur so nothing looks like a rendering glitch under it. */
   body { background: Canvas; }
   .sidebar, .room-sidebar, .topbar, .card, .sheet,
-  .account__menu, .room-tile, .banner, .insight, .nudge, .feed__item {
+  .account__menu, .sidebar-tile, .banner, .insight, .nudge, .feed__item {
     backdrop-filter: none;
     background: Canvas;
   }

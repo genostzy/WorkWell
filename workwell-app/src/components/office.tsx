@@ -68,7 +68,7 @@ declare global {
 
 /** The app's own data-motion attribute wins over the OS setting, matching
  *  what the prototype's stylesheets already do with it. */
-function reducedMotion() {
+export function reducedMotion() {
   const attr = document.documentElement.getAttribute('data-motion')
   if (attr === 'reduced') return true
   if (attr === 'full') return false

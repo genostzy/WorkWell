@@ -402,7 +402,9 @@ function roomSVG(opts) {
 
     ${surface(665, 540, 300, 62)}
     ${spotOpen(by('news'),       kit.board(730, 570),    730, 622)}
-    ${spotOpen(by('complaints'), kit.dropbox(870, 570),  870, 622)}` : '';
+    ${spotOpen(by('complaints'), kit.dropbox(870, 570),  870, 622)}
+
+    ${spotOpen(by('payroll'),    kit.tray(880, 320),     880, 372)}` : '';
 
   /* The HR office — a second walled room, to the left of the meeting room
      and sharing its partition wall. Everything in here is org-gated the
