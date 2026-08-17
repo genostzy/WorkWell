@@ -42,6 +42,13 @@ export default function NudgesClient() {
     'nudge_prefs',
     DEFAULTS
   )
+  // Focus mode (Workspace) and nudges used to be two settings a person had
+  // to remember to set separately. Reading this one, read-only, is enough
+  // to make them cooperate — no new table, no write-back, just one less
+  // thing to notice and toggle by hand.
+  const { value: workspace } = usePrefs('workspace_prefs', {
+    focus_one_question: false,
+  })
   const [delivered, setDelivered] = useState<Delivered[]>([])
   const [logError, setLogError] = useState<string | null>(null)
   const [answering, setAnswering] = useState<string | null>(null)
@@ -90,7 +97,9 @@ export default function NudgesClient() {
   const open = delivered.filter((d) => d.action === null)
 
   const today = new Date().toISOString().slice(0, 10)
-  const muted = value.muted_until != null && value.muted_until >= today
+  const focusMode = workspace.focus_one_question
+  const explicitlyMuted = value.muted_until != null && value.muted_until >= today
+  const muted = explicitlyMuted || focusMode
   const anyOn = KINDS.some((k) => value[k.key])
 
   return (
@@ -117,16 +126,27 @@ export default function NudgesClient() {
             <div className="banner banner--info mb-5" role="status">
               <span aria-hidden="true">🔕</span>
               <span>
-                <b>Quiet for the rest of today.</b> Nothing will arrive until
-                tomorrow.
+                {focusMode ? (
+                  <>
+                    <b>Paused while focus mode is on.</b> Turn it off in
+                    Workspace to resume.
+                  </>
+                ) : (
+                  <>
+                    <b>Quiet for the rest of today.</b> Nothing will arrive
+                    until tomorrow.
+                  </>
+                )}
               </span>
-              <button
-                className="btn btn--ghost btn--sm"
-                type="button"
-                onClick={() => update({ muted_until: null })}
-              >
-                Unmute now
-              </button>
+              {!focusMode && (
+                <button
+                  className="btn btn--ghost btn--sm"
+                  type="button"
+                  onClick={() => update({ muted_until: null })}
+                >
+                  Unmute now
+                </button>
+              )}
             </div>
           )}
 
