@@ -232,11 +232,23 @@
   position: relative;
   min-height: 100vh;
   overflow: hidden;
+  /* Promoted to its own layer from first paint, not the instant the exit
+     class lands — a will-change added in the same frame as the transition
+     it's for can miss the first frame or two while the browser stands the
+     layer up, which is exactly the stutter "seamless" is asking to not
+     have. Cheap to leave on here: this element exists for one screen that
+     is gone within a second of being interacted with, never re-shown. */
+  will-change: transform, opacity;
+  /* Scopes layout/paint invalidation to this subtree, so the room SVG's
+     few dozen elements animating underneath never make the browser
+     re-check anything outside this box. */
+  contain: layout paint style;
 }
 
 .signin-room-pane {
   position: absolute;
   inset: 0;
+  contain: layout paint style;
 }
 
 .signin-panel {
@@ -253,15 +265,15 @@
     var(--surface-2);
   border-right: 1px solid var(--border);
   will-change: transform, opacity;
+  contain: layout paint style;
   transition: transform 560ms var(--ease), opacity 560ms var(--ease);
 }
 
 /* Private-plane sign-in: the panel is the only thing that moves. It was
    always sitting on top of the room's left edge, so sliding it fully off
-   is all "the room takes the centre" ever needed to be.
-   `data-open="true"` on the room itself (set in sign-in-room.tsx) is what
-   fades .room__dim and swings the doors open — this is only the panel's
-   half of the same moment. */
+   is all "the room takes the centre" ever needed to be. Timed to match
+   .room__dim's own 560ms exactly (room.css) — the veil lifting behind it
+   and the panel leaving in front of it read as one motion, not two. */
 .signin-split.is-leaving-private .signin-panel {
   transform: translateX(-100%);
   opacity: 0;
@@ -272,7 +284,6 @@
    nothing settles into place — the whole split slides off to the right
    instead, and the real dashboard takes over underneath it. */
 .signin-split.is-leaving-hr {
-  will-change: transform, opacity;
   transform: translateX(6vw);
   opacity: 0;
   transition: transform 560ms var(--ease), opacity 560ms var(--ease);

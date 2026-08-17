@@ -17,6 +17,24 @@
 .card--quiet { background: var(--surface-2); box-shadow: none; }
 .card--accent { background: var(--glass-sheen), var(--noise), var(--accent-quiet); border-color: var(--accent-border); box-shadow: none; }
 
+/* A card that's also a link (the admin dashboard's feature tiles) — the
+   base `a` rule only sets colour and underline metrics, it never turns
+   the underline off, so every word of a card used this way would
+   otherwise render accent-coloured and underlined like inline body text.
+   Removing that also removes the only cue it's clickable, so it gets its
+   own hover/focus treatment back in exchange. */
+a.card, a.card:hover, a.card:focus, a.card:visited {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+a.card:hover, a.card:focus-visible {
+  border-color: var(--accent-border);
+  box-shadow: var(--shadow-2);
+  transform: translateY(-2px);
+}
+a.card:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
 .card__head {
   display: flex;
   align-items: flex-start;

@@ -446,7 +446,12 @@
   border-radius: var(--r-lg);
   background: color-mix(in srgb, var(--bg) 42%, transparent);
   pointer-events: none;
-  transition: opacity var(--dur-slow) var(--ease);
+  will-change: opacity;
+  /* 560ms, not --dur-slow (380ms): the only place this ever transitions is
+     the sign-in room unlocking, right alongside the panel's own 560ms exit
+     in signin.css. Matched on purpose — the veil lifting and the panel
+     leaving are one motion, not two that happen to overlap. */
+  transition: opacity 560ms var(--ease);
 }
 .room[data-open="true"] .room__dim { opacity: 0; }
 

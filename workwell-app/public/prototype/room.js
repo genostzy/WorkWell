@@ -212,12 +212,18 @@ function roomSVG(opts) {
      116 wide and 30 tall, which is what sets the minimum spacing: columns
      need ~120px of pitch, rows ~95px.
 
-       HR office     x 360-660, y  24-350   (walled, org only)
-       Meeting room  x 660-976, y  24-270   (walled, org only)
+       HR office     x 360-660, y  24-350   (org only — walled, own:false
+                                             draws nothing here at all)
+       Meeting room  x 660-976, y  24-270   (org only — same as above)
        Left strip    x  24-360, y  24-696   (open — the personal desk area)
        Mid floor     x 360-660, y 350-696   (open — rug, cooler, front door)
-       Right floor   x 660-976, y 270-696   (open — sofa and the HR self-
-                                             service everyone can use)
+       Right floor   x 660-976, y 270-696   (open — the sofa)
+
+     A private account (own:true, org:false) never draws the two walled
+     rooms, which leaves their footprint — roughly x 360-920, y 24-260 —
+     as open floor too. That is where hrKit puts the self-service items
+     that don't fit the three zones above: two rows of three, well clear
+     of the sofa below and the desk cluster to the left.
      --------------------------------------------------------------------- */
 
   /* --- desk (trends), left strip --- */
@@ -375,11 +381,16 @@ function roomSVG(opts) {
   const surface = (x, y, w, h) => `
       <rect class="furn-3" x="${x}" y="${y}" width="${w}" height="${h}" rx="14" aria-hidden="true"/>`;
 
-  /* The self-service everyone can use, grouped the way the directory beside
-     the room already groups them. Two pairs up the left strip (time, then
-     personal records at the bottom) and two pairs down the right floor
-     (money, then workplace) — a 120px column pitch and a 95px row pitch,
-     which is what a 116x30 tag pill needs to never touch its neighbour. */
+  /* The self-service everyone can use. Two pairs stay up the left strip
+     (time, then personal records at the bottom, where they've always
+     been). The other six now live in the space the HR office and meeting
+     room used to wall off — empty floor for a private account, since it
+     never had anything of its own to put there — laid out as two rows of
+     three across the middle of that space rather than left crammed into
+     the right floor the two rooms used to leave it. Same 116x30 tag pill,
+     same discipline: columns 200px apart, rows 105px apart, comfortably
+     clear of the sofa at y280 below and the strip's own desk cluster at
+     x360 to the left. */
   const hrKit = own ? `
     ${surface(55, 165, 235, 62)}
     ${spotOpen(by('holidays'),   kit.calendar(100, 195), 100, 247)}
@@ -389,17 +400,15 @@ function roomSVG(opts) {
     ${spotOpen(by('locker'),     locker,                 100, 652)}
     ${spotOpen(by('policies'),   kit.binder(245, 600),   245, 652)}
 
-    ${spotOpen(by('resignations'), kit.outtray(590, 420), 590, 510)}
+    ${surface(390, 65, 520, 55)}
+    ${spotOpen(by('expenses'),   kit.receipt(460, 90),   460, 142)}
+    ${spotOpen(by('assets'),     kit.crate(660, 90),     660, 142)}
+    ${spotOpen(by('payroll'),    kit.tray(860, 90),      860, 142)}
 
-    ${surface(665, 418, 300, 62)}
-    ${spotOpen(by('expenses'),   kit.receipt(730, 450),  730, 502)}
-    ${spotOpen(by('assets'),     kit.crate(870, 450),    870, 502)}
-
-    ${surface(665, 540, 300, 62)}
-    ${spotOpen(by('news'),       kit.board(730, 570),    730, 622)}
-    ${spotOpen(by('complaints'), kit.dropbox(870, 570),  870, 622)}
-
-    ${spotOpen(by('payroll'),    kit.tray(880, 320),     880, 372)}` : '';
+    ${surface(390, 175, 520, 55)}
+    ${spotOpen(by('news'),         kit.board(460, 195),    460, 247)}
+    ${spotOpen(by('complaints'),   kit.dropbox(660, 195),  660, 247)}
+    ${spotOpen(by('resignations'), kit.outtray(860, 195),  860, 247)}` : '';
 
   /* The HR office — a second walled room, to the left of the meeting room
      and sharing its partition wall. Its contents are org-gated: an HR/admin

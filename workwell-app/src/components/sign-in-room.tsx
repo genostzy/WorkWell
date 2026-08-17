@@ -255,12 +255,19 @@ export function SignInRoom({ notice }: { notice?: string }) {
 
         <div className="room-shell is-fit signin-room-pane" aria-hidden="true">
           <main className="room-stage">
-            <div
-              className="room"
-              data-room
-              data-open="false"
-              ref={roomRef}
-            />
+            {/* .room-views.is-on[data-view-panel="room"] isn't just the old
+                Room/List toggle's visibility switch — it's also what gives
+                .room its height (.room itself sets none). Dropping it
+                collapses the room to nothing, which is exactly what
+                happened here until this was put back. */}
+            <div className="room-views is-on" data-view-panel="room">
+              <div
+                className="room"
+                data-room
+                data-open="false"
+                ref={roomRef}
+              />
+            </div>
           </main>
         </div>
       </div>
