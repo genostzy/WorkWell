@@ -324,7 +324,7 @@ export function Office({
             />
             {!loaded && (
               <p className="t-subtle" style={{ textAlign: 'center' }}>
-                Opening the office…
+                Opening your space…
               </p>
             )}
           </div>

@@ -465,7 +465,7 @@ function roomSVG(opts) {
 
   return `
   <svg class="room__svg" viewBox="0 0 1000 720" role="img"
-       aria-label="Top-down plan of the office. Use the destination buttons, or switch to the list view.">
+       aria-label="Top-down plan of your space. Use the destination buttons, or switch to the list view.">
 
     <!-- floor & outer wall -->
     <rect class="floor" x="24" y="24" width="952" height="672" rx="22"/>

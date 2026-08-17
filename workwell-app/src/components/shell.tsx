@@ -80,8 +80,9 @@ export function Shell({
   children: React.ReactNode
   current?: Page
   plane?: Plane
-  /** Swaps the "back to the office" chrome for "back to the dashboard" —
-   *  an HR/admin account has no office, only the administration screens. */
+  /** Swaps the "back to your space" chrome for "back to the dashboard" —
+   *  an HR/admin account has no space of its own, only the administration
+   *  screens. */
   isHr?: boolean
 }) {
   const badge = BADGE[plane]
@@ -119,7 +120,7 @@ export function Shell({
       <div className="main">
         <header className="topbar">
           {/* The mark is the way back — except on the dashboard itself,
-              where "back" has nowhere to go, same as the office never
+              where "back" has nowhere to go, same as your space never
               needed one on its own home screen. */}
           {current === 'home' ? (
             <span className="topbar__home topbar__home--static">
@@ -131,7 +132,7 @@ export function Shell({
             <Link
               className="topbar__home"
               href="/"
-              aria-label={isHr ? 'Back to the dashboard' : 'Back to the office'}
+              aria-label={isHr ? 'Back to the dashboard' : 'Back to your space'}
             >
               <svg
                 className="topbar__back"
@@ -150,12 +151,12 @@ export function Shell({
               <span className="sidebar__mark">
                 <Brandmark size={28} />
               </span>
-              <span className="topbar__backword">{isHr ? 'Dashboard' : 'The office'}</span>
+              <span className="topbar__backword">{isHr ? 'Dashboard' : 'Your space'}</span>
             </Link>
           )}
           <span className="topbar__title">
             {current === 'home'
-              ? isHr ? 'Administration' : 'The office'
+              ? isHr ? 'Administration' : 'Your space'
               : current
                 ? TITLES[current]
                 : 'WorkWell'}
@@ -185,7 +186,7 @@ export function Shell({
         <span className="hub__glyph" aria-hidden="true">
           {isHr ? '📋' : '🏠'}
         </span>
-        {isHr ? 'Dashboard' : 'The office'}
+        {isHr ? 'Dashboard' : 'Your space'}
       </Link>
     </div>
   )

@@ -94,7 +94,7 @@ export function RoomSidebar({
   const spots = isHr ? ADMIN_SPOTS : WORK_SPOTS
 
   return (
-    <aside className="room-sidebar" aria-label={isHr ? 'The admin dashboard, and where to go' : 'The office, and where to go'}>
+    <aside className="room-sidebar" aria-label={isHr ? 'The admin dashboard, and where to go' : 'Your space, and where to go'}>
       <div className="sidebar-inner">
         {/* Brand */}
         <div className="sidebar-brand">
