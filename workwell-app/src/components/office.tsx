@@ -1,7 +1,7 @@
 'use client'
 
 import Script from 'next/script'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { SignOut } from '@/components/sign-out'
 import { hideSky, showSky } from '@/lib/sky'
@@ -84,6 +84,17 @@ export function initialsOf(name: string) {
   return (first + last).toUpperCase()
 }
 
+// React warns if useLayoutEffect runs during SSR; Office is a client
+// component but still renders once on the server for the initial HTML, so
+// this falls back to useEffect there and only prefers useLayoutEffect in
+// the browser, where it matters: it runs before paint, so a returning
+// visit — the scripts are already loaded — builds the room and flips
+// `loaded` before the browser ever shows a frame. Without it, "Opening the
+// office…" flashed for a frame on every single navigation back home, which
+// read as the office reopening from scratch rather than just being shown.
+const useIsomorphicLayoutEffect =
+  typeof window !== 'undefined' ? useLayoutEffect : useEffect
+
 export function Office({
   name,
   initials,
@@ -101,7 +112,13 @@ export function Office({
   const roomRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const [view, setView] = useState<'room' | 'list'>('room')
-  const [loaded, setLoaded] = useState(false)
+  // Lazy-init: on a client-side return to this screen room.js is already
+  // loaded, so there is nothing to wait on — start "loaded" instead of
+  // flashing the placeholder text for a frame before the effect below
+  // catches up.
+  const [loaded, setLoaded] = useState(
+    () => typeof window !== 'undefined' && !!window.WW?.room
+  )
   const [phase, setPhase] = useState<string | null>(null)
   const [clock, setClock] = useState<string | null>(null)
 
@@ -142,7 +159,7 @@ export function Office({
     setLoaded(true)
   }, [name, initials, colour])
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     // The scripts may already be present on a client-side navigation back
     // to this page, in which case onReady never fires again.
     if (window.WW?.room) build()

@@ -1,12 +1,21 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 
-// Not a clock-in/out log — that would contradict the private-plane promise
-// this product makes elsewhere. A self-declared, core-hours confirmation
-// with no per-minute record is the shape the placeholder copy suggested,
-// so that is what this mocks. Still a policy decision to make for real.
+// Lunch is not something you clock — the app pauses it for you. Two fixed
+// hours, matching the standard PH lunch block; a real rollout would read
+// this from company policy instead of a constant.
+const LUNCH_START_MIN = 12 * 60
+const LUNCH_END_MIN = 13 * 60
+
+type DayLog = {
+  timeIn?: string
+  lunchStart?: string
+  lunchEnd?: string
+  timeOut?: string
+}
+
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as const
 
 function weekDates() {
@@ -21,71 +30,161 @@ function weekDates() {
   })
 }
 
+function fmtTime(iso: string) {
+  return new Date(iso).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })
+}
+
+function minutesSinceMidnight(d: Date) {
+  return d.getHours() * 60 + d.getMinutes()
+}
+
+function hoursWorked(log: DayLog) {
+  if (!log.timeIn || !log.timeOut) return null
+  let ms = +new Date(log.timeOut) - +new Date(log.timeIn)
+  if (log.lunchStart && log.lunchEnd) ms -= +new Date(log.lunchEnd) - +new Date(log.lunchStart)
+  return Math.max(0, ms / 3600000)
+}
+
+function statusOf(log: DayLog) {
+  if (log.timeOut) return 'Done for the day'
+  if (log.lunchStart && !log.lunchEnd) return 'On lunch (auto)'
+  if (log.timeIn) return 'Working'
+  return 'Not timed in'
+}
+
 export default function AttendanceClient() {
   const week = weekDates()
-  const [confirmed, setConfirmed] = useState<Record<string, boolean>>({})
-
-  const confirmedCount = week.filter((d) => confirmed[d.iso]).length
   const today = week.find((d) => d.isToday)
+  const [logs, setLogs] = useState<Record<string, DayLog>>({})
+
+  const todayLog = today ? logs[today.iso] ?? {} : {}
+
+  // The auto-pause: nothing to click, nothing to forget. While timed in and
+  // not yet out, the tick checks the wall clock against the lunch window and
+  // stamps the pause and its resume on its own.
+  useEffect(() => {
+    if (!today) return
+    const tick = () => {
+      const log = logs[today.iso]
+      if (!log?.timeIn || log.timeOut) return
+      const mins = minutesSinceMidnight(new Date())
+      setLogs((s) => {
+        const cur = s[today.iso] ?? {}
+        if (!cur.timeIn || cur.timeOut) return s
+        if (!cur.lunchStart && mins >= LUNCH_START_MIN && mins < LUNCH_END_MIN) {
+          return { ...s, [today.iso]: { ...cur, lunchStart: new Date().toISOString() } }
+        }
+        if (cur.lunchStart && !cur.lunchEnd && mins >= LUNCH_END_MIN) {
+          return { ...s, [today.iso]: { ...cur, lunchEnd: new Date().toISOString() } }
+        }
+        return s
+      })
+    }
+    tick()
+    const id = window.setInterval(tick, 30000)
+    return () => window.clearInterval(id)
+  }, [today, logs])
+
+  function timeIn() {
+    if (!today) return
+    setLogs((s) => ({ ...s, [today.iso]: { timeIn: new Date().toISOString() } }))
+  }
+
+  function timeOut() {
+    if (!today) return
+    setLogs((s) => ({ ...s, [today.iso]: { ...s[today.iso], timeOut: new Date().toISOString() } }))
+  }
+
+  const daysLogged = week.filter((d) => logs[d.iso]?.timeOut).length
 
   return (
     <>
-      <PageHead title="Attendance" lead="A confirmation, not a clock." />
+      <PageHead title="Attendance" lead="Time in, time out — lunch pauses itself." />
       <PlaneBadge plane="work" />
 
       <PrivacyNote
         plane="work"
-        detail="Boundaries — the private-plane screen for your working hours — exists specifically because no record of when you were active is kept anywhere in this product. A clock-in/out log is the opposite of that promise. What is mocked below is one option: a once-a-day, self-declared confirmation with no per-minute record. Shipping it for real is still a decision worth making deliberately."
+        detail="A per-minute time record is a real change from the confirmation-only design this screen used to mock — worth knowing it's here. Lunch is paused automatically between 12:00 pm and 1:00 pm rather than clocked, so it never counts as worked time and never needs a separate button."
       >
-        <b>Illustrative only — worth a conversation before this is built for real.</b>{' '}
+        <b>Illustrative only — times reset on refresh, nothing is stored yet.</b>{' '}
       </PrivacyNote>
 
       <div className="card mb-5">
         <div className="card__head">
           <div>
-            <div className="card__title">This week</div>
-            <div className="card__sub">{confirmedCount} of {week.length} confirmed</div>
+            <div className="card__title">Today</div>
+            <div className="card__sub">{statusOf(todayLog)}</div>
           </div>
-          {today && !confirmed[today.iso] && (
-            <button
-              className="btn btn--primary btn--sm"
-              type="button"
-              onClick={() => setConfirmed((c) => ({ ...c, [today.iso]: true }))}
-            >
-              Confirm today
+          {!todayLog.timeIn && (
+            <button className="btn btn--primary btn--sm" type="button" onClick={timeIn}>
+              Time in
+            </button>
+          )}
+          {todayLog.timeIn && !todayLog.timeOut && (
+            <button className="btn btn--secondary btn--sm" type="button" onClick={timeOut}>
+              Time out
             </button>
           )}
         </div>
 
-        <div className="table-scroll mt-4">
-          <table className="data-table">
-            <caption className="sr-only">This week&apos;s confirmations</caption>
-            <thead>
-              <tr>
-                <th scope="col">Day</th>
-                <th scope="col">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {week.map((d) => (
-                <tr key={d.iso}>
-                  <th scope="row" style={{ fontWeight: d.isToday ? 700 : 600 }}>
-                    {d.label} {d.isToday && <span className="t-subtle">(today)</span>}
-                  </th>
-                  <td>
-                    <span className={confirmed[d.iso] ? 'chip chip--accent' : 'chip'}>
-                      {confirmed[d.iso] ? 'Confirmed' : d.iso > (new Date().toISOString().slice(0, 10)) ? 'Not due yet' : 'Unconfirmed'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="row row--between mt-4" style={{ flexWrap: 'wrap', gap: 'var(--s-4)' }}>
+          <div className="stat">
+            <span className="stat__value t-num">{todayLog.timeIn ? fmtTime(todayLog.timeIn) : '—'}</span>
+            <span className="stat__label">Time in</span>
+          </div>
+          <div className="stat">
+            <span className="stat__value t-num">
+              {todayLog.lunchStart ? fmtTime(todayLog.lunchStart) : '—'}
+              {todayLog.lunchEnd ? ` – ${fmtTime(todayLog.lunchEnd)}` : todayLog.lunchStart ? ' –' : ''}
+            </span>
+            <span className="stat__label">Lunch (auto)</span>
+          </div>
+          <div className="stat">
+            <span className="stat__value t-num">{todayLog.timeOut ? fmtTime(todayLog.timeOut) : '—'}</span>
+            <span className="stat__label">Time out</span>
+          </div>
         </div>
 
         <p className="field__hint mt-3">
-          A yes/no for the day, nothing else. No hours, no timestamps.
+          {daysLogged} of {week.length} days completed this week.
         </p>
+      </div>
+
+      <div className="card card--flush">
+        <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
+          <div className="card__title">This week</div>
+        </div>
+        <div className="table-scroll">
+          <table className="data-table">
+            <caption className="sr-only">This week&apos;s time in / time out</caption>
+            <thead>
+              <tr>
+                <th scope="col">Day</th>
+                <th scope="col">Time in</th>
+                <th scope="col">Lunch</th>
+                <th scope="col">Time out</th>
+                <th scope="col">Hours</th>
+              </tr>
+            </thead>
+            <tbody>
+              {week.map((d) => {
+                const log = logs[d.iso] ?? {}
+                const hrs = hoursWorked(log)
+                return (
+                  <tr key={d.iso}>
+                    <th scope="row" style={{ fontWeight: d.isToday ? 700 : 600 }}>
+                      {d.label} {d.isToday && <span className="t-subtle">(today)</span>}
+                    </th>
+                    <td>{log.timeIn ? fmtTime(log.timeIn) : '—'}</td>
+                    <td>{log.lunchStart ? `${fmtTime(log.lunchStart)}–${log.lunchEnd ? fmtTime(log.lunchEnd) : '…'}` : '—'}</td>
+                    <td>{log.timeOut ? fmtTime(log.timeOut) : '—'}</td>
+                    <td className="t-num">{hrs != null ? `${hrs.toFixed(1)}h` : '—'}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </>
   )

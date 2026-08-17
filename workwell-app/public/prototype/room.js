@@ -293,6 +293,21 @@ function roomSVG(opts) {
     <line class="ink" x1="418" y1="96" x2="446" y2="96"/>
     <circle class="accent-soft" cx="432" cy="66" r="4"/>`;
 
+  /* --- reading nook, right floor —  x660-976/y270-696 has nothing below
+     the sofa at y355, so the bottom third of the room read as bare floor.
+     Pure scenery, same as the lamps: no tabindex, no data-go. --- */
+  const nook = `
+    <rect class="rug" x="700" y="470" width="220" height="150" rx="16" aria-hidden="true"/>
+    <g aria-hidden="true">
+      <rect class="furn" x="770" y="500" width="80" height="96" rx="10"/>
+      <line class="ink" x1="778" y1="524" x2="842" y2="524"/>
+      <line class="ink" x1="778" y1="548" x2="842" y2="548"/>
+      <line class="ink" x1="778" y1="572" x2="842" y2="572"/>
+      <circle class="plant" cx="880" cy="600" r="24"/>
+      <circle class="plant-2" cx="866" cy="586" r="12"/>
+      <circle class="plant-2" cx="894" cy="588" r="10"/>
+    </g>`;
+
   /* --- meeting room contents (org) --- */
   const meeting = `
     <ellipse class="furn" cx="812" cy="140" rx="100" ry="52"/>
@@ -465,6 +480,7 @@ function roomSVG(opts) {
     ${spotOpen(by('desk'), desk, 190, 534)}
     ${spotOpen(by('cooler'), cooler, 450, 510)}
     ${spotOpen(by('lounge'), lounge, 730, 382)}
+    ${nook}
     ${hrKit}`;
 
   return `
