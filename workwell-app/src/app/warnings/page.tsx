@@ -1,23 +1,33 @@
-import { Empty, PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
+import { createClient } from '@/lib/supabase/server'
+import { PageHead } from '@/components/chrome'
 import { Shell } from '@/components/shell'
+import WarningsClient from './warnings-client'
 
-export default function Warnings() {
+export default async function Warnings() {
+  const supabase = await createClient()
+  const { data: roles } = await supabase.from('person_roles').select('role')
+  const isHr = (roles ?? []).some((r) => r.role === 'hr')
+
+  if (!isHr) {
+    return (
+      <Shell plane="private">
+        <PageHead title="Not available on this account" />
+        <div className="card">
+          <div className="state">
+            <div className="state__icon" aria-hidden="true">🔒</div>
+            <h2 className="state__title">This area is for HR</h2>
+            <p className="state__text">
+              Your own data lives on the private plane, which nobody here can read.
+            </p>
+          </div>
+        </div>
+      </Shell>
+    )
+  }
+
   return (
     <Shell plane="work">
-      <PageHead title="Warnings" lead="Formal disciplinary records." />
-      <PlaneBadge plane="work" />
-
-      <PrivacyNote
-        plane="work"
-        detail="Every other work-plane record here is neutral fact HR needs to run the place — a job title, a leave balance. A warning is a judgement about a person, and putting it next to the same private-plane data this product goes out of its way to wall off is worth deciding on purpose, with whoever owns HR policy, rather than shipping because the word appeared on a list."
-      >
-        <b>A different kind of record than the rest of this list.</b>{' '}
-      </PrivacyNote>
-
-      <Empty icon="⚠️" title="Not built yet">
-        The spot is here; the record type, who can see it, and how it is
-        raised are a policy decision first.
-      </Empty>
+      <WarningsClient />
     </Shell>
   )
 }

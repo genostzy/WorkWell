@@ -1,15 +1,10 @@
-import { Empty, PageHead, PlaneBadge } from '@/components/chrome'
 import { Shell } from '@/components/shell'
+import NewsClient from './news-client'
 
 export default function News() {
   return (
     <Shell plane="work">
-      <PageHead title="News" lead="Announcements from your organisation." />
-      <PlaneBadge plane="work" />
-      <Empty icon="📰" title="Not built yet">
-        A company-wide feed will live here — nothing personal, the same
-        posts everyone sees.
-      </Empty>
+      <NewsClient />
     </Shell>
   )
 }
