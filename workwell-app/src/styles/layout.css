@@ -656,7 +656,7 @@
 .plane-strip { display: none; }
 
 @media (max-width: 1080px) {
-  :root { --sidebar-w: 25vw; }
+  :root { --sidebar-w: clamp(200px, 22vw, 240px); }
   .grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grid--sidebar-right { grid-template-columns: minmax(0, 1fr); }
 }

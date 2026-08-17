@@ -39,9 +39,9 @@ const WORK_SPOTS: Spot[] = [
  *  locked state here: every other tile a private-plane account might see
  *  locked, this list simply never renders for them at all. */
 const ADMIN_SPOTS: Spot[] = [
+  { id: 'org', href: '/org', label: 'Structural load', sub: 'Anonymous patterns' },
   { id: 'hr', href: '/hr', label: 'People', sub: 'Employment records' },
   { id: 'accounts', href: '/hr/accounts', label: 'Accounts', sub: 'Access & sign-in' },
-  { id: 'org', href: '/org', label: 'Structural load', sub: 'Anonymous patterns' },
   { id: 'letter-heads', href: '/letter-heads', label: 'Letter heads', sub: 'Templates' },
   { id: 'custom-fields', href: '/custom-fields', label: 'Data fields', sub: 'Extra fields' },
   { id: 'offboarding', href: '/offboarding', label: 'Offboarding', sub: 'Checklist' },

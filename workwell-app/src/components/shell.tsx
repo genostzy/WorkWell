@@ -15,8 +15,9 @@ import { BADGE, type Page, type Plane } from '@/components/chrome'
  * browser bundle and fail. Import Shell only from a page.tsx.
  */
 
-const TITLES: Record<Page, string> = {
-  home: 'The office',
+/** 'home' is deliberately absent — its title depends on isHr, handled
+ *  inline below rather than duplicated here. */
+const TITLES: Record<Exclude<Page, 'home'>, string> = {
   'check-in': 'Daily check-in',
   trends: 'Your trends',
   leave: 'Leave & profile',
@@ -117,36 +118,47 @@ export function Shell({
 
       <div className="main">
         <header className="topbar">
-          {/* The mark is the way back. It was already a link to the office,
-              but nothing about it said so — a logo in the top-left is read
-              as a logo, and people looked for a back button instead. The
-              chevron is what turns it into one. */}
-          <Link
-            className="topbar__home"
-            href="/"
-            aria-label={isHr ? 'Back to the dashboard' : 'Back to the office'}
-          >
-            <svg
-              className="topbar__back"
-              viewBox="0 0 24 24"
-              width="17"
-              height="17"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="m15 6-6 6 6 6" />
-            </svg>
-            <span className="sidebar__mark">
-              <Brandmark size={28} />
+          {/* The mark is the way back — except on the dashboard itself,
+              where "back" has nowhere to go, same as the office never
+              needed one on its own home screen. */}
+          {current === 'home' ? (
+            <span className="topbar__home topbar__home--static">
+              <span className="sidebar__mark">
+                <Brandmark size={28} />
+              </span>
             </span>
-            <span className="topbar__backword">{isHr ? 'Dashboard' : 'The office'}</span>
-          </Link>
+          ) : (
+            <Link
+              className="topbar__home"
+              href="/"
+              aria-label={isHr ? 'Back to the dashboard' : 'Back to the office'}
+            >
+              <svg
+                className="topbar__back"
+                viewBox="0 0 24 24"
+                width="17"
+                height="17"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="m15 6-6 6 6 6" />
+              </svg>
+              <span className="sidebar__mark">
+                <Brandmark size={28} />
+              </span>
+              <span className="topbar__backword">{isHr ? 'Dashboard' : 'The office'}</span>
+            </Link>
+          )}
           <span className="topbar__title">
-            {current ? TITLES[current] : 'WorkWell'}
+            {current === 'home'
+              ? isHr ? 'Administration' : 'The office'
+              : current
+                ? TITLES[current]
+                : 'WorkWell'}
           </span>
           <span className="topbar__spacer" />
           <div className="topbar__actions">

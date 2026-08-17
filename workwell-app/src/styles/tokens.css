@@ -146,7 +146,7 @@
   --ease: cubic-bezier(.32, .72, .35, 1);
 
   /* ---- Layout ---- */
-  --sidebar-w: 25vw;
+  --sidebar-w: clamp(220px, 19vw, 280px);
   --topbar-h:  64px;
   --tabbar-h:  64px;
   --content-max: 1180px;

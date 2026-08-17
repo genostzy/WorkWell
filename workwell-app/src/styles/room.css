@@ -388,15 +388,6 @@
   stroke-width: 4;
 }
 
-/* Locked room: visibly present, deliberately not enterable. */
-.spot--locked { cursor: not-allowed; }
-.spot--locked .spot__art { opacity: .45; }
-.spot--locked:hover .spot__art { transform: none; }
-.spot--locked .spot__tagbg { fill: var(--surface-2); stroke-dasharray: 5 4; }
-.spot--locked:hover .spot__tagbg { fill: var(--surface-2); stroke: var(--border-strong); }
-.spot--locked:hover .spot__tagtext { fill: var(--text); }
-.spot--locked:hover .spot__tagsub  { fill: var(--text-subtle); }
-
 /* ------------------------------------------------------------------ Doors */
 
 .doorleaf {

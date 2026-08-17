@@ -4,9 +4,9 @@ import { PageHead, PlaneBadge } from '@/components/chrome'
 type Feature = { href: string; icon: string; title: string; desc: string }
 
 const FEATURES: Feature[] = [
+  { href: '/org', icon: '📊', title: 'Structural load', desc: 'Anonymous group patterns. Never a person.' },
   { href: '/hr', icon: '🗂️', title: 'People', desc: 'Employment records, leave decisions, the directory.' },
   { href: '/hr/accounts', icon: '🔑', title: 'Accounts', desc: 'Who can sign in, and what they can open.' },
-  { href: '/org', icon: '📊', title: 'Structural load', desc: 'Anonymous group patterns. Never a person.' },
   { href: '/letter-heads', icon: '📄', title: 'Letter heads', desc: 'Generate offer letters and certificates.' },
   { href: '/custom-fields', icon: '🧩', title: 'Data fields', desc: 'Extra fields on an employment record.' },
   { href: '/offboarding', icon: '🚪', title: 'Offboarding', desc: "The checklist for someone leaving." },

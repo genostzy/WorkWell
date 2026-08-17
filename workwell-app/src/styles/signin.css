@@ -213,3 +213,67 @@
   .auth__mobilebrand { display: flex; }
   .auth__panel { justify-content: flex-start; padding-top: var(--s-9); }
 }
+
+/* ------------------------------------------------------- Sign-in, split */
+
+/* The form on the left, the locked office beside it — always both visible
+   at once, never a dialog raised over a picture. `overflow: hidden` clips
+   the panel cleanly as it exits on sign-in, rather than a scrollbar
+   flickering in for the width of the transition. */
+.signin-split {
+  display: flex;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.signin-panel {
+  flex: none;
+  width: min(420px, 100vw);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--s-8) var(--s-7);
+  background:
+    radial-gradient(120% 90% at 12% 8%, var(--accent-quiet) 0%, transparent 60%),
+    var(--surface-2);
+  border-right: 1px solid var(--border);
+  transition:
+    width var(--dur-slow) var(--ease),
+    padding var(--dur-slow) var(--ease),
+    opacity var(--dur-slow) var(--ease),
+    transform var(--dur-slow) var(--ease),
+    border-color var(--dur-slow) var(--ease);
+}
+
+.signin-room-pane { flex: 1; min-width: 0; }
+
+/* Private-plane sign-in: the panel is the thing that leaves. The room,
+   already sitting right beside it, is simply what's left once it does —
+   no separate "move the room to the centre" step, just space it can now
+   have. `data-open="true"` on the room itself (set in sign-in-room.tsx)
+   is what fades .room__dim; this is only the panel's half of it. */
+.signin-split.is-leaving-private .signin-panel {
+  width: 0;
+  padding-left: 0;
+  padding-right: 0;
+  opacity: 0;
+  transform: translateX(-32px);
+  border-color: transparent;
+  pointer-events: none;
+}
+
+/* HR/admin sign-in: there is no room here for this account to unlock, so
+   nothing settles into place — the whole split slides off to the right
+   instead, and the real dashboard takes over underneath it. */
+.signin-split.is-leaving-hr {
+  transform: translateX(8vw);
+  opacity: 0;
+  transition: transform var(--dur-slow) var(--ease), opacity var(--dur-slow) var(--ease);
+}
+
+/* The split is a desktop composition — a login form squeezed next to a
+   locked floor plan is worse than just the form on a narrow screen. */
+@media (max-width: 900px) {
+  .signin-room-pane { display: none; }
+  .signin-panel { width: 100%; border-right: 0; }
+}

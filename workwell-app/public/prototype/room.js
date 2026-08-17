@@ -146,14 +146,6 @@ function spotOpen(s, inner, tx, ty) {
   </g>`;
 }
 
-function spotLocked(s, inner, tx, ty, why) {
-  return `
-  <g class="spot spot--locked" data-spot="${s.id}" tabindex="0" role="button"
-     aria-disabled="true" aria-label="${s.label}, locked. ${why}">
-    <g class="spot__art">${inner}</g>
-    ${tag(tx, ty, s.label, 'Locked')}
-  </g>`;
-}
 
 /* --------------------------------------------------------------- Builder */
 
@@ -410,34 +402,23 @@ function roomSVG(opts) {
     ${spotOpen(by('payroll'),    kit.tray(880, 320),     880, 372)}` : '';
 
   /* The HR office — a second walled room, to the left of the meeting room
-     and sharing its partition wall. Everything in here is org-gated the
-     same way the meeting room already is: shown locked, with a reason, to
-     anyone without the org capability, rather than hidden — a closed door
-     is information too. Two columns of two along the back, then the exit
-     on its own centred row, all clear of each other and of the walls. */
-  const hrLocked = `
+     and sharing its partition wall. Its contents are org-gated: an HR/admin
+     account is the only account that ever sees them, so for anyone else
+     they simply are not drawn — no furniture, no tag, nothing to notice.
+     The account model is now one plane per account, not a role added on
+     top of one everybody shares, so there is no closed door here worth
+     narrating; the walls stay, as the room's architecture, but what used
+     to render locked-with-a-reason for a private account now renders
+     nothing at all. Two columns of two along the back, then the exit on
+     its own centred row, all clear of each other and of the walls. */
+  const hrLocked = org ? `
     ${surface(385, 45, 250, 72)}
     ${surface(385, 150, 250, 62)}
-    ${org
-      ? spotOpen(by('files'), files, 432, 137)
-      : spotLocked(by('files'), files, 432, 137,
-          'People and employment records. HR only.')}
-    ${org
-      ? spotOpen(by('letterheads'), kit.stack(578, 85), 578, 137)
-      : spotLocked(by('letterheads'), kit.stack(578, 85), 578, 137,
-          'HR documents only.')}
-    ${org
-      ? spotOpen(by('customfields'), kit.grid(432, 180), 432, 232)
-      : spotLocked(by('customfields'), kit.grid(432, 180), 432, 232,
-          'HR documents only.')}
-    ${org
-      ? spotOpen(by('warnings'), kit.caution(578, 180), 578, 232)
-      : spotLocked(by('warnings'), kit.caution(578, 180), 578, 232,
-          'HR records only.')}
-    ${org
-      ? spotOpen(by('offboarding'), kit.exit(505, 275), 505, 327)
-      : spotLocked(by('offboarding'), kit.exit(505, 275), 505, 327,
-          'HR records only.')}`;
+    ${spotOpen(by('files'), files, 432, 137)}
+    ${spotOpen(by('letterheads'), kit.stack(578, 85), 578, 137)}
+    ${spotOpen(by('customfields'), kit.grid(432, 180), 432, 232)}
+    ${spotOpen(by('warnings'), kit.caution(578, 180), 578, 232)}
+    ${spotOpen(by('offboarding'), kit.exit(505, 275), 505, 327)}` : '';
 
   /* An organisation account gets the meeting room and nothing else. The
      employee floor is not drawn as furniture they cannot use — it is drawn
@@ -504,10 +485,7 @@ function roomSVG(opts) {
 
     ${hrLocked}
 
-    ${org
-      ? spotOpen(by('meeting'), meeting, 812, 252)
-      : spotLocked(by('meeting'), meeting, 812, 252,
-          'Your account cannot open this room. It holds group data only.')}
+    ${org ? spotOpen(by('meeting'), meeting, 812, 252) : ''}
 
     <!-- front doors: two leaves that swing inward on sign-in -->
     <g class="doors">
