@@ -3,7 +3,7 @@
 import Script from 'next/script'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { SignOut } from '@/components/sign-out'
+import { signOutEverywhere } from '@/components/sign-out'
 import { hideSky, showSky } from '@/lib/sky'
 import { Wordmark } from '@/components/brandmark'
 
@@ -221,13 +221,24 @@ export function Office({
   const navigate = useCallback(
     (e: React.MouseEvent | React.KeyboardEvent) => {
       const target = e.target as HTMLElement
-      const el = target.closest<HTMLElement>('[data-go], a[href]')
+      const el = target.closest<HTMLElement>('[data-go], [data-signout], a[href]')
       if (!el) return
+
+      e.preventDefault()
+
+      // The front door: same "important button" rule as everything else
+      // that ends a session — confirm once before it fires.
+      if (el.dataset.signout !== undefined) {
+        if (!window.confirm('Sign out of WorkWell?')) return
+        void signOutEverywhere().then(() => {
+          router.push('/')
+          router.refresh()
+        })
+        return
+      }
 
       const href = el.dataset.go ?? el.getAttribute('href') ?? ''
       const route = ROUTES[href.replace(/^\.?\//, '')]
-
-      e.preventDefault()
 
       // Every spot in the room now has a screen behind it. If that ever
       // stops being true, say so rather than navigating somewhere wrong.
@@ -248,7 +259,7 @@ export function Office({
   const onKey = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key !== 'Enter' && e.key !== ' ') return
-      const el = (e.target as HTMLElement).closest('[data-go], a[href]')
+      const el = (e.target as HTMLElement).closest('[data-go], [data-signout], a[href]')
       if (el) navigate(e)
     },
     [navigate]
@@ -266,29 +277,29 @@ export function Office({
 
       {/* Only the room locks itself to the viewport; the list has to scroll. */}
       <div className={`room-shell${view === 'room' ? ' is-fit' : ''}`}>
-        <header className="room-top">
-          <div className="room-top__brand">
-            <Wordmark />
-          </div>
-          <span className="room-top__spacer" />
-          <div className="segmented" role="group" aria-label="How to navigate">
-            <button
-              type="button"
-              aria-pressed={view === 'room'}
-              onClick={() => setView('room')}
-            >
-              Room
-            </button>
-            <button
-              type="button"
-              aria-pressed={view === 'list'}
-              onClick={() => setView('list')}
-            >
-              List
-            </button>
-          </div>
-          <SignOut compact />
-        </header>
+        {/* No header bar — just the mark, pasted over the background top
+            left, and the room/list switch floating to match. Signing out
+            now happens at the front door, in the room itself. */}
+        <div className="room-brand">
+          <Wordmark />
+        </div>
+
+        <div className="room-nav-toggle segmented" role="group" aria-label="How to navigate">
+          <button
+            type="button"
+            aria-pressed={view === 'room'}
+            onClick={() => setView('room')}
+          >
+            Room
+          </button>
+          <button
+            type="button"
+            aria-pressed={view === 'list'}
+            onClick={() => setView('list')}
+          >
+            List
+          </button>
+        </div>
 
         <main className="room-stage">
           <div

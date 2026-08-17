@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { PageHead, PlaneBadge } from '@/components/chrome'
+import { ConfirmButton } from '@/components/controls'
 import { fmtDate } from '@/lib/format-date'
 
 export default function ResignationsClient() {
@@ -47,9 +48,12 @@ export default function ResignationsClient() {
               </tbody>
             </table>
           </div>
-          <button className="btn btn--secondary mt-4" type="button" onClick={() => setSent(null)}>
-            Withdraw notice
-          </button>
+          <ConfirmButton
+            label="Withdraw notice"
+            confirmLabel="Withdraw"
+            className="btn btn--secondary mt-4"
+            onConfirm={() => setSent(null)}
+          />
         </div>
       </>
     )

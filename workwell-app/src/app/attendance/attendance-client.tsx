@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
+import { ConfirmButton } from '@/components/controls'
 
 // Lunch is not something you clock — the app pauses it for you. Two fixed
 // hours, matching the standard PH lunch block; a real rollout would read
@@ -121,9 +122,7 @@ export default function AttendanceClient() {
             </button>
           )}
           {todayLog.timeIn && !todayLog.timeOut && (
-            <button className="btn btn--secondary btn--sm" type="button" onClick={timeOut}>
-              Time out
-            </button>
+            <ConfirmButton label="Time out" confirmLabel="Time out" onConfirm={timeOut} />
           )}
         </div>
 

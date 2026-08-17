@@ -96,6 +96,10 @@ a.card:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px
 .btn--ghost { color: var(--text-muted); }
 .btn--ghost:hover { background: var(--surface-2); color: var(--text); }
 
+/* ConfirmButton's armed state: the original button plus a way back out,
+   side by side rather than the click target jumping underneath the cursor. */
+.confirm-inline { display: inline-flex; gap: var(--s-2); }
+
 .btn--quiet {
   background: var(--accent-quiet);
   backdrop-filter: var(--glass-filter-1);

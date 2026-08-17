@@ -177,31 +177,11 @@ function roomSVG(opts) {
      keyboard, because a lamp is not somewhere you can go. */
   const lights = `
     <g class="lamps" aria-hidden="true">
-      <g class="lamp" transform="translate(190 210)">
-        <circle class="lamp__glow" r="120"/>
-        <line class="lamp__flex" x1="0" y1="-46" x2="0" y2="-12"/>
-        <path class="lamp__shade" d="M-26 0 L26 0 L15 -16 L-15 -16 Z"/>
-        <circle class="lamp__bulb" cy="2" r="5"/>
-      </g>
-      <g class="lamp" transform="translate(510 523)">
-        <circle class="lamp__glow" r="132"/>
-        <line class="lamp__flex" x1="0" y1="-52" x2="0" y2="-14"/>
-        <path class="lamp__shade" d="M-30 0 L30 0 L17 -18 L-17 -18 Z"/>
-        <circle class="lamp__bulb" cy="2" r="6"/>
-      </g>
+      <circle class="lamp__glow" cx="190" cy="210" r="120"/>
+      <circle class="lamp__glow" cx="510" cy="523" r="132"/>
       ${org ? `
-      <g class="lamp" transform="translate(812 140)">
-        <circle class="lamp__glow" r="118"/>
-        <line class="lamp__flex" x1="0" y1="-44" x2="0" y2="-12"/>
-        <path class="lamp__shade" d="M-26 0 L26 0 L15 -16 L-15 -16 Z"/>
-        <circle class="lamp__bulb" cy="2" r="5"/>
-      </g>
-      <g class="lamp" transform="translate(505 180)">
-        <circle class="lamp__glow" r="112"/>
-        <line class="lamp__flex" x1="0" y1="-44" x2="0" y2="-12"/>
-        <path class="lamp__shade" d="M-26 0 L26 0 L15 -16 L-15 -16 Z"/>
-        <circle class="lamp__bulb" cy="2" r="5"/>
-      </g>` : ''}
+      <circle class="lamp__glow" cx="812" cy="140" r="118"/>
+      <circle class="lamp__glow" cx="505" cy="180" r="112"/>` : ''}
     </g>`;
 
   /* ------------------------------------------------------------- Layout
@@ -528,14 +508,14 @@ function roomSVG(opts) {
       <rect class="doorleaf doorleaf--r" x="500" y="686" width="70" height="16" rx="6"/>
     </g>
 
-    <!-- Scenery, same as everything else in the room until you're in it —
-         the way in is the form beside the room, not this picture of a
-         door. Still marked up as a landmark rather than a plain shape,
-         in case a future screen needs a door that does something. -->
-    <g class="frontdoor" aria-hidden="true">
+    <!-- The way in is the form beside the room, not this door — but once
+         you're in it, this is the way out. data-signout marks it apart
+         from data-go: the host still owns what "sign out" actually does,
+         this is only the trigger. -->
+    <g class="spot frontdoor" data-signout="true" tabindex="0" role="button" aria-label="Front door — sign out">
       <rect class="frontdoor__hit" x="416" y="656" width="168" height="60" rx="14"/>
       <circle class="frontdoor__pulse" cx="500" cy="686" r="46"/>
-      ${tag(500, 640, 'Front door', 'Locked')}
+      ${tag(500, 640, 'Front door', 'Sign out')}
     </g>
 
     <!-- you, once you are inside.
