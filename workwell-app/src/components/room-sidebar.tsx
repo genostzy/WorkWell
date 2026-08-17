@@ -9,7 +9,6 @@ type Spot = {
   href?: string
   label: string
   sub: string
-  hrOnly?: boolean
 }
 
 /** Private-space items — only the employee sees these. */
@@ -22,49 +21,54 @@ const PRIVATE_SPOTS: Spot[] = [
   { id: 'shelf', href: '/workspace', label: 'Your shelf', sub: 'Workspace' },
 ]
 
-/** Workplace items — visible to everyone, some HR-only. */
+/** Workplace items — self-service, private-plane accounts only. An HR/admin
+ *  account never has these: it has no employment record of its own to see. */
 const WORK_SPOTS: Spot[] = [
-  { id: 'meeting', href: '/org', label: 'Meeting room', sub: 'Structural load', hrOnly: true },
-  { id: 'files', href: '/hr', label: 'HR office', sub: 'People & records', hrOnly: true },
   { id: 'holidays', href: '/holidays', label: 'Holidays', sub: 'Calendar' },
   { id: 'attendance', href: '/attendance', label: 'Attendance', sub: 'Check-ins' },
   { id: 'payroll', href: '/payroll', label: 'Payroll', sub: 'Payslips' },
   { id: 'expenses', href: '/expenses', label: 'Expenses', sub: 'Claims' },
   { id: 'assets', href: '/assets', label: 'Assets', sub: 'On loan' },
-  { id: 'letter-heads', href: '/letter-heads', label: 'Letter heads', sub: 'Templates', hrOnly: true },
   { id: 'company-policies', href: '/company-policies', label: 'Policies', sub: 'Read once' },
-  { id: 'custom-fields', href: '/custom-fields', label: 'Data fields', sub: 'Extra fields', hrOnly: true },
   { id: 'news', href: '/news', label: 'News', sub: 'Notices' },
   { id: 'complaints', href: '/complaints', label: 'Complaints', sub: 'File a case' },
   { id: 'resignations', href: '/resignations', label: 'Resignations', sub: 'Give notice' },
-  { id: 'offboarding', href: '/offboarding', label: 'Offboarding', sub: 'Checklist', hrOnly: true },
-  { id: 'warnings', href: '/warnings', label: 'Warnings', sub: 'Records', hrOnly: true },
+]
+
+/** Administration — the whole of the HR/admin account's plane. There is no
+ *  locked state here: every other tile a private-plane account might see
+ *  locked, this list simply never renders for them at all. */
+const ADMIN_SPOTS: Spot[] = [
+  { id: 'hr', href: '/hr', label: 'People', sub: 'Employment records' },
+  { id: 'accounts', href: '/hr/accounts', label: 'Accounts', sub: 'Access & sign-in' },
+  { id: 'org', href: '/org', label: 'Structural load', sub: 'Anonymous patterns' },
+  { id: 'letter-heads', href: '/letter-heads', label: 'Letter heads', sub: 'Templates' },
+  { id: 'custom-fields', href: '/custom-fields', label: 'Data fields', sub: 'Extra fields' },
+  { id: 'offboarding', href: '/offboarding', label: 'Offboarding', sub: 'Checklist' },
+  { id: 'warnings', href: '/warnings', label: 'Warnings', sub: 'Records' },
 ]
 
 function SidebarTile({
   spot,
   active,
-  locked,
   index,
   onClick,
 }: {
   spot: Spot
   active: boolean
-  locked: boolean
   index: number
   onClick: () => void
 }) {
   return (
     <button
       type="button"
-      className={`sidebar-tile${locked ? ' sidebar-tile--locked' : ''}`}
-      disabled={locked}
+      className="sidebar-tile"
       aria-current={active ? 'page' : undefined}
       style={{ animationDelay: `${index * 30}ms` }}
       onClick={onClick}
     >
       <span className="sidebar-tile__label">{spot.label}</span>
-      <span className="sidebar-tile__sub">{locked ? 'HR only' : spot.sub}</span>
+      <span className="sidebar-tile__sub">{spot.sub}</span>
     </button>
   )
 }
@@ -84,8 +88,13 @@ export function RoomSidebar({
   const pathname = usePathname()
   const displayInitials = initials?.trim() || initialsOf(name)
 
+  // Two account kinds now, not two planes on one account: HR/admin has the
+  // administration list and nothing else; everyone else has their own space
+  // and the self-service list, and never sees administration at all.
+  const spots = isHr ? ADMIN_SPOTS : WORK_SPOTS
+
   return (
-    <aside className="room-sidebar" aria-label="The office, and where to go">
+    <aside className="room-sidebar" aria-label={isHr ? 'The admin dashboard, and where to go' : 'The office, and where to go'}>
       <div className="sidebar-inner">
         {/* Brand */}
         <div className="sidebar-brand">
@@ -99,62 +108,64 @@ export function RoomSidebar({
           </span>
         </div>
 
-        {/* Avatar — clickable, goes to Leave & profile */}
-        <button
-          type="button"
-          className="sidebar-avatar"
-          onClick={() => router.push('/leave')}
-        >
-          <div className="sidebar-avatar__circle" data-avatar-colour={colour}>
-            <span className="sidebar-avatar__initials">{displayInitials}</span>
+        {/* Avatar — for a private-plane account, a link to Leave & profile.
+            HR/admin has no employment record of its own for that page to
+            show, so its avatar is a plain label, not a dead link. */}
+        {isHr ? (
+          <div className="sidebar-avatar">
+            <div className="sidebar-avatar__circle" data-avatar-colour={colour}>
+              <span className="sidebar-avatar__initials">{displayInitials}</span>
+            </div>
+            <span className="sidebar-avatar__name">{name}</span>
           </div>
-          <span className="sidebar-avatar__name">{name}</span>
-        </button>
+        ) : (
+          <button
+            type="button"
+            className="sidebar-avatar"
+            onClick={() => router.push('/leave')}
+          >
+            <div className="sidebar-avatar__circle" data-avatar-colour={colour}>
+              <span className="sidebar-avatar__initials">{displayInitials}</span>
+            </div>
+            <span className="sidebar-avatar__name">{name}</span>
+          </button>
+        )}
 
         <div className="sidebar-divider" />
 
-        {/* Private section — an HR leader is an employee too, and their own
-            check-ins are as unreadable to their employer as anyone else's,
-            so this stays visible regardless of role. */}
+        {!isHr && (
+          <>
+            <div className="sidebar-section">
+              <span className="sidebar-section__label">Your space</span>
+            </div>
+            <nav className="sidebar-nav" aria-label="Personal navigation">
+              {PRIVATE_SPOTS.map((s, i) => (
+                <SidebarTile
+                  key={s.id}
+                  spot={s}
+                  active={pathname === s.href}
+                  index={i}
+                  onClick={() => { if (s.href) router.push(s.href) }}
+                />
+              ))}
+            </nav>
+            <div className="sidebar-divider" />
+          </>
+        )}
+
         <div className="sidebar-section">
-          <span className="sidebar-section__label">Your space</span>
+          <span className="sidebar-section__label">{isHr ? 'Administration' : 'Workplace'}</span>
         </div>
-        <nav className="sidebar-nav" aria-label="Personal navigation">
-          {PRIVATE_SPOTS.map((s, i) => (
+        <nav className="sidebar-nav" aria-label={isHr ? 'Administration navigation' : 'Workplace navigation'}>
+          {spots.map((s, i) => (
             <SidebarTile
               key={s.id}
               spot={s}
               active={pathname === s.href}
-              locked={false}
               index={i}
               onClick={() => { if (s.href) router.push(s.href) }}
             />
           ))}
-        </nav>
-        <div className="sidebar-divider" />
-
-        {/* Workplace section — hrOnly destinations stay in the list and show
-            locked rather than disappearing, matching room.js's own spots. */}
-        <div className="sidebar-section">
-          <span className="sidebar-section__label">Workplace</span>
-        </div>
-        <nav className="sidebar-nav" aria-label="Workplace navigation">
-          {WORK_SPOTS.map((s, i) => {
-            const locked = !!s.hrOnly && !isHr
-            return (
-              <SidebarTile
-                key={s.id}
-                spot={s}
-                active={pathname === s.href}
-                locked={locked}
-                index={i}
-                onClick={() => {
-                  if (locked) return
-                  if (s.href) router.push(s.href)
-                }}
-              />
-            )
-          })}
         </nav>
 
         {/* Footer */}

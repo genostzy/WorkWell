@@ -85,13 +85,11 @@ export function initialsOf(name: string) {
 }
 
 export function Office({
-  isHr,
   name,
   initials,
   colour = 'accent',
   greeting = 'warm',
 }: {
-  isHr: boolean
   /** Preferred name if one is set, otherwise the employment record's. */
   name: string
   /** An override; null means derive from the name. */
@@ -113,11 +111,12 @@ export function Office({
 
     const minutes = WW.room.nowMinutes()
 
-    // Everyone signed in holds a private plane — an HR leader is an employee
-    // too, and their own check-ins are as unreadable to their employer as
-    // anyone else's. The org plane is the part the hr role adds, so the two
-    // are passed as separate capabilities rather than as one either/or role.
-    const caps = { own: true, org: isHr }
+    // Office renders only for private-plane accounts now — HR/admin lands on
+    // the dashboard instead (see page.tsx) and never reaches this component.
+    // So `own` is unconditionally true and `org` unconditionally false: every
+    // org-gated spot in the room always renders locked, because the single
+    // account that could ever open it is never the one standing in the room.
+    const caps = { own: true, org: false }
 
     roomRef.current.innerHTML = WW.room.roomSVG({ minutes, ...caps })
 
@@ -135,17 +134,13 @@ export function Office({
     roomRef.current.dataset.avatarColour = colour
 
     if (listRef.current) {
-      listRef.current.innerHTML = WW.room.roomList(
-        isHr ? 'hr' : 'employee',
-        false,
-        caps
-      )
+      listRef.current.innerHTML = WW.room.roomList('employee', false, caps)
     }
 
     setPhase(WW.room.phaseAt(minutes))
     setClock(WW.room.formatTime(minutes))
     setLoaded(true)
-  }, [isHr, name, initials, colour])
+  }, [name, initials, colour])
 
   useEffect(() => {
     // The scripts may already be present on a client-side navigation back

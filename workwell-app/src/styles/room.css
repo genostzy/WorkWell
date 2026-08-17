@@ -197,8 +197,10 @@
 .reader.is-open { fill: var(--accent); }
 .ink-dot { fill: var(--text); }
 
-/* Sealed employee floor, shown to organisation accounts. Deliberately blank:
-   an HR leader has no business seeing whose desk is whose. */
+/* Sealed employee floor — room.js's fallback for an account with no private
+   plane. No account reaches it in this app any more: HR/admin never renders
+   the room at all now (see room.js's own/org comment), so this styles a
+   state the generator still supports but this app no longer produces. */
 .sealed__fill {
   fill: var(--room-fill-2);
   stroke: var(--room-ink);

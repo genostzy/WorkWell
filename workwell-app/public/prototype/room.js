@@ -165,13 +165,16 @@ function spotLocked(s, inner, tx, ty, why) {
 function roomSVG(opts) {
   const o = opts || {};
 
-  /* Two independent capabilities, not one exclusive role.
+  /* Two independent capabilities in the generator, not one exclusive role —
      `role` is the prototype's shorthand, from a sign-in that picked one demo
-     persona or the other, so nobody was ever both. Real accounts are: an HR
-     leader is also an employee and holds a private plane of their own. The
-     database has always agreed — every private-plane policy reads
-     person_id = current_person_id(), with no exception for the hr role.
-     Passing role alone still behaves exactly as before. */
+     persona or the other, so nobody was ever both. This app's own account
+     model has since narrowed to one plane per account: HR/admin is its own
+     kind of account with no employment record of its own, and never reaches
+     this component at all (it lands on the administration dashboard
+     instead — see office.tsx and page.tsx). So in practice `own` is always
+     true and `org` is always false here; the two stay independent inputs
+     because the generator is still the one vendored from the prototype and
+     other callers may not share this app's narrower model. */
   const own = o.own !== undefined ? o.own : o.role !== 'hr';
   const org = o.org !== undefined ? o.org : o.role === 'hr';
 

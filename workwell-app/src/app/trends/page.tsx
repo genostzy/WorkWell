@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { Empty, LoadError, PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
+import { Empty, LoadError, PageHead, PlaneBadge, PrivacyNote, RoleLocked } from '@/components/chrome'
 import { Shell } from '@/components/shell'
 
 /** The PRD is explicit that we say "not enough data yet" rather than
@@ -42,6 +42,16 @@ function Bar({ value }: { value: number | null }) {
 
 export default async function Trends() {
   const supabase = await createClient()
+
+  const { data: roles } = await supabase.from('person_roles').select('role')
+  if ((roles ?? []).some((r) => r.role === 'hr')) {
+    return (
+      <Shell plane="work" isHr>
+        <PageHead title="Not available on this account" />
+        <RoleLocked audience="employee" />
+      </Shell>
+    )
+  }
 
   const { data, error } = await supabase
     .from('check_ins')

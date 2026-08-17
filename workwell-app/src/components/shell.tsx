@@ -74,10 +74,14 @@ export function Shell({
   children,
   current,
   plane = 'private',
+  isHr = false,
 }: {
   children: React.ReactNode
   current?: Page
   plane?: Plane
+  /** Swaps the "back to the office" chrome for "back to the dashboard" —
+   *  an HR/admin account has no office, only the administration screens. */
+  isHr?: boolean
 }) {
   const badge = BADGE[plane]
 
@@ -117,7 +121,11 @@ export function Shell({
               but nothing about it said so — a logo in the top-left is read
               as a logo, and people looked for a back button instead. The
               chevron is what turns it into one. */}
-          <Link className="topbar__home" href="/" aria-label="Back to the office">
+          <Link
+            className="topbar__home"
+            href="/"
+            aria-label={isHr ? 'Back to the dashboard' : 'Back to the office'}
+          >
             <svg
               className="topbar__back"
               viewBox="0 0 24 24"
@@ -135,7 +143,7 @@ export function Shell({
             <span className="sidebar__mark">
               <Brandmark size={28} />
             </span>
-            <span className="topbar__backword">The office</span>
+            <span className="topbar__backword">{isHr ? 'Dashboard' : 'The office'}</span>
           </Link>
           <span className="topbar__title">
             {current ? TITLES[current] : 'WorkWell'}
@@ -163,9 +171,9 @@ export function Shell({
 
       <Link className="hub" href="/">
         <span className="hub__glyph" aria-hidden="true">
-          🏠
+          {isHr ? '📋' : '🏠'}
         </span>
-        The office
+        {isHr ? 'Dashboard' : 'The office'}
       </Link>
     </div>
   )

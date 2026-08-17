@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { Empty, LoadError, PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
+import { Empty, LoadError, PageHead, PlaneBadge, PrivacyNote, RoleLocked } from '@/components/chrome'
 import { Shell } from '@/components/shell'
 import { LeaveForm } from './form'
 import { OwnProfile } from './profile'
@@ -26,6 +26,16 @@ function days(a: string, b: string) {
 
 export default async function Leave() {
   const supabase = await createClient()
+
+  const { data: roles } = await supabase.from('person_roles').select('role')
+  if ((roles ?? []).some((r) => r.role === 'hr')) {
+    return (
+      <Shell plane="work" isHr>
+        <PageHead title="Not available on this account" />
+        <RoleLocked audience="employee" />
+      </Shell>
+    )
+  }
 
   const { data: me, error: meError } = await supabase
     .from('me')

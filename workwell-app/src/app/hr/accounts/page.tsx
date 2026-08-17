@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { LoadError, PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
+import { LoadError, PageHead, PlaneBadge, PrivacyNote, RoleLocked } from '@/components/chrome'
 import { Shell } from '@/components/shell'
 import { CreateAccount } from './create'
 import { Accounts, type Account } from './manage'
@@ -27,18 +27,7 @@ export default async function AccountsPage() {
     return (
       <Shell current="hr" plane="private">
         <PageHead title="Not available on this account" />
-        <div className="card">
-          <div className="state">
-            <div className="state__icon" aria-hidden="true">
-              🔒
-            </div>
-            <h2 className="state__title">This area is for HR</h2>
-            <p className="state__text">
-              Your own data lives on the private plane, which nobody here can
-              read.
-            </p>
-          </div>
-        </div>
+        <RoleLocked audience="hr" />
       </Shell>
     )
   }
@@ -63,7 +52,7 @@ export default async function AccountsPage() {
   const readError = peopleError ?? rolesError
   if (readError) {
     return (
-      <Shell current="hr" plane="work">
+      <Shell current="hr" plane="work" isHr>
         <PageHead title="Accounts" />
         <PlaneBadge plane="work" />
         <LoadError what="The account list" detail={readError.message} />
@@ -97,7 +86,7 @@ export default async function AccountsPage() {
   const closed = accounts.filter((a) => a.status === 'left').length
 
   return (
-    <Shell current="hr" plane="work">
+    <Shell current="hr" plane="work" isHr>
       <PageHead
         title="Accounts"
         lead="Who can get in, and what they can open once they are."
