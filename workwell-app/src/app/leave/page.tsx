@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { readIsHr } from '@/lib/role'
 import { Empty, LoadError, PageHead, PlaneBadge, PrivacyNote, RoleLocked } from '@/components/chrome'
 import { Shell } from '@/components/shell'
 import { LeaveForm } from './form'
@@ -27,8 +28,24 @@ function days(a: string, b: string) {
 export default async function Leave() {
   const supabase = await createClient()
 
-  const { data: roles } = await supabase.from('person_roles').select('role')
-  if ((roles ?? []).some((r) => r.role === 'hr')) {
+  // Independent reads — run together rather than paying two round trips
+  // for a page that used to need only one.
+  const [{ isHr, error: roleError }, { data: me, error: meError }] =
+    await Promise.all([
+      readIsHr(supabase),
+      supabase.from('me').select('id, full_name').maybeSingle(),
+    ])
+
+  if (roleError) {
+    return (
+      <Shell plane="work">
+        <PageHead title="Leave and profile" />
+        <LoadError what="Your account" detail={roleError} />
+      </Shell>
+    )
+  }
+
+  if (isHr) {
     return (
       <Shell plane="work" isHr>
         <PageHead title="Not available on this account" />
@@ -36,11 +53,6 @@ export default async function Leave() {
       </Shell>
     )
   }
-
-  const { data: me, error: meError } = await supabase
-    .from('me')
-    .select('id, full_name')
-    .maybeSingle()
 
   // Without a person row there is no employment record to read and nothing
   // to book against, so ask for neither — an .eq on an empty id is a query

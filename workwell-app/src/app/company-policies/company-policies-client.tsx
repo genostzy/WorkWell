@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { PageHead, PlaneBadge } from '@/components/chrome'
 import { ToggleRow } from '@/components/controls'
+import { fmtDate } from '@/lib/format-date'
 
 type Policy = { id: string; title: string; updated: string }
 
@@ -13,10 +14,6 @@ const POLICIES: Policy[] = [
   { id: 'p4', title: 'Anti-harassment policy', updated: '2026-05-15' },
   { id: 'p5', title: 'Expense reimbursement', updated: '2026-06-01' },
 ]
-
-function fmt(iso: string) {
-  return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-}
 
 export default function CompanyPoliciesClient() {
   const [ack, setAck] = useState<Record<string, boolean>>({})
@@ -47,7 +44,7 @@ export default function CompanyPoliciesClient() {
           <div className="card" key={p.id}>
             <ToggleRow
               title={p.title}
-              desc={`Updated ${fmt(p.updated)}${ack[p.id] ? ' · Acknowledged' : ''}`}
+              desc={`Updated ${fmtDate(p.updated)}${ack[p.id] ? ' · Acknowledged' : ''}`}
               on={!!ack[p.id]}
               onChange={(on) => setAck((a) => ({ ...a, [p.id]: on }))}
             />

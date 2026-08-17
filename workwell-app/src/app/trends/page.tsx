@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { readIsHr } from '@/lib/role'
 import { Empty, LoadError, PageHead, PlaneBadge, PrivacyNote, RoleLocked } from '@/components/chrome'
 import { Shell } from '@/components/shell'
 
@@ -43,8 +44,27 @@ function Bar({ value }: { value: number | null }) {
 export default async function Trends() {
   const supabase = await createClient()
 
-  const { data: roles } = await supabase.from('person_roles').select('role')
-  if ((roles ?? []).some((r) => r.role === 'hr')) {
+  // Independent reads — run together rather than paying two round trips
+  // for a page that used to need only one.
+  const [{ isHr, error: roleError }, { data, error }] = await Promise.all([
+    readIsHr(supabase),
+    supabase
+      .from('check_ins')
+      .select('day, mood, energy, pressure, workload, note')
+      .order('day', { ascending: false })
+      .limit(30),
+  ])
+
+  if (roleError) {
+    return (
+      <Shell plane="private">
+        <PageHead title="Your trends" />
+        <LoadError what="Your account" detail={roleError} />
+      </Shell>
+    )
+  }
+
+  if (isHr) {
     return (
       <Shell plane="work" isHr>
         <PageHead title="Not available on this account" />
@@ -52,12 +72,6 @@ export default async function Trends() {
       </Shell>
     )
   }
-
-  const { data, error } = await supabase
-    .from('check_ins')
-    .select('day, mood, energy, pressure, workload, note')
-    .order('day', { ascending: false })
-    .limit(30)
 
   if (error) {
     return (

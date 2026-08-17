@@ -1,6 +1,7 @@
 'use client'
 
 import { PageHead, PlaneBadge } from '@/components/chrome'
+import { fmtDate } from '@/lib/format-date'
 
 type Holiday = { date: string; name: string }
 
@@ -17,15 +18,6 @@ const HOLIDAYS: Holiday[] = [
   { date: '2026-12-25', name: 'Christmas Day' },
   { date: '2026-12-30', name: 'Rizal Day' },
 ]
-
-function fmt(iso: string) {
-  return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
-}
 
 function daysUntil(iso: string) {
   const ms = +new Date(iso + 'T00:00:00') - +new Date(new Date().toDateString())
@@ -51,7 +43,7 @@ export default function HolidaysClient() {
           <div className="stat">
             <span className="stat__value t-num">{daysUntil(next.date)}</span>
             <span className="stat__label">
-              days until {next.name}, {fmt(next.date)}
+              days until {next.name}, {fmtDate(next.date, { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}
             </span>
           </div>
         </div>
@@ -78,7 +70,7 @@ export default function HolidaysClient() {
               <tbody>
                 {upcoming.map((h) => (
                   <tr key={h.date}>
-                    <td>{fmt(h.date)}</td>
+                    <td>{fmtDate(h.date, { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}</td>
                     <th scope="row" style={{ fontWeight: 600 }}>
                       {h.name}
                     </th>
@@ -101,7 +93,7 @@ export default function HolidaysClient() {
               <tbody>
                 {past.map((h) => (
                   <tr key={h.date}>
-                    <td className="t-subtle">{fmt(h.date)}</td>
+                    <td className="t-subtle">{fmtDate(h.date, { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}</td>
                     <th scope="row" className="t-subtle" style={{ fontWeight: 500 }}>
                       {h.name}
                     </th>

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { PageHead, PlaneBadge } from '@/components/chrome'
+import { fmtDate } from '@/lib/format-date'
 
 type Asset = {
   id: string
@@ -17,10 +18,6 @@ const SEED: Asset[] = [
   { id: 'a2', tag: 'WW-BD-0891', type: 'Access badge', issued: '2025-03-10', condition: 'Good', issueReported: false },
   { id: 'a3', tag: 'WW-MN-0207', type: 'External monitor', issued: '2025-09-02', condition: 'Fair', issueReported: false },
 ]
-
-function fmt(iso: string) {
-  return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-}
 
 export default function AssetsClient() {
   const [assets, setAssets] = useState<Asset[]>(SEED)
@@ -62,7 +59,7 @@ export default function AssetsClient() {
                 <tr key={a.id}>
                   <th scope="row" style={{ fontWeight: 600 }}>{a.type}</th>
                   <td className="t-subtle">{a.tag}</td>
-                  <td>{fmt(a.issued)}</td>
+                  <td>{fmtDate(a.issued)}</td>
                   <td>
                     <span className={a.condition === 'Good' ? 'chip chip--accent' : 'chip'}>
                       {a.condition}

@@ -1,12 +1,21 @@
 import { createClient } from '@/lib/supabase/server'
-import { PageHead, RoleLocked } from '@/components/chrome'
+import { readIsHr } from '@/lib/role'
+import { LoadError, PageHead, RoleLocked } from '@/components/chrome'
 import { Shell } from '@/components/shell'
 import WorkspaceClient from './workspace-client'
 
 export default async function Workspace() {
   const supabase = await createClient()
-  const { data: roles } = await supabase.from('person_roles').select('role')
-  const isHr = (roles ?? []).some((r) => r.role === 'hr')
+  const { isHr, error } = await readIsHr(supabase)
+
+  if (error) {
+    return (
+      <Shell plane="private">
+        <PageHead title="Workspace" />
+        <LoadError what="Your account" detail={error} />
+      </Shell>
+    )
+  }
 
   if (isHr) {
     return (

@@ -410,16 +410,24 @@ function roomSVG(opts) {
     ${spotOpen(by('complaints'),   kit.dropbox(660, 195),  660, 247)}
     ${spotOpen(by('resignations'), kit.outtray(860, 195),  860, 247)}` : '';
 
-  /* The HR office — a second walled room, to the left of the meeting room
-     and sharing its partition wall. Its contents are org-gated: an HR/admin
-     account is the only account that ever sees them, so for anyone else
-     they simply are not drawn — no furniture, no tag, nothing to notice.
-     The account model is now one plane per account, not a role added on
-     top of one everybody shares, so there is no closed door here worth
-     narrating; the walls stay, as the room's architecture, but what used
-     to render locked-with-a-reason for a private account now renders
-     nothing at all. Two columns of two along the back, then the exit on
-     its own centred row, all clear of each other and of the walls. */
+  /* The HR office and the meeting room's contents — both org-gated, both
+     drawn after employeeFloor in the final markup, so both live in this
+     one `org ? ... : ''` rather than deciding twice. (The walls and
+     badge readers those two rooms share can't join them here: they have
+     to paint before employeeFloor so furniture layers on top of the
+     architecture, not the other way round — that's the one org-gated
+     fragment that still has to stay separate, below.)
+
+     An HR/admin account is the only account that ever sees any of this,
+     so for anyone else it simply is not drawn — no furniture, no tag,
+     nothing to notice. The account model is one plane per account, not a
+     role added on top of one everybody shares, so there is no closed
+     door here worth narrating; the walls stay, as the room's
+     architecture, but what used to render locked-with-a-reason for a
+     private account now renders nothing at all. Two columns of two along
+     the HR office's back wall, then its exit on its own centred row, all
+     clear of each other and of the walls; the meeting table sits alone
+     in the room next door. */
   const hrLocked = org ? `
     ${surface(385, 45, 250, 72)}
     ${surface(385, 150, 250, 62)}
@@ -427,7 +435,8 @@ function roomSVG(opts) {
     ${spotOpen(by('letterheads'), kit.stack(578, 85), 578, 137)}
     ${spotOpen(by('customfields'), kit.grid(432, 180), 432, 232)}
     ${spotOpen(by('warnings'), kit.caution(578, 180), 578, 232)}
-    ${spotOpen(by('offboarding'), kit.exit(505, 275), 505, 327)}` : '';
+    ${spotOpen(by('offboarding'), kit.exit(505, 275), 505, 327)}
+    ${spotOpen(by('meeting'), meeting, 812, 252)}` : '';
 
   /* An organisation account gets the meeting room and nothing else. The
      employee floor is not drawn as furniture they cannot use — it is drawn
@@ -497,8 +506,6 @@ function roomSVG(opts) {
 
     ${hrLocked}
 
-    ${org ? spotOpen(by('meeting'), meeting, 812, 252) : ''}
-
     <!-- front doors: two leaves that swing inward on sign-in -->
     <g class="doors">
       <rect class="doorleaf doorleaf--l" x="430" y="686" width="70" height="16" rx="6"/>
@@ -527,39 +534,30 @@ function roomSVG(opts) {
 
 /* --------------------------------------------------------------- Wiring */
 
-/** Makes the objects in a rendered room navigable. */
+/** Makes the objects in a rendered room navigable. Locked spots and the
+ *  front door no longer have a distinct handling path here — neither
+ *  roomSVG() output carries a locked spot or a data-frontdoor target any
+ *  more (see spotOpen and the frontdoor group above), so this only ever
+ *  has plain, open spots to wire up. */
 function wireRoom(container, opts) {
   const o = opts || {};
 
   const go = (el) => {
-    if (el.classList.contains('spot--locked')) {
-      container.dispatchEvent(new CustomEvent('ww:roomlocked', {
-        bubbles: true, detail: { spot: el.dataset.spot },
-      }));
-      return;
-    }
     const href = el.dataset.go;
     if (href) location.href = href;
   };
 
   container.addEventListener('click', (e) => {
-    const front = e.target.closest('[data-frontdoor]');
-    if (front) {
-      container.dispatchEvent(new CustomEvent('ww:frontdoor', { bubbles: true }));
-      return;
-    }
     const spot = e.target.closest('.spot');
     if (spot && !o.locked?.()) go(spot);
   });
 
   container.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
-    const front = e.target.closest?.('[data-frontdoor]');
     const spot = e.target.closest?.('.spot');
-    if (!front && !spot) return;
+    if (!spot) return;
     e.preventDefault();
-    if (front) container.dispatchEvent(new CustomEvent('ww:frontdoor', { bubbles: true }));
-    else if (!o.locked?.()) go(spot);
+    if (!o.locked?.()) go(spot);
   });
 }
 

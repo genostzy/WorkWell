@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { PageHead, PlaneBadge } from '@/components/chrome'
+import { fmtDate } from '@/lib/format-date'
 
 type Post = { id: string; title: string; date: string; body: string }
 
@@ -26,10 +27,6 @@ const POSTS: Post[] = [
   },
 ]
 
-function fmt(iso: string) {
-  return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-}
-
 export default function NewsClient() {
   const [open, setOpen] = useState<string | null>(POSTS[0]?.id ?? null)
 
@@ -52,7 +49,7 @@ export default function NewsClient() {
               >
                 <div>
                   <div className="card__title">{p.title}</div>
-                  <div className="card__sub">{fmt(p.date)}</div>
+                  <div className="card__sub">{fmtDate(p.date, { day: 'numeric', month: 'long', year: 'numeric' })}</div>
                 </div>
                 <span aria-hidden="true">{expanded ? '−' : '+'}</span>
               </button>

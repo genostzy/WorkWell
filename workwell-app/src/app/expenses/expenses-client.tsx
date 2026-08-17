@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { PageHead, PlaneBadge } from '@/components/chrome'
+import { fmtDate } from '@/lib/format-date'
 
 type Claim = {
   id: string
@@ -21,10 +22,6 @@ const SEED: Claim[] = [
 
 function peso(n: number) {
   return `₱${n.toLocaleString('en-PH')}`
-}
-
-function fmt(iso: string) {
-  return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 export default function ExpensesClient() {
@@ -85,7 +82,7 @@ export default function ExpensesClient() {
                     {claims.map((c) => (
                       <tr key={c.id}>
                         <th scope="row" style={{ fontWeight: 600 }}>{c.category}</th>
-                        <td>{fmt(c.date)}</td>
+                        <td>{fmtDate(c.date)}</td>
                         <td className="t-num">{peso(c.amount)}</td>
                         <td>
                           <span className={c.status === 'Reimbursed' ? 'chip chip--accent' : 'chip'}>

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { PageHead, PlaneBadge } from '@/components/chrome'
 import { ToggleRow } from '@/components/controls'
+import { fmtDate } from '@/lib/format-date'
 
 type Leaver = { name: string; lastDay: string }
 
@@ -43,7 +44,7 @@ export default function OffboardingClient() {
         <select id="lvr" className="select" value={selected} onChange={(e) => setSelected(e.target.value)}>
           {LEAVERS.map((l) => (
             <option key={l.name} value={l.name}>
-              {l.name} — last day {new Date(l.lastDay + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+              {l.name} — last day {fmtDate(l.lastDay, { day: 'numeric', month: 'short' })}
             </option>
           ))}
         </select>

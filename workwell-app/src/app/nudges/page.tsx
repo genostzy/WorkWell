@@ -1,12 +1,21 @@
 import { createClient } from '@/lib/supabase/server'
-import { PageHead, RoleLocked } from '@/components/chrome'
+import { readIsHr } from '@/lib/role'
+import { LoadError, PageHead, RoleLocked } from '@/components/chrome'
 import { Shell } from '@/components/shell'
 import NudgesClient from './nudges-client'
 
 export default async function Nudges() {
   const supabase = await createClient()
-  const { data: roles } = await supabase.from('person_roles').select('role')
-  const isHr = (roles ?? []).some((r) => r.role === 'hr')
+  const { isHr, error } = await readIsHr(supabase)
+
+  if (error) {
+    return (
+      <Shell plane="private">
+        <PageHead title="Health nudges" />
+        <LoadError what="Your account" detail={error} />
+      </Shell>
+    )
+  }
 
   if (isHr) {
     return (

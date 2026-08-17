@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { PageHead, PlaneBadge } from '@/components/chrome'
+import { fmtDate } from '@/lib/format-date'
 
 export default function ResignationsClient() {
   const [lastDay, setLastDay] = useState('')
@@ -39,9 +40,7 @@ export default function ResignationsClient() {
                 <tr>
                   <th scope="row" style={{ fontWeight: 600 }}>Last day agreed</th>
                   <td>
-                    {new Date(sent.lastDay + 'T00:00:00').toLocaleDateString('en-GB', {
-                      day: 'numeric', month: 'long', year: 'numeric',
-                    })}{' '}
+                    {fmtDate(sent.lastDay, { day: 'numeric', month: 'long', year: 'numeric' })}{' '}
                     <span className="t-subtle">(proposed)</span>
                   </td>
                 </tr>
