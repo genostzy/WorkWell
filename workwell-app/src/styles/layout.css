@@ -590,6 +590,18 @@
   animation: content-enter var(--dur-slow) var(--ease) both;
 }
 
+/* A floor of spacing between whatever a page stacks up — cards, grids,
+   banners, forms — so a screen never goes touching-edge-to-edge just
+   because nobody remembered a margin utility on that particular pair.
+   Content children are normal block boxes, so this collapses with
+   whichever sibling already carries its own margin rather than adding to
+   it: a card with mb-5 next to a plain grid still reads as one
+   var(--s-5) gap, not two. Only pairs with no spacing of their own
+   actually change. */
+.content > * + * {
+  margin-top: var(--s-5);
+}
+
 :root[data-motion="reduced"] .content { animation: none; }
 @media (prefers-reduced-motion: reduce) {
   :root:where(:not([data-motion="full"])) .content { animation: none; }
