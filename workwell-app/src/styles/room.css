@@ -401,25 +401,18 @@
 .room[data-open="true"] .doorleaf--l { transform: rotate(-72deg); }
 .room[data-open="true"] .doorleaf--r { transform: rotate(72deg); }
 
-.frontdoor { cursor: pointer; outline: none; }
+.frontdoor { pointer-events: none; outline: none; }
 .frontdoor__hit { fill: transparent; }
 .frontdoor__pulse {
   fill: var(--accent);
   opacity: .18;
   transform-box: view-box;
   transform-origin: 500px 686px;
-  animation: doorpulse 2.2s var(--ease) infinite;
 }
-@keyframes doorpulse {
-  0%, 100% { transform: scale(.72); opacity: .30; }
-  50%      { transform: scale(1.12); opacity: .06; }
-}
-.frontdoor:focus-visible .spot__tagbg { stroke: var(--focus-ring); stroke-width: 4; }
 
-/* Once inside, the door stops advertising itself. */
-.room[data-open="true"] .frontdoor { pointer-events: none; }
-.room[data-open="true"] .frontdoor__pulse,
-.room[data-open="true"] .frontdoor .spot__tag { opacity: 0; transition: opacity var(--dur-med) var(--ease); }
+/* Once inside, the door's pulse goes with it — its tag fades the same way
+   every other spot's does, covered by the general rule below. */
+.room[data-open="true"] .frontdoor__pulse { opacity: 0; transition: opacity var(--dur-med) var(--ease); }
 
 /* ----------------------------------------------------------------- Avatar */
 
@@ -438,19 +431,14 @@
 
 /* ------------------------------------------------------- Locked room state */
 
-/* Until you sign in, nothing but the door responds. Scoped to .spot so the
-   front door keeps its own label — it is the only thing you can act on, so
-   it must stay readable. */
+/* Until you sign in, the whole room is scenery — the door included. It
+   used to stand out as the way in; now the way in is the form beside the
+   room, so the door dims and quiets down exactly like everything else. */
 .room[data-open="false"] .spot { pointer-events: none; }
 .room[data-open="false"] .spot .spot__art { opacity: .32; }
-.room[data-open="false"] .spot .spot__tag { opacity: 0; }
+.room[data-open="false"] .spot .spot__tag,
+.room[data-open="false"] .frontdoor .spot__tag { opacity: 0; }
 .room[data-open="false"] .rug { opacity: .25; }
-
-/* Lift the door above the dimming veil so it reads as the way in. */
-.room[data-open="false"] .frontdoor .spot__tagbg { fill: var(--accent); stroke: var(--accent); }
-.room[data-open="false"] .frontdoor .spot__tagtext,
-.room[data-open="false"] .frontdoor .spot__tagsub { fill: var(--text-on-accent); }
-.room[data-open="false"] .doorleaf { fill: var(--accent); }
 
 .room__dim {
   position: absolute;

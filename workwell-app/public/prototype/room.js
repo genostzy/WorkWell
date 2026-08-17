@@ -467,19 +467,22 @@ function roomSVG(opts) {
     ${lights}
 
     <!-- Two walled rooms across the top, sharing the partition at x=660:
-         the HR office on the left, the meeting room on the right. Each has
-         its own doorway gap — the HR office opens downward onto the mid
+         the HR office on the left, the meeting room on the right. Only
+         drawn for an account that can actually open them — an empty
+         walled room is not scenery, it just reads as unfinished, and no
+         other account will ever have anything to put in it. Each has its
+         own doorway gap — the HR office opens downward onto the mid
          floor, the meeting room opens downward onto the right floor — so
          they read as two rooms rather than one long one. -->
+    ${org ? `
     <path class="wall-inner"
           d="M360 24 L360 350
              M660 24 L660 350
              M360 350 L480 350 M540 350 L660 350
              M660 270 L790 270 M850 270 L976 270"/>
 
-    <!-- badge readers, each just outside its own door -->
-    <rect class="reader ${org ? 'is-open' : ''}" x="548" y="356" width="24" height="14" rx="4"/>
-    <rect class="reader ${org ? 'is-open' : ''}" x="856" y="278" width="24" height="14" rx="4"/>
+    <rect class="reader is-open" x="548" y="356" width="24" height="14" rx="4"/>
+    <rect class="reader is-open" x="856" y="278" width="24" height="14" rx="4"/>` : ''}
 
     ${employeeFloor}
 
@@ -493,12 +496,14 @@ function roomSVG(opts) {
       <rect class="doorleaf doorleaf--r" x="500" y="686" width="70" height="16" rx="6"/>
     </g>
 
-    <!-- the sign-in target, only hittable while locked -->
-    <g class="frontdoor" data-frontdoor tabindex="0" role="button"
-       aria-label="Front door — sign in to enter">
+    <!-- Scenery, same as everything else in the room until you're in it —
+         the way in is the form beside the room, not this picture of a
+         door. Still marked up as a landmark rather than a plain shape,
+         in case a future screen needs a door that does something. -->
+    <g class="frontdoor" aria-hidden="true">
       <rect class="frontdoor__hit" x="416" y="656" width="168" height="60" rx="14"/>
       <circle class="frontdoor__pulse" cx="500" cy="686" r="46"/>
-      ${tag(500, 640, 'Front door', 'Sign in')}
+      ${tag(500, 640, 'Front door', 'Locked')}
     </g>
 
     <!-- you, once you are inside.

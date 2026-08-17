@@ -61,6 +61,15 @@ export function SignInRoom({ notice }: { notice?: string }) {
 
     // The room is dark at night whether or not anyone has come in yet.
     roomRef.current.dataset.phase = WW.room.phaseAt(minutes)
+
+    // The room is scenery here, not a second way in — the form beside it
+    // is the only way in. room.js's spots are tabindex="0" because the
+    // signed-in office needs them to be; this is the one screen where
+    // that would just be twenty focus stops that do nothing, ahead of the
+    // password field, so they're stripped for this instance only.
+    roomRef.current
+      .querySelectorAll('[tabindex]')
+      .forEach((el) => el.removeAttribute('tabindex'))
   }, [])
 
   useEffect(() => {
@@ -149,36 +158,9 @@ export function SignInRoom({ notice }: { notice?: string }) {
     // Someone who asked for less motion gets neither.
     window.setTimeout(
       () => window.location.assign(to),
-      reducedMotion() ? 20 : 520
+      reducedMotion() ? 20 : 600
     )
   }, [])
-
-  /* ------------------------------------------------------------- Wiring */
-
-  // Nothing in the locked room does anything of its own — every destination
-  // in it, including the front door, leads to the same place: the form
-  // that's already sitting right there.
-  const focusForm = useCallback(() => {
-    emailRef.current?.focus()
-  }, [])
-
-  const onRoomClick = useCallback(
-    (e: React.MouseEvent | React.KeyboardEvent) => {
-      const target = e.target as HTMLElement
-      if (!target.closest('[data-frontdoor], .spot')) return
-      e.preventDefault()
-      focusForm()
-    },
-    [focusForm]
-  )
-
-  const onRoomKey = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return
-      onRoomClick(e)
-    },
-    [onRoomClick]
-  )
 
   return (
     <>
@@ -271,15 +253,13 @@ export function SignInRoom({ notice }: { notice?: string }) {
           </p>
         </aside>
 
-        <div className="room-shell is-fit signin-room-pane">
+        <div className="room-shell is-fit signin-room-pane" aria-hidden="true">
           <main className="room-stage">
             <div
               className="room"
               data-room
               data-open="false"
               ref={roomRef}
-              onClick={onRoomClick}
-              onKeyDown={onRoomKey}
             />
           </main>
         </div>
