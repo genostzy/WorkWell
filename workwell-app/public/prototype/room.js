@@ -567,35 +567,31 @@ function roomList(role, locked, opts) {
   const own = o.own !== undefined ? o.own : role !== 'hr';
   const org = o.org !== undefined ? o.org : role === 'hr';
 
-  // Organisation destinations are always listed, open or locked, because a
-  // closed door is information. A private one is listed only to whoever
-  // holds that plane — it is not anyone else's to know the shape of.
-  const visible = SPOTS.filter((s) => (s.plane === 'org' ? true : own));
+  // A destination on the plane you hold is listed, open before sign-in or
+  // locked ("Sign in first") until then — the account model is one plane
+  // per account now, not a role stacked on top of one everybody shares, so
+  // a destination on the *other* plane is never yours to open no matter
+  // what happens here. Listing it locked would only leak its name and
+  // shape to an account that can never reach it; the SVG room already
+  // hides those spots outright for the same reason, and this mirrors it.
+  const visible = SPOTS.filter((s) => (s.plane === 'org' ? org : own));
 
   const items = visible.map((base) => {
     const s = (base.altWhen && base.altWhen())
       ? Object.assign({}, base, { href: base.altHref, sub: base.altSub })
       : base;
-    const open = (s.plane === 'org' ? org : own) && !locked;
+    const open = !locked;
     if (open) {
       return `<li><a class="roomlist__item" href="${s.href}">
            <span class="roomlist__label">${s.label}</span>
            <span class="roomlist__sub">${s.sub}</span></a></li>`;
     }
-    const why = locked ? 'Sign in first' : 'Locked — holds group data only';
     return `<li><span class="roomlist__item is-locked" aria-disabled="true">
            <span class="roomlist__label">${s.label}</span>
-           <span class="roomlist__sub">${why}</span></span></li>`;
+           <span class="roomlist__sub">Sign in first</span></span></li>`;
   }).join('');
 
-  const note = org && !own && !locked
-    ? `<li><span class="roomlist__item is-locked" aria-disabled="true">
-         <span class="roomlist__label">Private plane</span>
-         <span class="roomlist__sub">Employees only — sealed from your account</span>
-       </span></li>`
-    : '';
-
-  return `<ul class="roomlist">${items}${note}</ul>`;
+  return `<ul class="roomlist">${items}</ul>`;
 }
 
 WW.room = {
