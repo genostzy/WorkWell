@@ -224,6 +224,16 @@ button.chip[aria-pressed="true"] {
   background-size: 6px 6px, 6px 6px;
   background-repeat: no-repeat;
 }
+/* The dropdown's own popup is a native OS surface with nothing behind it
+   to blur, so --surface (a ~6% glass tint meant to sit over --bg) reads
+   as barely-there white regardless of theme — the same near-white
+   --text color painted on top of it is how the list goes invisible in
+   dark mode. --bg is solid, not a tint, so this is the one place the
+   opaque token belongs instead of the glass one. */
+.select option {
+  background-color: var(--bg);
+  color: var(--text);
+}
 
 /* Toggle switch */
 .toggle {
