@@ -8,6 +8,12 @@ const METRICS = [
   { key: 'pressure', label: 'Pressure' },
 ]
 
+// A share of the cohort, not a 1-5 average like the three above — kept
+// separate so its bar reads against 100% instead of 5, not folded into
+// METRICS where the two scales would silently mean different things on
+// the same axis.
+const CONCERN = { key: 'concern', label: 'Team concern raised' }
+
 export default async function Org() {
   const supabase = await createClient()
 
@@ -135,6 +141,23 @@ export default async function Org() {
               </div>
             )
           })}
+          {(() => {
+            const v = valueFor(c.cohort, CONCERN.key)
+            return (
+              <div className="metric">
+                <span>{CONCERN.label}</span>
+                <span className="meter__track">
+                  <span
+                    className="meter__fill"
+                    style={{ width: v ? `${Number(v.value) * 100}%` : '0%' }}
+                  />
+                </span>
+                <b className="t-num">
+                  {v ? `${Math.round(Number(v.value) * 100)}%` : '—'}
+                </b>
+              </div>
+            )
+          })()}
         </div>
       ))}
 
