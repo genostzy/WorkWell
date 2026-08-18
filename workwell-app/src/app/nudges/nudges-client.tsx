@@ -111,10 +111,6 @@ export default function NudgesClient() {
 
       <PlaneBadge plane="private" />
 
-      <PrivacyNote detail="Which nudges you use, whether you dismiss them, and how often they arrive are never reported to anyone. There is no acceptance rate anywhere in this product, because measuring that is the first step to nagging.">
-        <b>Nobody is told whether you follow these.</b>{' '}
-      </PrivacyNote>
-
       {loading ? (
         <div className="card">
           <div className="skel skel--title" />
@@ -292,6 +288,10 @@ export default function NudgesClient() {
           </div>
         </>
       )}
+
+      <PrivacyNote detail="Which nudges you use, whether you dismiss them, and how often they arrive are never reported to anyone. There is no acceptance rate anywhere in this product, because measuring that is the first step to nagging.">
+        <b>Nobody is told whether you follow these.</b>{' '}
+      </PrivacyNote>
     </>
   )
 }

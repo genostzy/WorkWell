@@ -52,10 +52,6 @@ export default function BoundariesClient() {
 
       <PlaneBadge plane="private" />
 
-      <PrivacyNote detail="Your working window and the messages held back are not visible to your employer in any form — not as a name, not as a total, not as a group average. This page itself creates no record at all. If you log hours through Attendance, that record stays exactly as private — yours to see, not your employer's to ask for.">
-        <b>This is never employer-facing.</b>{' '}
-      </PrivacyNote>
-
       {loading ? (
         <div className="card">
           <div className="skel skel--title" />
@@ -171,6 +167,10 @@ export default function BoundariesClient() {
           </div>
         </>
       )}
+
+      <PrivacyNote detail="Your working window and the messages held back are not visible to your employer in any form — not as a name, not as a total, not as a group average. This page itself creates no record at all. If you log hours through Attendance, that record stays exactly as private — yours to see, not your employer's to ask for.">
+        <b>This is never employer-facing.</b>{' '}
+      </PrivacyNote>
     </>
   )
 }

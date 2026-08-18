@@ -28,7 +28,7 @@ export function AdminDashboard({ name }: { name: string }) {
       />
       <PlaneBadge plane="work" />
 
-      <div className="grid grid--3">
+      <div className="grid grid--3 admin-tiles">
         {FEATURES.map((f) => (
           <Link key={f.href} href={f.href} className="card">
             <div className="state__icon" aria-hidden="true" style={{ fontSize: 'var(--fs-hero)', marginBottom: 'var(--s-2)' }}>
@@ -39,6 +39,23 @@ export function AdminDashboard({ name }: { name: string }) {
           </Link>
         ))}
       </div>
+
+      {/* Same destinations, laid out as rows rather than square tiles below
+          860px — a big icon over two lines of text costs more scrolling
+          than it's worth once there's no room left to spread tiles across.
+          Pure CSS swap (see components.css): no layout-shift risk from a
+          client-side breakpoint check, since both are in the markup from
+          first paint and only visibility toggles. */}
+      <ul className="roomlist admin-tiles-list">
+        {FEATURES.map((f) => (
+          <li key={f.href}>
+            <Link href={f.href} className="roomlist__item">
+              <span className="roomlist__label">{f.icon} {f.title}</span>
+              <span className="roomlist__sub">{f.desc}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
     </>
   )
 }

@@ -81,13 +81,6 @@ export default async function Hr() {
 
       <PlaneBadge plane="work" />
 
-      <PrivacyNote
-        plane="work"
-        detail="Mood, energy, pressure, notes and check-in history live on each person's private plane. There is no policy anywhere granting this account access to them — not a filtered view, no access at all. Asking for a day off says nothing about how someone is."
-      >
-        <b>Employment data only.</b>{' '}
-      </PrivacyNote>
-
       {/* Access decisions all live on Accounts. Two screens able to create
           or change the same account is how one of them ends up stale. */}
       <div className="card">
@@ -246,6 +239,13 @@ export default async function Hr() {
         </div>
         )}
       </div>
+
+      <PrivacyNote
+        plane="work"
+        detail="Mood, energy, pressure, notes and check-in history live on each person's private plane. There is no policy anywhere granting this account access to them — not a filtered view, no access at all. Asking for a day off says nothing about how someone is."
+      >
+        <b>Employment data only.</b>{' '}
+      </PrivacyNote>
     </Shell>
   )
 }

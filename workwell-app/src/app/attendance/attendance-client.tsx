@@ -249,13 +249,6 @@ export default function AttendanceClient() {
       <PageHead title="Attendance" lead="Time in, time out — lunch pauses itself." />
       <PlaneBadge plane="work" />
 
-      <PrivacyNote
-        plane="work"
-        detail="A per-minute time record is a real change from the confirmation-only design this screen used to mock — worth knowing it's here. Lunch is paused automatically between 12:00 pm and 1:00 pm rather than clocked, so it never counts as worked time and never needs a separate button. This record is yours alone by default — never visible to HR, individually or aggregated. The one exception: if you request a reset with a reason below, HR can see and correct that single day while your request is open, and nothing else. Approve, decline, or withdraw it and the door closes again."
-      >
-        <b>Self-only, with one narrow exception you control.</b>{' '}
-      </PrivacyNote>
-
       {(loadError || actionError) && (
         <div className="banner banner--error mb-5" role="alert">
           {loadError ?? actionError}
@@ -428,6 +421,13 @@ export default function AttendanceClient() {
           </div>
         )}
       </div>
+
+      <PrivacyNote
+        plane="work"
+        detail="A per-minute time record is a real change from the confirmation-only design this screen used to mock — worth knowing it's here. Lunch is paused automatically between 12:00 pm and 1:00 pm rather than clocked, so it never counts as worked time and never needs a separate button. This record is yours alone by default — never visible to HR, individually or aggregated. The one exception: if you request a reset with a reason below, HR can see and correct that single day while your request is open, and nothing else. Approve, decline, or withdraw it and the door closes again."
+      >
+        <b>Self-only, with one narrow exception you control.</b>{' '}
+      </PrivacyNote>
     </>
   )
 }

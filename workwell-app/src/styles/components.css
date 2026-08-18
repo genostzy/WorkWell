@@ -235,6 +235,34 @@ button.chip[aria-pressed="true"] {
   color: var(--text);
 }
 
+/* Left at the browser's own default otherwise, which ignores --text-subtle
+   entirely and reads as too faint to tell "an example" from "unreadably
+   dim" — the same token used for every other secondary label. */
+.input::placeholder, .textarea::placeholder {
+  color: var(--text-subtle);
+  opacity: 1;
+}
+
+/* An icon button living inside an otherwise plain .input — .input-wrap
+   supplies the position:relative and the input's own right padding
+   (signin.css); this is only the button itself, so it works the same way
+   for any input it's dropped into. */
+.input-wrap__toggle {
+  position: absolute;
+  top: 50%;
+  right: var(--s-2);
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-sm);
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-muted);
+}
+.input-wrap__toggle:hover { color: var(--text); background: var(--surface-2); }
+
 /* Toggle switch */
 .toggle {
   display: flex;

@@ -67,13 +67,6 @@ export default async function Org() {
 
       <PlaneBadge plane="org" />
 
-      <PrivacyNote
-        plane="org"
-        detail="The threshold is applied when the figures are computed, not when they are displayed. A group under eight has no stored value at all, so there is nothing for a query or a bug to surface. Groups below the line are still named, because a gap that appears and disappears would itself be a signal."
-      >
-        <b>Groups of eight or more, only.</b>{' '}
-      </PrivacyNote>
-
       <div className="grid grid--4 mb-5">
         <div className="stat">
           <span className="stat__label">Groups reporting</span>
@@ -180,6 +173,13 @@ export default async function Org() {
           </div>
         </div>
       )}
+
+      <PrivacyNote
+        plane="org"
+        detail="The threshold is applied when the figures are computed, not when they are displayed. A group under eight has no stored value at all, so there is nothing for a query or a bug to surface. Groups below the line are still named, because a gap that appears and disappears would itself be a signal."
+      >
+        <b>Groups of eight or more, only.</b>{' '}
+      </PrivacyNote>
     </Shell>
   )
 }

@@ -121,11 +121,11 @@ export default function ExpensesClient() {
             </div>
 
             <div className="mt-4" style={{ display: 'flex', gap: 12 }}>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 3 }}>
                 <label className="field__label" htmlFor="eamt">Amount</label>
                 <input id="eamt" className="input" type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
               </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 2 }}>
                 <label className="field__label" htmlFor="edate">Date</label>
                 <input id="edate" className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
               </div>

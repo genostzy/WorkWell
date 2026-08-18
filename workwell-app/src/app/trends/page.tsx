@@ -169,10 +169,6 @@ export default async function Trends() {
 
       <PlaneBadge plane="private" />
 
-      <PrivacyNote>
-        <b>None of this is visible to your employer.</b>{' '}
-      </PrivacyNote>
-
       {showQuickMood && <QuickMood />}
 
       {signals.length > 0 && (
@@ -261,6 +257,10 @@ export default async function Trends() {
           </table>
         </div>
       </div>
+
+      <PrivacyNote>
+        <b>None of this is visible to your employer.</b>{' '}
+      </PrivacyNote>
     </Shell>
   )
 }
