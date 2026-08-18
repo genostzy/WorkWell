@@ -210,7 +210,7 @@ export default async function Leave() {
             <ul className="stack stack--tight" style={{ fontSize: 'var(--fs-sm)' }}>
               {[
                 'Your check-ins, mood, energy or pressure',
-                'Your quiet hours, or when you were active',
+                'Your quiet hours, or when you were active — unless you ask HR to fix a day',
                 'Which nudges you use, or whether you use WorkWell at all',
                 'What you called yourself, or the colour above',
               ].map((t) => (

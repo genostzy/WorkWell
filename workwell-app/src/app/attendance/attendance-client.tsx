@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { ConfirmButton } from '@/components/controls'
 import { createClient } from '@/lib/supabase/client'
+import { fmtDate } from '@/lib/format-date'
 
 // Lunch is not something you clock — the app pauses it for you. Two fixed
 // hours, matching the standard PH lunch block; a real rollout would read
@@ -69,6 +70,13 @@ function statusOf(log: DayLog) {
   return 'Not timed in'
 }
 
+type ResetRequest = {
+  id: string
+  day: string
+  reason: string
+  status: 'pending' | 'approved' | 'declined' | 'withdrawn'
+}
+
 export default function AttendanceClient() {
   const week = weekDates()
   const today = week.find((d) => d.isToday)
@@ -76,6 +84,27 @@ export default function AttendanceClient() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+
+  const [resetRequests, setResetRequests] = useState<ResetRequest[]>([])
+  const [resetDay, setResetDay] = useState(today?.iso ?? week[0].iso)
+  const [resetReason, setResetReason] = useState('')
+  const [requesting, setRequesting] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
+  const [resetError, setResetError] = useState<string | null>(null)
+  const [withdrawingId, setWithdrawingId] = useState<string | null>(null)
+
+  const reloadResetRequests = useCallback(async () => {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('attendance_reset_requests')
+      .select('id, day, reason, status')
+      .order('created_at', { ascending: false })
+    if (error) {
+      setResetError(error.message)
+      return
+    }
+    setResetRequests((data ?? []) as ResetRequest[])
+  }, [])
 
   const reloadToday = useCallback(async () => {
     if (!today) return
@@ -98,11 +127,17 @@ export default function AttendanceClient() {
 
     ;(async () => {
       const supabase = createClient()
-      const { data, error } = await supabase
-        .from('attendance')
-        .select('day, time_in, lunch_start, lunch_end, time_out')
-        .gte('day', week[0].iso)
-        .lte('day', week[week.length - 1].iso)
+      const [{ data, error }, { data: resets, error: resetsError }] = await Promise.all([
+        supabase
+          .from('attendance')
+          .select('day, time_in, lunch_start, lunch_end, time_out')
+          .gte('day', week[0].iso)
+          .lte('day', week[week.length - 1].iso),
+        supabase
+          .from('attendance_reset_requests')
+          .select('id, day, reason, status')
+          .order('created_at', { ascending: false }),
+      ])
 
       if (cancelled) return
       if (error) {
@@ -113,6 +148,8 @@ export default function AttendanceClient() {
       const byDay: Record<string, DayLog> = {}
       for (const r of (data ?? []) as Row[]) byDay[r.day] = toLog(r)
       setLogs(byDay)
+      if (resetsError) setResetError(resetsError.message)
+      else setResetRequests((resets ?? []) as ResetRequest[])
       setLoading(false)
     })()
 
@@ -170,6 +207,41 @@ export default function AttendanceClient() {
     else reloadToday()
   }
 
+  async function submitReset(e: React.FormEvent) {
+    e.preventDefault()
+    setResetError(null)
+    if (!resetReason.trim()) {
+      setResetError('A reason is required — it’s what HR reviews before touching anything.')
+      return
+    }
+
+    setRequesting(true)
+    const supabase = createClient()
+    const { error } = await supabase.rpc('request_attendance_reset', {
+      p_day: resetDay,
+      p_reason: resetReason.trim(),
+    })
+    setRequesting(false)
+
+    if (error) setResetError(error.message)
+    else {
+      setResetReason('')
+      setResetSent(true)
+      reloadResetRequests()
+    }
+  }
+
+  async function withdrawRequest(id: string) {
+    setWithdrawingId(id)
+    setResetError(null)
+    const supabase = createClient()
+    const { error } = await supabase.rpc('withdraw_attendance_reset', { p_id: id })
+    setWithdrawingId(null)
+
+    if (error) setResetError(error.message)
+    else reloadResetRequests()
+  }
+
   const daysLogged = week.filter((d) => logs[d.iso]?.timeOut).length
 
   return (
@@ -179,9 +251,9 @@ export default function AttendanceClient() {
 
       <PrivacyNote
         plane="work"
-        detail="A per-minute time record is a real change from the confirmation-only design this screen used to mock — worth knowing it's here. Lunch is paused automatically between 12:00 pm and 1:00 pm rather than clocked, so it never counts as worked time and never needs a separate button. This record is yours alone: it is not visible to HR, individually or aggregated."
+        detail="A per-minute time record is a real change from the confirmation-only design this screen used to mock — worth knowing it's here. Lunch is paused automatically between 12:00 pm and 1:00 pm rather than clocked, so it never counts as worked time and never needs a separate button. This record is yours alone by default — never visible to HR, individually or aggregated. The one exception: if you request a reset with a reason below, HR can see and correct that single day while your request is open, and nothing else. Approve, decline, or withdraw it and the door closes again."
       >
-        <b>Self-only — never visible to HR.</b>{' '}
+        <b>Self-only, with one narrow exception you control.</b>{' '}
       </PrivacyNote>
 
       {(loadError || actionError) && (
@@ -264,6 +336,97 @@ export default function AttendanceClient() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="card mt-5">
+        <div className="card__title mb-1">Something wrong with a day?</div>
+        <p className="card__sub mb-4">
+          Say what happened. HR can only see and fix the one day you name, and only until your request is decided.
+        </p>
+
+        {resetError && (
+          <div className="banner banner--error mb-4" role="alert">
+            {resetError}
+          </div>
+        )}
+        {resetSent && !resetError && (
+          <p className="confirmed mb-4" role="status">
+            <span aria-hidden="true">✓</span>
+            <span>Sent to HR for review.</span>
+          </p>
+        )}
+
+        <form onSubmit={submitReset}>
+          <div className="field">
+            <label className="field__label" htmlFor="reset-day">
+              Which day
+            </label>
+            <select
+              id="reset-day"
+              className="select"
+              value={resetDay}
+              onChange={(e) => {
+                setResetDay(e.target.value)
+                setResetSent(false)
+              }}
+            >
+              {week.map((d) => (
+                <option key={d.iso} value={d.iso}>
+                  {d.label}
+                  {d.isToday ? ' (today)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="field mt-4">
+            <label className="field__label" htmlFor="reset-reason">
+              Reason
+            </label>
+            <textarea
+              id="reset-reason"
+              className="textarea"
+              value={resetReason}
+              placeholder="What went wrong, so HR knows what to fix."
+              onChange={(e) => {
+                setResetReason(e.target.value)
+                setResetSent(false)
+              }}
+            />
+          </div>
+
+          <button className="btn btn--secondary mt-4" type="submit" disabled={requesting}>
+            {requesting ? 'Sending…' : 'Request a reset'}
+          </button>
+        </form>
+
+        {resetRequests.length > 0 && (
+          <div className="stack stack--tight mt-5">
+            <span className="field__label">Your requests</span>
+            {resetRequests.map((r) => (
+              <div className="row row--between" key={r.id} style={{ alignItems: 'flex-start' }}>
+                <div>
+                  <b>{fmtDate(r.day, { day: 'numeric', month: 'short' })}</b>
+                  <p className="t-subtle mt-1">{r.reason}</p>
+                </div>
+                <div className="row" style={{ flexWrap: 'nowrap', gap: 'var(--s-2)' }}>
+                  <span className={r.status === 'approved' ? 'chip chip--accent' : 'chip'}>
+                    {r.status}
+                  </span>
+                  {r.status === 'pending' && (
+                    <ConfirmButton
+                      label="Withdraw"
+                      confirmLabel="Withdraw"
+                      className="btn btn--ghost btn--sm"
+                      disabled={withdrawingId === r.id}
+                      onConfirm={() => withdrawRequest(r.id)}
+                    />
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </>
   )
