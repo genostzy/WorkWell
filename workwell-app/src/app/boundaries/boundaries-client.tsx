@@ -20,9 +20,13 @@ const DEFAULTS = {
  *
  *  The PRD is firm about this one: no after-hours record reaches the
  *  employer, ever. An activity log is precisely the liability that
- *  right-to-disconnect law targets, so the honest design is not to collect
- *  it — which is why there is no "hours worked" figure anywhere here, not
- *  even for the person themselves. */
+ *  right-to-disconnect law targets, so quiet hours and delayed sending
+ *  create no record of their own, on either plane.
+ *
+ *  Attendance (added later) does let a person log their own hours — that
+ *  was a deliberate reversal from this screen's original stance, made
+ *  explicitly, not left standing as a contradiction. It stays self-only:
+ *  nothing from either screen ever reaches the employer plane. */
 export default function BoundariesClient() {
   const { value, update, loading, saving, error } = usePrefs(
     'boundaries',
@@ -48,7 +52,7 @@ export default function BoundariesClient() {
 
       <PlaneBadge plane="private" />
 
-      <PrivacyNote detail="Your working window and the messages held back are not visible to your employer in any form — not as a name, not as a total, not as a group average. No record of when you were active is kept at all, because that record is the exact thing that creates legal exposure.">
+      <PrivacyNote detail="Your working window and the messages held back are not visible to your employer in any form — not as a name, not as a total, not as a group average. This page itself creates no record at all. If you log hours through Attendance, that record stays exactly as private — yours to see, not your employer's to ask for.">
         <b>This is never employer-facing.</b>{' '}
       </PrivacyNote>
 
