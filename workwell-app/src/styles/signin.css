@@ -292,6 +292,11 @@
 /* The split is a desktop composition — a login form squeezed next to a
    locked floor plan is worse than just the form on a narrow screen. */
 @media (max-width: 900px) {
-  .signin-room-pane { display: none; }
+  /* room.css's own `.room-shell { display: flex }` is unconditional and
+     loads after this file, so at equal specificity it would win over a
+     bare `.signin-room-pane` here regardless of what this media query
+     says — the compound selector, not source order, is what makes this
+     hide rule actually win. */
+  .room-shell.signin-room-pane { display: none; }
   .signin-panel { position: static; width: 100%; border-right: 0; }
 }
