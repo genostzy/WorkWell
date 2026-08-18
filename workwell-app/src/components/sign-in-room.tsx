@@ -4,6 +4,7 @@ import Script from 'next/script'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Wordmark } from '@/components/brandmark'
+import { PasswordInput } from '@/components/password-input'
 import { reducedMotion } from '@/components/office'
 import { hideSky, showSky } from '@/lib/sky'
 
@@ -217,10 +218,8 @@ export function SignInRoom({ notice }: { notice?: string }) {
               <label className="field__label" htmlFor="signin-password">
                 Password
               </label>
-              <input
-                className="input"
+              <PasswordInput
                 id="signin-password"
-                type="password"
                 name="password"
                 autoComplete="current-password"
                 enterKeyHint="go"

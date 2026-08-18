@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { signOutEverywhere } from '@/components/sign-out'
 import { hideSky, showSky } from '@/lib/sky'
 import { Wordmark } from '@/components/brandmark'
+import { usePrefs } from '@/lib/use-prefs'
 
 /** The prototype's room is vendored unmodified from workwell-prototype, so
  *  it stays easy to re-sync. It still speaks in the prototype's filenames,
@@ -111,7 +112,30 @@ export function Office({
   const router = useRouter()
   const roomRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
-  const [view, setView] = useState<'room' | 'list'>('room')
+  // Which view the person chose, not which one they're stuck with — same
+  // account-scoped table as the rest of the workspace's display prefs
+  // (theme, contrast, motion), so it follows them through a refresh, a
+  // sign-out and back in, or a trip to another screen and back, instead of
+  // resetting to Room on every visit.
+  const { value: homePrefs, update: updateHomePrefs } = usePrefs(
+    'workspace_prefs',
+    { home_view: 'room' as 'room' | 'list' }
+  )
+  const setView = useCallback(
+    (home_view: 'room' | 'list') => updateHomePrefs({ home_view }),
+    [updateHomePrefs]
+  )
+  // Starts false and flips before first paint (see the layout effect below)
+  // rather than reading matchMedia in the initializer — that would answer
+  // differently on the server (no window) than on the client's first render
+  // and React would flag the mismatch.
+  const [isMobile, setIsMobile] = useState(false)
+  // The room is a scene to walk around in; on a phone there is no room to
+  // walk around in, only a screen too small to see one in. The list was
+  // already the non-optional fallback for exactly this — mobile just never
+  // gets offered the choice. This never writes back to the stored
+  // preference: a phone visit must not quietly overwrite a desktop choice.
+  const activeView = isMobile ? 'list' : homePrefs.home_view
   // Lazy-init: on a client-side return to this screen room.js is already
   // loaded, so there is nothing to wait on — start "loaded" instead of
   // flashing the placeholder text for a frame before the effect below
@@ -161,6 +185,14 @@ export function Office({
     setClock(WW.room.formatTime(minutes))
     setLoaded(true)
   }, [name, initials, colour])
+
+  useIsomorphicLayoutEffect(() => {
+    const mq = window.matchMedia('(max-width: 860px)')
+    setIsMobile(mq.matches)
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
 
   useIsomorphicLayoutEffect(() => {
     // The scripts may already be present on a client-side navigation back
@@ -236,7 +268,10 @@ export function Office({
       // prompt against, and a plain confirm() reads like the app broke
       // rather than like part of it.
       if (el.dataset.signout !== undefined) {
-        doorRef.current = target.closest('.frontdoor')
+        // The list's sign-out button has no `.frontdoor` ancestor — fall
+        // back to the control itself so cancelling still returns focus
+        // somewhere, instead of silently dropping it.
+        doorRef.current = target.closest('.frontdoor') ?? el
         setConfirmingSignOut(true)
         return
       }
@@ -304,7 +339,7 @@ export function Office({
       />
 
       {/* Only the room locks itself to the viewport; the list has to scroll. */}
-      <div className={`room-shell${view === 'room' ? ' is-fit' : ''}`}>
+      <div className={`room-shell${activeView === 'room' ? ' is-fit' : ''}`}>
         {/* No header bar — just the mark, pasted over the background top
             left, and the room/list switch floating to match. Signing out
             now happens at the front door, in the room itself. */}
@@ -312,28 +347,32 @@ export function Office({
           <Wordmark />
         </div>
 
-        <div className="room-nav-toggle segmented" role="group" aria-label="How to navigate">
-          <button
-            type="button"
-            aria-pressed={view === 'room'}
-            onClick={() => setView('room')}
-          >
-            Room
-          </button>
-          <button
-            type="button"
-            aria-pressed={view === 'list'}
-            onClick={() => setView('list')}
-          >
-            List
-          </button>
-        </div>
+        {/* Nothing to switch between on a phone — there is no room, so
+            offering a way back to it is offering a dead end. */}
+        {!isMobile && (
+          <div className="room-nav-toggle segmented" role="group" aria-label="How to navigate">
+            <button
+              type="button"
+              aria-pressed={activeView === 'room'}
+              onClick={() => setView('room')}
+            >
+              Room
+            </button>
+            <button
+              type="button"
+              aria-pressed={activeView === 'list'}
+              onClick={() => setView('list')}
+            >
+              List
+            </button>
+          </div>
+        )}
 
         <main className="room-stage">
           <div
-            className={`room-views${view === 'room' ? ' is-on' : ''}`}
+            className={`room-views${activeView === 'room' ? ' is-on' : ''}`}
             data-view-panel="room"
-            hidden={view !== 'room'}
+            hidden={activeView !== 'room'}
           >
             <p className="t-subtle" style={{ textAlign: 'center' }}>
               {clock
@@ -362,9 +401,9 @@ export function Office({
               until it has that class, so without it the List button
               switched to a panel that could never be shown. */}
           <div
-            className={`room-views${view === 'list' ? ' is-on' : ''}`}
+            className={`room-views${activeView === 'list' ? ' is-on' : ''}`}
             data-view-panel="list"
-            hidden={view !== 'list'}
+            hidden={activeView !== 'list'}
             style={{ width: 'min(560px, 100%)' }}
           >
             <h1 className="mb-2" style={{ fontSize: 'var(--fs-xl)' }}>
@@ -372,6 +411,22 @@ export function Office({
             </h1>
             <p className="t-subtle mb-4">Everywhere you can go from here.</p>
             <div ref={listRef} onClick={navigate} onKeyDown={onKey} />
+
+            {/* The room has the front door; the list needs its own way to
+                end a session, or it isn't really the room's equal. Same
+                `data-signout` mechanism navigate() already listens for. */}
+            <ul className="roomlist mt-4" onClick={navigate} onKeyDown={onKey}>
+              <li>
+                <button
+                  type="button"
+                  className="roomlist__item"
+                  data-signout="true"
+                >
+                  <span className="roomlist__label">🚪 Sign out</span>
+                  <span className="roomlist__sub">End your session</span>
+                </button>
+              </li>
+            </ul>
           </div>
         </main>
       </div>

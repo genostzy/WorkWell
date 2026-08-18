@@ -94,13 +94,6 @@ export default async function AccountsPage() {
 
       <PlaneBadge plane="work" />
 
-      <PrivacyNote
-        plane="work"
-        detail="Access is a work-plane fact: it says what an account can open, never how anyone is. Giving someone HR access does not give them, or you, any route to another person's check-ins — there is no policy granting it, so there is nothing to configure here and nothing to get wrong."
-      >
-        <b>Changing access never opens a private plane.</b>{' '}
-      </PrivacyNote>
-
       <CreateAccount departments={departments} />
 
       <div className="grid grid--3 mb-5">
@@ -126,6 +119,13 @@ export default async function AccountsPage() {
       </div>
 
       <Accounts accounts={accounts} />
+
+      <PrivacyNote
+        plane="work"
+        detail="Access is a work-plane fact: it says what an account can open, never how anyone is. Giving someone HR access does not give them, or you, any route to another person's check-ins — there is no policy granting it, so there is nothing to configure here and nothing to get wrong."
+      >
+        <b>Changing access never opens a private plane.</b>{' '}
+      </PrivacyNote>
     </Shell>
   )
 }

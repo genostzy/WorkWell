@@ -38,13 +38,6 @@ export default function PayrollClient() {
       />
       <PlaneBadge plane="work" />
 
-      <PrivacyNote
-        plane="work"
-        detail="Salary is the most sensitive record HR holds. This page needs its own, narrower access in practice — readable by the person it belongs to and by whoever actually runs payroll, nobody else, including other HR functions that don't need it."
-      >
-        <b>Needs its own, narrower access — not the general HR role.</b>{' '}
-      </PrivacyNote>
-
       <div className="grid grid--sidebar-right">
         <div className="stack">
           <div className="card card--flush">
@@ -139,6 +132,13 @@ export default function PayrollClient() {
           </form>
         </div>
       </div>
+
+      <PrivacyNote
+        plane="work"
+        detail="Salary is the most sensitive record HR holds. This page needs its own, narrower access in practice — readable by the person it belongs to and by whoever actually runs payroll, nobody else, including other HR functions that don't need it."
+      >
+        <b>Needs its own, narrower access — not the general HR role.</b>{' '}
+      </PrivacyNote>
     </>
   )
 }

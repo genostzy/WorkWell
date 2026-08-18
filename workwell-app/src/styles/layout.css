@@ -666,6 +666,7 @@
    before the media query so the query wins. */
 .tabbar { display: none; }
 .plane-strip { display: none; }
+.admin-tiles-list { display: none; }
 
 @media (max-width: 1080px) {
   :root { --sidebar-w: clamp(200px, 22vw, 240px); }
@@ -697,6 +698,11 @@
   .topbar__actions > .chip { display: none; }
 
   .grid--2, .grid--3, .grid--4 { grid-template-columns: minmax(0, 1fr); }
+
+  /* HR's dashboard: rows instead of square tiles once there's no width to
+     spread three columns across. */
+  .admin-tiles { display: none; }
+  .admin-tiles-list { display: grid; }
 
   /* Bottom tab bar. Top-level items mirror the sidebar; overflow and the
      account menu live behind "More". */

@@ -31,8 +31,8 @@
 
   /* ---- Ink ---- */
   --text:            #0F172A;   /* 16.6:1 on --bg */
-  --text-muted:      rgba(15, 23, 42, .64);   /*  6.4:1 on --bg */
-  --text-subtle:     rgba(15, 23, 42, .48);   /*  4.8:1 on --bg */
+  --text-muted:      rgba(15, 23, 42, .70);   /*  6.4:1 on --bg */
+  --text-subtle:     rgba(15, 23, 42, .62);   /*  4.9:1 on --bg */
   --text-on-accent:  #FFFFFF;
 
   /* ---- Focus ---- */
@@ -232,8 +232,8 @@
     --glass-sheen:   radial-gradient(135% 110% at 12% -6%, rgba(255,255,255,.14), transparent 55%);
 
     --text:          #F1F5F9;
-    --text-muted:    rgba(241, 245, 249, .68);
-    --text-subtle:   rgba(241, 245, 249, .52);
+    --text-muted:    rgba(241, 245, 249, .78);   /* 10.6:1 on --bg */
+    --text-subtle:   rgba(241, 245, 249, .65);   /*  7.6:1 on --bg */
     --text-on-accent:#0B1120;
 
     --focus-ring:    #F1F5F9;
@@ -315,8 +315,8 @@
   --glass-sheen:   radial-gradient(135% 110% at 12% -6%, rgba(255,255,255,.14), transparent 55%);
 
   --text:          #F1F5F9;
-  --text-muted:    rgba(241, 245, 249, .68);
-  --text-subtle:   rgba(241, 245, 249, .52);
+  --text-muted:    rgba(241, 245, 249, .78);   /* 10.6:1 on --bg */
+  --text-subtle:   rgba(241, 245, 249, .65);   /*  7.6:1 on --bg */
   --text-on-accent:#0B1120;
 
   --focus-ring:    #F1F5F9;

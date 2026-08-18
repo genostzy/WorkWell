@@ -48,10 +48,6 @@ export default function WorkspaceClient() {
 
       <PlaneBadge plane="private" />
 
-      <PrivacyNote detail="These preferences are part of your private plane. They are not in your employment record, HR cannot query them, and nobody is told that you use high contrast or reduced motion.">
-        <b>Nobody is told which of these you use.</b>{' '}
-      </PrivacyNote>
-
       {loading ? (
         <div className="card">
           <div className="skel skel--title" />
@@ -184,6 +180,10 @@ export default function WorkspaceClient() {
           </div>
         </>
       )}
+
+      <PrivacyNote detail="These preferences are part of your private plane. They are not in your employment record, HR cannot query them, and nobody is told that you use high contrast or reduced motion.">
+        <b>Nobody is told which of these you use.</b>{' '}
+      </PrivacyNote>
     </>
   )
 }

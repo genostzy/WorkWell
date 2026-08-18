@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Wordmark } from '@/components/brandmark'
+import { PasswordInput } from '@/components/password-input'
 
 /**
  * Choosing your own password, once.
@@ -100,10 +101,8 @@ export default function SetPassword() {
               <label className="field__label" htmlFor="new-password">
                 New password
               </label>
-              <input
-                className="input"
+              <PasswordInput
                 id="new-password"
-                type="password"
                 autoComplete="new-password"
                 autoFocus
                 required
@@ -121,10 +120,8 @@ export default function SetPassword() {
               <label className="field__label" htmlFor="again-password">
                 Type it again
               </label>
-              <input
-                className="input"
+              <PasswordInput
                 id="again-password"
-                type="password"
                 autoComplete="new-password"
                 required
                 value={again}

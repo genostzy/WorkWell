@@ -119,13 +119,6 @@ export default async function Leave() {
 
       <PlaneBadge plane="work" />
 
-      <PrivacyNote
-        plane="work"
-        detail="Your check-ins, mood, notes and trends stay on the private plane and are never attached to a leave request. Asking for a day off says nothing about how you are."
-      >
-        <b>Your employer does see this one.</b>{' '}
-      </PrivacyNote>
-
       <div className="grid grid--sidebar-right">
         <div className="stack">
           <OwnProfile legalName={fullName} />
@@ -288,6 +281,13 @@ export default async function Leave() {
           )}
         </div>
       </div>
+
+      <PrivacyNote
+        plane="work"
+        detail="Your check-ins, mood, notes and trends stay on the private plane and are never attached to a leave request. Asking for a day off says nothing about how you are."
+      >
+        <b>Your employer does see this one.</b>{' '}
+      </PrivacyNote>
     </Shell>
   )
 }

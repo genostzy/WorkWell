@@ -245,10 +245,6 @@ export default function RecognitionClient() {
 
       <PlaneBadge plane="private" />
 
-      <PrivacyNote detail="Appreciation is private between you and the person unless you both choose otherwise. Nothing is tallied, ranked or reported — there is no leaderboard, because a count of who gets thanked most is a ranking of people in a friendly hat.">
-        <b>Never counted, never ranked.</b>{' '}
-      </PrivacyNote>
-
       {loading ? (
         <div className="card">
           <div className="skel skel--title" />
@@ -543,6 +539,10 @@ export default function RecognitionClient() {
           </div>
         </div>
       )}
+
+      <PrivacyNote detail="Appreciation is private between you and the person unless you both choose otherwise. Nothing is tallied, ranked or reported — there is no leaderboard, because a count of who gets thanked most is a ranking of people in a friendly hat.">
+        <b>Never counted, never ranked.</b>{' '}
+      </PrivacyNote>
     </>
   )
 }
