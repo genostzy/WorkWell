@@ -1,0 +1,94 @@
+'use client'
+
+import { useState } from 'react'
+import { PageHead, PlaneBadge } from '@/components/chrome'
+
+type Field = { id: string; name: string; type: 'Text' | 'Number' | 'Date' | 'Select' }
+
+const TYPES = ['Text', 'Number', 'Date', 'Select'] as const
+
+const SEED: Field[] = [
+  { id: 'f1', name: 'Emergency contact', type: 'Text' },
+  { id: 'f2', name: 'Shirt size', type: 'Select' },
+  { id: 'f3', name: 'Work anniversary bonus paid', type: 'Date' },
+]
+
+export default function CustomFieldsClient() {
+  const [fields, setFields] = useState<Field[]>(SEED)
+  const [name, setName] = useState('')
+  const [type, setType] = useState<string>(TYPES[0])
+  const [error, setError] = useState<string | null>(null)
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!name.trim()) return setError('Give the field a name.')
+    setError(null)
+    setFields((f) => [...f, { id: crypto.randomUUID(), name: name.trim(), type: type as Field['type'] }])
+    setName('')
+    setType(TYPES[0])
+  }
+
+  return (
+    <>
+      <PageHead
+        title="Custom data fields"
+        lead="Add fields to an employment record beyond the built-in ones."
+      />
+      <PlaneBadge plane="work" />
+
+      <div className="grid grid--sidebar-right">
+        <div className="stack">
+          <div className="card card--flush">
+            <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
+              <div className="card__title">Defined fields</div>
+              <div className="card__sub">Shown on every record, on People</div>
+            </div>
+            <div className="table-scroll">
+              <table className="data-table">
+                <caption className="sr-only">Custom employment record fields</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Field</th>
+                    <th scope="col">Type</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fields.map((f) => (
+                    <tr key={f.id}>
+                      <th scope="row" style={{ fontWeight: 600 }}>{f.name}</th>
+                      <td><span className="chip">{f.type}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div className="stack">
+          <form className="card" onSubmit={submit}>
+            <div className="card__title">Add a field</div>
+
+            {error && <div className="banner banner--error" role="alert">{error}</div>}
+
+            <div className="mt-4">
+              <label className="field__label" htmlFor="cfname">Name</label>
+              <input id="cfname" className="input" value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+
+            <div className="mt-4">
+              <label className="field__label" htmlFor="cftype">Type</label>
+              <select id="cftype" className="select" value={type} onChange={(e) => setType(e.target.value)}>
+                {TYPES.map((t) => <option key={t}>{t}</option>)}
+              </select>
+            </div>
+
+            <div className="mt-4">
+              <button className="btn btn--primary" type="submit">Add field</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </>
+  )
+}

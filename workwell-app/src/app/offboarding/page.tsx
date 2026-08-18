@@ -1,19 +1,25 @@
-import { Empty, PageHead, PlaneBadge } from '@/components/chrome'
+import { createClient } from '@/lib/supabase/server'
+import { PageHead, RoleLocked } from '@/components/chrome'
 import { Shell } from '@/components/shell'
+import OffboardingClient from './offboarding-client'
 
-export default function Offboarding() {
+export default async function Offboarding() {
+  const supabase = await createClient()
+  const { data: roles } = await supabase.from('person_roles').select('role')
+  const isHr = (roles ?? []).some((r) => r.role === 'hr')
+
+  if (!isHr) {
+    return (
+      <Shell plane="private">
+        <PageHead title="Not available on this account" />
+        <RoleLocked audience="hr" />
+      </Shell>
+    )
+  }
+
   return (
-    <Shell plane="work">
-      <PageHead
-        title="Offboarding"
-        lead="The checklist for someone leaving — HR's side of it."
-      />
-      <PlaneBadge plane="work" />
-      <Empty icon="🚪" title="Not built yet">
-        Closing an account already exists on Accounts &amp; access. A fuller
-        offboarding checklist — assets returned, access revoked, last day
-        confirmed — is next.
-      </Empty>
+    <Shell plane="work" isHr>
+      <OffboardingClient />
     </Shell>
   )
 }

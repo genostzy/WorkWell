@@ -141,7 +141,7 @@ export default function WorkspaceClient() {
               <div className="stack stack--tight">
                 <ToggleRow
                   title="One question per screen"
-                  desc="The check-in becomes a single step at a time"
+                  desc="The check-in becomes a single step at a time, and health nudges pause while it's on"
                   on={value.focus_one_question}
                   onChange={(focus_one_question) =>
                     update({ focus_one_question })

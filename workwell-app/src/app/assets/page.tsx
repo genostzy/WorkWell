@@ -1,18 +1,34 @@
-import { Empty, PageHead, PlaneBadge } from '@/components/chrome'
+import { createClient } from '@/lib/supabase/server'
+import { readIsHr } from '@/lib/role'
+import { LoadError, PageHead, RoleLocked } from '@/components/chrome'
 import { Shell } from '@/components/shell'
+import AssetsClient from './assets-client'
 
-export default function Assets() {
+export default async function Assets() {
+  const supabase = await createClient()
+  const { isHr, error } = await readIsHr(supabase)
+
+  if (error) {
+    return (
+      <Shell plane="work">
+        <PageHead title="Assets" />
+        <LoadError what="Your account" detail={error} />
+      </Shell>
+    )
+  }
+
+  if (isHr) {
+    return (
+      <Shell plane="work" isHr>
+        <PageHead title="Not available on this account" />
+        <RoleLocked audience="employee" />
+      </Shell>
+    )
+  }
+
   return (
     <Shell plane="work">
-      <PageHead
-        title="Assets"
-        lead="Equipment issued to you — laptops, badges, anything else on loan."
-      />
-      <PlaneBadge plane="work" />
-      <Empty icon="💻" title="Not built yet">
-        This has a spot in the room now. The record of what is issued to
-        whom, and the return flow when someone leaves, is next.
-      </Empty>
+      <AssetsClient />
     </Shell>
   )
 }

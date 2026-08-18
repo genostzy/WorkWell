@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { Empty, LoadError, PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
+import { Empty, LoadError, PageHead, PlaneBadge, PrivacyNote, RoleLocked } from '@/components/chrome'
 import { Shell } from '@/components/shell'
 
 const METRICS = [
@@ -7,6 +7,12 @@ const METRICS = [
   { key: 'energy', label: 'Energy' },
   { key: 'pressure', label: 'Pressure' },
 ]
+
+// A share of the cohort, not a 1-5 average like the three above — kept
+// separate so its bar reads against 100% instead of 5, not folded into
+// METRICS where the two scales would silently mean different things on
+// the same axis.
+const CONCERN = { key: 'concern', label: 'Team concern raised' }
 
 export default async function Org() {
   const supabase = await createClient()
@@ -18,18 +24,10 @@ export default async function Org() {
     return (
       <Shell current="org" plane="private">
         <PageHead title="Not available on this account" />
-        <div className="card">
-          <div className="state">
-            <div className="state__icon" aria-hidden="true">
-              🔒
-            </div>
-            <h2 className="state__title">This area is for HR</h2>
-            <p className="state__text">
-              Nothing in it would identify you in any case — it only ever
-              contains groups of eight or more.
-            </p>
-          </div>
-        </div>
+        <RoleLocked
+          audience="hr"
+          detail="Nothing in it would identify you in any case — it only ever contains groups of eight or more."
+        />
       </Shell>
     )
   }
@@ -45,7 +43,7 @@ export default async function Org() {
 
   if (cohortError) {
     return (
-      <Shell current="org" plane="org">
+      <Shell current="org" plane="org" isHr>
         <PageHead title="Structural load" />
         <PlaneBadge plane="org" />
         <LoadError what="The group figures" detail={cohortError.message} />
@@ -61,7 +59,7 @@ export default async function Org() {
     (metrics ?? []).find((m) => m.cohort === cohort && m.metric === metric)
 
   return (
-    <Shell current="org" plane="org">
+    <Shell current="org" plane="org" isHr>
       <PageHead
         title="Structural load"
         lead="Where workload sits heavy, by group. Never by person."
@@ -143,6 +141,23 @@ export default async function Org() {
               </div>
             )
           })}
+          {(() => {
+            const v = valueFor(c.cohort, CONCERN.key)
+            return (
+              <div className="metric">
+                <span>{CONCERN.label}</span>
+                <span className="meter__track">
+                  <span
+                    className="meter__fill"
+                    style={{ width: v ? `${Number(v.value) * 100}%` : '0%' }}
+                  />
+                </span>
+                <b className="t-num">
+                  {v ? `${Math.round(Number(v.value) * 100)}%` : '—'}
+                </b>
+              </div>
+            )
+          })()}
         </div>
       ))}
 

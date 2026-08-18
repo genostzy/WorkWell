@@ -1,9 +1,9 @@
 'use client'
 
 import Script from 'next/script'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { SignOut } from '@/components/sign-out'
+import { signOutEverywhere } from '@/components/sign-out'
 import { hideSky, showSky } from '@/lib/sky'
 import { Wordmark } from '@/components/brandmark'
 
@@ -68,7 +68,7 @@ declare global {
 
 /** The app's own data-motion attribute wins over the OS setting, matching
  *  what the prototype's stylesheets already do with it. */
-function reducedMotion() {
+export function reducedMotion() {
   const attr = document.documentElement.getAttribute('data-motion')
   if (attr === 'reduced') return true
   if (attr === 'full') return false
@@ -84,14 +84,23 @@ export function initialsOf(name: string) {
   return (first + last).toUpperCase()
 }
 
+// React warns if useLayoutEffect runs during SSR; Office is a client
+// component but still renders once on the server for the initial HTML, so
+// this falls back to useEffect there and only prefers useLayoutEffect in
+// the browser, where it matters: it runs before paint, so a returning
+// visit — the scripts are already loaded — builds the room and flips
+// `loaded` before the browser ever shows a frame. Without it, "Opening the
+// office…" flashed for a frame on every single navigation back home, which
+// read as the office reopening from scratch rather than just being shown.
+const useIsomorphicLayoutEffect =
+  typeof window !== 'undefined' ? useLayoutEffect : useEffect
+
 export function Office({
-  isHr,
   name,
   initials,
   colour = 'accent',
   greeting = 'warm',
 }: {
-  isHr: boolean
   /** Preferred name if one is set, otherwise the employment record's. */
   name: string
   /** An override; null means derive from the name. */
@@ -103,9 +112,18 @@ export function Office({
   const roomRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const [view, setView] = useState<'room' | 'list'>('room')
-  const [loaded, setLoaded] = useState(false)
+  // Lazy-init: on a client-side return to this screen room.js is already
+  // loaded, so there is nothing to wait on — start "loaded" instead of
+  // flashing the placeholder text for a frame before the effect below
+  // catches up.
+  const [loaded, setLoaded] = useState(
+    () => typeof window !== 'undefined' && !!window.WW?.room
+  )
   const [phase, setPhase] = useState<string | null>(null)
   const [clock, setClock] = useState<string | null>(null)
+  const [confirmingSignOut, setConfirmingSignOut] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
+  const doorRef = useRef<Element | null>(null)
 
   const build = useCallback(() => {
     const WW = window.WW
@@ -113,11 +131,12 @@ export function Office({
 
     const minutes = WW.room.nowMinutes()
 
-    // Everyone signed in holds a private plane — an HR leader is an employee
-    // too, and their own check-ins are as unreadable to their employer as
-    // anyone else's. The org plane is the part the hr role adds, so the two
-    // are passed as separate capabilities rather than as one either/or role.
-    const caps = { own: true, org: isHr }
+    // Office renders only for private-plane accounts now — HR/admin lands on
+    // the dashboard instead (see page.tsx) and never reaches this component.
+    // So `own` is unconditionally true and `org` unconditionally false: every
+    // org-gated spot in the room always renders locked, because the single
+    // account that could ever open it is never the one standing in the room.
+    const caps = { own: true, org: false }
 
     roomRef.current.innerHTML = WW.room.roomSVG({ minutes, ...caps })
 
@@ -135,19 +154,15 @@ export function Office({
     roomRef.current.dataset.avatarColour = colour
 
     if (listRef.current) {
-      listRef.current.innerHTML = WW.room.roomList(
-        isHr ? 'hr' : 'employee',
-        false,
-        caps
-      )
+      listRef.current.innerHTML = WW.room.roomList('employee', false, caps)
     }
 
     setPhase(WW.room.phaseAt(minutes))
     setClock(WW.room.formatTime(minutes))
     setLoaded(true)
-  }, [isHr, name, initials, colour])
+  }, [name, initials, colour])
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     // The scripts may already be present on a client-side navigation back
     // to this page, in which case onReady never fires again.
     if (window.WW?.room) build()
@@ -209,13 +224,25 @@ export function Office({
   const navigate = useCallback(
     (e: React.MouseEvent | React.KeyboardEvent) => {
       const target = e.target as HTMLElement
-      const el = target.closest<HTMLElement>('[data-go], a[href]')
+      const el = target.closest<HTMLElement>('[data-go], [data-signout], a[href]')
       if (!el) return
+
+      e.preventDefault()
+
+      // The front door: same "important button" rule as everything else
+      // that ends a session — confirm once before it fires. A themed
+      // dialog rather than window.confirm: the room is the one screen in
+      // this app with no header, no chrome to match a browser-native
+      // prompt against, and a plain confirm() reads like the app broke
+      // rather than like part of it.
+      if (el.dataset.signout !== undefined) {
+        doorRef.current = target.closest('.frontdoor')
+        setConfirmingSignOut(true)
+        return
+      }
 
       const href = el.dataset.go ?? el.getAttribute('href') ?? ''
       const route = ROUTES[href.replace(/^\.?\//, '')]
-
-      e.preventDefault()
 
       // Every spot in the room now has a screen behind it. If that ever
       // stops being true, say so rather than navigating somewhere wrong.
@@ -236,11 +263,35 @@ export function Office({
   const onKey = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key !== 'Enter' && e.key !== ' ') return
-      const el = (e.target as HTMLElement).closest('[data-go], a[href]')
+      const el = (e.target as HTMLElement).closest('[data-go], [data-signout], a[href]')
       if (el) navigate(e)
     },
     [navigate]
   )
+
+  const cancelSignOut = useCallback(() => {
+    setConfirmingSignOut(false)
+    // Focus goes back to the door, not lost to the body — the click that
+    // opened this dialog came from a keyboard just as often as a mouse.
+    ;(doorRef.current as HTMLElement | SVGElement | null)?.focus?.()
+  }, [])
+
+  const confirmSignOut = useCallback(() => {
+    setSigningOut(true)
+    void signOutEverywhere().then(() => {
+      router.push('/')
+      router.refresh()
+    })
+  }, [router])
+
+  useEffect(() => {
+    if (!confirmingSignOut) return
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') cancelSignOut()
+    }
+    window.addEventListener('keydown', onEsc)
+    return () => window.removeEventListener('keydown', onEsc)
+  }, [confirmingSignOut, cancelSignOut])
 
   return (
     <>
@@ -254,29 +305,29 @@ export function Office({
 
       {/* Only the room locks itself to the viewport; the list has to scroll. */}
       <div className={`room-shell${view === 'room' ? ' is-fit' : ''}`}>
-        <header className="room-top">
-          <div className="room-top__brand">
-            <Wordmark />
-          </div>
-          <span className="room-top__spacer" />
-          <div className="segmented" role="group" aria-label="How to navigate">
-            <button
-              type="button"
-              aria-pressed={view === 'room'}
-              onClick={() => setView('room')}
-            >
-              Room
-            </button>
-            <button
-              type="button"
-              aria-pressed={view === 'list'}
-              onClick={() => setView('list')}
-            >
-              List
-            </button>
-          </div>
-          <SignOut compact />
-        </header>
+        {/* No header bar — just the mark, pasted over the background top
+            left, and the room/list switch floating to match. Signing out
+            now happens at the front door, in the room itself. */}
+        <div className="room-brand">
+          <Wordmark />
+        </div>
+
+        <div className="room-nav-toggle segmented" role="group" aria-label="How to navigate">
+          <button
+            type="button"
+            aria-pressed={view === 'room'}
+            onClick={() => setView('room')}
+          >
+            Room
+          </button>
+          <button
+            type="button"
+            aria-pressed={view === 'list'}
+            onClick={() => setView('list')}
+          >
+            List
+          </button>
+        </div>
 
         <main className="room-stage">
           <div
@@ -301,7 +352,7 @@ export function Office({
             />
             {!loaded && (
               <p className="t-subtle" style={{ textAlign: 'center' }}>
-                Opening the office…
+                Opening your space…
               </p>
             )}
           </div>
@@ -324,6 +375,46 @@ export function Office({
           </div>
         </main>
       </div>
+
+      {confirmingSignOut && (
+        <div
+          className="room-confirm"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="room-confirm-title"
+          aria-describedby="room-confirm-sub"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) cancelSignOut()
+          }}
+        >
+          <div className="room-confirm__card">
+            <p id="room-confirm-title" className="room-confirm__title">
+              Heading out?
+            </p>
+            <p id="room-confirm-sub" className="room-confirm__sub">
+              You&rsquo;ll need to sign back in to return to your space.
+            </p>
+            <div className="room-confirm__actions">
+              <button
+                className="btn btn--ghost"
+                type="button"
+                autoFocus
+                onClick={cancelSignOut}
+              >
+                Stay
+              </button>
+              <button
+                className="btn btn--primary"
+                type="button"
+                disabled={signingOut}
+                onClick={confirmSignOut}
+              >
+                {signingOut ? 'Signing out…' : 'Sign out'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

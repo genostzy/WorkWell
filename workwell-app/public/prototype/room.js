@@ -146,14 +146,6 @@ function spotOpen(s, inner, tx, ty) {
   </g>`;
 }
 
-function spotLocked(s, inner, tx, ty, why) {
-  return `
-  <g class="spot spot--locked" data-spot="${s.id}" tabindex="0" role="button"
-     aria-disabled="true" aria-label="${s.label}, locked. ${why}">
-    <g class="spot__art">${inner}</g>
-    ${tag(tx, ty, s.label, 'Locked')}
-  </g>`;
-}
 
 /* --------------------------------------------------------------- Builder */
 
@@ -165,49 +157,32 @@ function spotLocked(s, inner, tx, ty, why) {
 function roomSVG(opts) {
   const o = opts || {};
 
-  /* Two independent capabilities, not one exclusive role.
+  /* Two independent capabilities in the generator, not one exclusive role —
      `role` is the prototype's shorthand, from a sign-in that picked one demo
-     persona or the other, so nobody was ever both. Real accounts are: an HR
-     leader is also an employee and holds a private plane of their own. The
-     database has always agreed — every private-plane policy reads
-     person_id = current_person_id(), with no exception for the hr role.
-     Passing role alone still behaves exactly as before. */
+     persona or the other, so nobody was ever both. This app's own account
+     model has since narrowed to one plane per account: HR/admin is its own
+     kind of account with no employment record of its own, and never reaches
+     this component at all (it lands on the administration dashboard
+     instead — see office.tsx and page.tsx). So in practice `own` is always
+     true and `org` is always false here; the two stay independent inputs
+     because the generator is still the one vendored from the prototype and
+     other callers may not share this app's narrower model. */
   const own = o.own !== undefined ? o.own : o.role !== 'hr';
   const org = o.org !== undefined ? o.org : o.role === 'hr';
 
-  /* --- ceiling lights ---
-     Drawn at every hour but only lit at night, so the room reads as a room
-     with its lights off rather than as a room that has been greyed out.
-     Purely scenery: no tabindex, no data-go, nothing to land on with a
-     keyboard, because a lamp is not somewhere you can go. */
+  /* --- room lighting ---
+     One even wash across the whole floor rather than a scatter of bulb-like
+     points — this reads as the room's own overhead lighting, not a lamp
+     sitting somewhere in it. Drawn at every hour but only bright at night,
+     so the room reads as a room with its lights off rather than one that
+     has been greyed out. A gradient, not a blurred shape: the fill covers
+     the entire floor, and blurring an area that size is real paint cost
+     for every frame it (or anything near it) repaints — a gradient costs
+     nothing extra to hold at that scale. Purely scenery: no tabindex, no
+     data-go, nothing to land on with a keyboard. */
   const lights = `
-    <g class="lamps" aria-hidden="true">
-      <g class="lamp" transform="translate(190 210)">
-        <circle class="lamp__glow" r="120"/>
-        <line class="lamp__flex" x1="0" y1="-46" x2="0" y2="-12"/>
-        <path class="lamp__shade" d="M-26 0 L26 0 L15 -16 L-15 -16 Z"/>
-        <circle class="lamp__bulb" cy="2" r="5"/>
-      </g>
-      <g class="lamp" transform="translate(510 523)">
-        <circle class="lamp__glow" r="132"/>
-        <line class="lamp__flex" x1="0" y1="-52" x2="0" y2="-14"/>
-        <path class="lamp__shade" d="M-30 0 L30 0 L17 -18 L-17 -18 Z"/>
-        <circle class="lamp__bulb" cy="2" r="6"/>
-      </g>
-      ${org ? `
-      <g class="lamp" transform="translate(812 140)">
-        <circle class="lamp__glow" r="118"/>
-        <line class="lamp__flex" x1="0" y1="-44" x2="0" y2="-12"/>
-        <path class="lamp__shade" d="M-26 0 L26 0 L15 -16 L-15 -16 Z"/>
-        <circle class="lamp__bulb" cy="2" r="5"/>
-      </g>
-      <g class="lamp" transform="translate(505 180)">
-        <circle class="lamp__glow" r="112"/>
-        <line class="lamp__flex" x1="0" y1="-44" x2="0" y2="-12"/>
-        <path class="lamp__shade" d="M-26 0 L26 0 L15 -16 L-15 -16 Z"/>
-        <circle class="lamp__bulb" cy="2" r="5"/>
-      </g>` : ''}
-    </g>`;
+    <rect class="room-glow" x="24" y="24" width="952" height="672" rx="22"
+          fill="url(#room-glow-grad)" aria-hidden="true"/>`;
 
   /* ------------------------------------------------------------- Layout
 
@@ -217,12 +192,18 @@ function roomSVG(opts) {
      116 wide and 30 tall, which is what sets the minimum spacing: columns
      need ~120px of pitch, rows ~95px.
 
-       HR office     x 360-660, y  24-350   (walled, org only)
-       Meeting room  x 660-976, y  24-270   (walled, org only)
+       HR office     x 360-660, y  24-350   (org only — walled, own:false
+                                             draws nothing here at all)
+       Meeting room  x 660-976, y  24-270   (org only — same as above)
        Left strip    x  24-360, y  24-696   (open — the personal desk area)
        Mid floor     x 360-660, y 350-696   (open — rug, cooler, front door)
-       Right floor   x 660-976, y 270-696   (open — sofa and the HR self-
-                                             service everyone can use)
+       Right floor   x 660-976, y 270-696   (open — the sofa)
+
+     A private account (own:true, org:false) never draws the two walled
+     rooms, which leaves their footprint — roughly x 360-920, y 24-260 —
+     as open floor too. That is where hrKit puts the self-service items
+     that don't fit the three zones above: two rows of three, well clear
+     of the sofa below and the desk cluster to the left.
      --------------------------------------------------------------------- */
 
   /* --- desk (trends), left strip --- */
@@ -291,6 +272,21 @@ function roomSVG(opts) {
     <line class="ink" x1="418" y1="78" x2="446" y2="78"/>
     <line class="ink" x1="418" y1="96" x2="446" y2="96"/>
     <circle class="accent-soft" cx="432" cy="66" r="4"/>`;
+
+  /* --- reading nook, right floor —  x660-976/y270-696 has nothing below
+     the sofa at y355, so the bottom third of the room read as bare floor.
+     Pure scenery, same as the lamps: no tabindex, no data-go. --- */
+  const nook = `
+    <rect class="rug" x="700" y="470" width="220" height="150" rx="16" aria-hidden="true"/>
+    <g aria-hidden="true">
+      <rect class="furn" x="770" y="500" width="80" height="96" rx="10"/>
+      <line class="ink" x1="778" y1="524" x2="842" y2="524"/>
+      <line class="ink" x1="778" y1="548" x2="842" y2="548"/>
+      <line class="ink" x1="778" y1="572" x2="842" y2="572"/>
+      <circle class="plant" cx="880" cy="600" r="24"/>
+      <circle class="plant-2" cx="866" cy="586" r="12"/>
+      <circle class="plant-2" cx="894" cy="588" r="10"/>
+    </g>`;
 
   /* --- meeting room contents (org) --- */
   const meeting = `
@@ -380,11 +376,16 @@ function roomSVG(opts) {
   const surface = (x, y, w, h) => `
       <rect class="furn-3" x="${x}" y="${y}" width="${w}" height="${h}" rx="14" aria-hidden="true"/>`;
 
-  /* The self-service everyone can use, grouped the way the directory beside
-     the room already groups them. Two pairs up the left strip (time, then
-     personal records at the bottom) and two pairs down the right floor
-     (money, then workplace) — a 120px column pitch and a 95px row pitch,
-     which is what a 116x30 tag pill needs to never touch its neighbour. */
+  /* The self-service everyone can use. Two pairs stay up the left strip
+     (time, then personal records at the bottom, where they've always
+     been). The other six now live in the space the HR office and meeting
+     room used to wall off — empty floor for a private account, since it
+     never had anything of its own to put there — laid out as two rows of
+     three across the middle of that space rather than left crammed into
+     the right floor the two rooms used to leave it. Same 116x30 tag pill,
+     same discipline: columns 200px apart, rows 105px apart, comfortably
+     clear of the sofa at y280 below and the strip's own desk cluster at
+     x360 to the left. */
   const hrKit = own ? `
     ${surface(55, 165, 235, 62)}
     ${spotOpen(by('holidays'),   kit.calendar(100, 195), 100, 247)}
@@ -394,45 +395,43 @@ function roomSVG(opts) {
     ${spotOpen(by('locker'),     locker,                 100, 652)}
     ${spotOpen(by('policies'),   kit.binder(245, 600),   245, 652)}
 
-    ${spotOpen(by('resignations'), kit.outtray(590, 420), 590, 510)}
+    ${surface(390, 65, 520, 55)}
+    ${spotOpen(by('expenses'),   kit.receipt(460, 90),   460, 142)}
+    ${spotOpen(by('assets'),     kit.crate(660, 90),     660, 142)}
+    ${spotOpen(by('payroll'),    kit.tray(860, 90),      860, 142)}
 
-    ${surface(665, 418, 300, 62)}
-    ${spotOpen(by('expenses'),   kit.receipt(730, 450),  730, 502)}
-    ${spotOpen(by('assets'),     kit.crate(870, 450),    870, 502)}
+    ${surface(390, 175, 520, 55)}
+    ${spotOpen(by('news'),         kit.board(460, 195),    460, 247)}
+    ${spotOpen(by('complaints'),   kit.dropbox(660, 195),  660, 247)}
+    ${spotOpen(by('resignations'), kit.outtray(860, 195),  860, 247)}` : '';
 
-    ${surface(665, 540, 300, 62)}
-    ${spotOpen(by('news'),       kit.board(730, 570),    730, 622)}
-    ${spotOpen(by('complaints'), kit.dropbox(870, 570),  870, 622)}` : '';
+  /* The HR office and the meeting room's contents — both org-gated, both
+     drawn after employeeFloor in the final markup, so both live in this
+     one `org ? ... : ''` rather than deciding twice. (The walls and
+     badge readers those two rooms share can't join them here: they have
+     to paint before employeeFloor so furniture layers on top of the
+     architecture, not the other way round — that's the one org-gated
+     fragment that still has to stay separate, below.)
 
-  /* The HR office — a second walled room, to the left of the meeting room
-     and sharing its partition wall. Everything in here is org-gated the
-     same way the meeting room already is: shown locked, with a reason, to
-     anyone without the org capability, rather than hidden — a closed door
-     is information too. Two columns of two along the back, then the exit
-     on its own centred row, all clear of each other and of the walls. */
-  const hrLocked = `
+     An HR/admin account is the only account that ever sees any of this,
+     so for anyone else it simply is not drawn — no furniture, no tag,
+     nothing to notice. The account model is one plane per account, not a
+     role added on top of one everybody shares, so there is no closed
+     door here worth narrating; the walls stay, as the room's
+     architecture, but what used to render locked-with-a-reason for a
+     private account now renders nothing at all. Two columns of two along
+     the HR office's back wall, then its exit on its own centred row, all
+     clear of each other and of the walls; the meeting table sits alone
+     in the room next door. */
+  const hrLocked = org ? `
     ${surface(385, 45, 250, 72)}
     ${surface(385, 150, 250, 62)}
-    ${org
-      ? spotOpen(by('files'), files, 432, 137)
-      : spotLocked(by('files'), files, 432, 137,
-          'People and employment records. HR only.')}
-    ${org
-      ? spotOpen(by('letterheads'), kit.stack(578, 85), 578, 137)
-      : spotLocked(by('letterheads'), kit.stack(578, 85), 578, 137,
-          'HR documents only.')}
-    ${org
-      ? spotOpen(by('customfields'), kit.grid(432, 180), 432, 232)
-      : spotLocked(by('customfields'), kit.grid(432, 180), 432, 232,
-          'HR documents only.')}
-    ${org
-      ? spotOpen(by('warnings'), kit.caution(578, 180), 578, 232)
-      : spotLocked(by('warnings'), kit.caution(578, 180), 578, 232,
-          'HR records only.')}
-    ${org
-      ? spotOpen(by('offboarding'), kit.exit(505, 275), 505, 327)
-      : spotLocked(by('offboarding'), kit.exit(505, 275), 505, 327,
-          'HR records only.')}`;
+    ${spotOpen(by('files'), files, 432, 137)}
+    ${spotOpen(by('letterheads'), kit.stack(578, 85), 578, 137)}
+    ${spotOpen(by('customfields'), kit.grid(432, 180), 432, 232)}
+    ${spotOpen(by('warnings'), kit.caution(578, 180), 578, 232)}
+    ${spotOpen(by('offboarding'), kit.exit(505, 275), 505, 327)}
+    ${spotOpen(by('meeting'), meeting, 812, 252)}` : '';
 
   /* An organisation account gets the meeting room and nothing else. The
      employee floor is not drawn as furniture they cannot use — it is drawn
@@ -461,15 +460,30 @@ function roomSVG(opts) {
     ${spotOpen(by('desk'), desk, 190, 534)}
     ${spotOpen(by('cooler'), cooler, 450, 510)}
     ${spotOpen(by('lounge'), lounge, 730, 382)}
+    ${nook}
     ${hrKit}`;
 
   return `
   <svg class="room__svg" viewBox="0 0 1000 720" role="img"
-       aria-label="Top-down plan of the office. Use the destination buttons, or switch to the list view.">
+       aria-label="Top-down plan of your space. Use the destination buttons, or switch to the list view.">
+
+    <defs>
+      <radialGradient id="room-glow-grad" cx="50%" cy="50%" r="65%">
+        <stop offset="0%" stop-color="rgba(255,214,138,.9)"/>
+        <stop offset="100%" stop-color="rgba(255,214,138,0)"/>
+      </radialGradient>
+    </defs>
 
     <!-- floor & outer wall -->
     <rect class="floor" x="24" y="24" width="952" height="672" rx="22"/>
     <rect class="wall"  x="24" y="24" width="952" height="672" rx="22"/>
+
+    <!-- A soft halo hugging the wall's own outline — the room's light
+         reaching its edges, not a line drawn around the picture. Blurring
+         a stroke is cheap regardless of the shape's size: only the thin
+         painted band costs anything, unlike a blurred fill over the whole
+         floor. -->
+    <rect class="room-glow-ring" x="24" y="24" width="952" height="672" rx="22" aria-hidden="true"/>
 
     <!-- Centred on the open mid floor between the two rooms above and the
          front door below, not on the whole plan — the plan is no longer one
@@ -481,28 +495,26 @@ function roomSVG(opts) {
     ${lights}
 
     <!-- Two walled rooms across the top, sharing the partition at x=660:
-         the HR office on the left, the meeting room on the right. Each has
-         its own doorway gap — the HR office opens downward onto the mid
+         the HR office on the left, the meeting room on the right. Only
+         drawn for an account that can actually open them — an empty
+         walled room is not scenery, it just reads as unfinished, and no
+         other account will ever have anything to put in it. Each has its
+         own doorway gap — the HR office opens downward onto the mid
          floor, the meeting room opens downward onto the right floor — so
          they read as two rooms rather than one long one. -->
+    ${org ? `
     <path class="wall-inner"
           d="M360 24 L360 350
              M660 24 L660 350
              M360 350 L480 350 M540 350 L660 350
              M660 270 L790 270 M850 270 L976 270"/>
 
-    <!-- badge readers, each just outside its own door -->
-    <rect class="reader ${org ? 'is-open' : ''}" x="548" y="356" width="24" height="14" rx="4"/>
-    <rect class="reader ${org ? 'is-open' : ''}" x="856" y="278" width="24" height="14" rx="4"/>
+    <rect class="reader is-open" x="548" y="356" width="24" height="14" rx="4"/>
+    <rect class="reader is-open" x="856" y="278" width="24" height="14" rx="4"/>` : ''}
 
     ${employeeFloor}
 
     ${hrLocked}
-
-    ${org
-      ? spotOpen(by('meeting'), meeting, 812, 252)
-      : spotLocked(by('meeting'), meeting, 812, 252,
-          'Your account cannot open this room. It holds group data only.')}
 
     <!-- front doors: two leaves that swing inward on sign-in -->
     <g class="doors">
@@ -510,12 +522,14 @@ function roomSVG(opts) {
       <rect class="doorleaf doorleaf--r" x="500" y="686" width="70" height="16" rx="6"/>
     </g>
 
-    <!-- the sign-in target, only hittable while locked -->
-    <g class="frontdoor" data-frontdoor tabindex="0" role="button"
-       aria-label="Front door — sign in to enter">
+    <!-- The way in is the form beside the room, not this door — but once
+         you're in it, this is the way out. data-signout marks it apart
+         from data-go: the host still owns what "sign out" actually does,
+         this is only the trigger. -->
+    <g class="spot frontdoor" data-signout="true" tabindex="0" role="button" aria-label="Front door — sign out">
       <rect class="frontdoor__hit" x="416" y="656" width="168" height="60" rx="14"/>
       <circle class="frontdoor__pulse" cx="500" cy="686" r="46"/>
-      ${tag(500, 640, 'Front door', 'Sign in')}
+      ${tag(500, 640, 'Front door', 'Sign out')}
     </g>
 
     <!-- you, once you are inside.
@@ -530,39 +544,30 @@ function roomSVG(opts) {
 
 /* --------------------------------------------------------------- Wiring */
 
-/** Makes the objects in a rendered room navigable. */
+/** Makes the objects in a rendered room navigable. Locked spots and the
+ *  front door no longer have a distinct handling path here — neither
+ *  roomSVG() output carries a locked spot or a data-frontdoor target any
+ *  more (see spotOpen and the frontdoor group above), so this only ever
+ *  has plain, open spots to wire up. */
 function wireRoom(container, opts) {
   const o = opts || {};
 
   const go = (el) => {
-    if (el.classList.contains('spot--locked')) {
-      container.dispatchEvent(new CustomEvent('ww:roomlocked', {
-        bubbles: true, detail: { spot: el.dataset.spot },
-      }));
-      return;
-    }
     const href = el.dataset.go;
     if (href) location.href = href;
   };
 
   container.addEventListener('click', (e) => {
-    const front = e.target.closest('[data-frontdoor]');
-    if (front) {
-      container.dispatchEvent(new CustomEvent('ww:frontdoor', { bubbles: true }));
-      return;
-    }
     const spot = e.target.closest('.spot');
     if (spot && !o.locked?.()) go(spot);
   });
 
   container.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
-    const front = e.target.closest?.('[data-frontdoor]');
     const spot = e.target.closest?.('.spot');
-    if (!front && !spot) return;
+    if (!spot) return;
     e.preventDefault();
-    if (front) container.dispatchEvent(new CustomEvent('ww:frontdoor', { bubbles: true }));
-    else if (!o.locked?.()) go(spot);
+    if (!o.locked?.()) go(spot);
   });
 }
 
@@ -576,35 +581,31 @@ function roomList(role, locked, opts) {
   const own = o.own !== undefined ? o.own : role !== 'hr';
   const org = o.org !== undefined ? o.org : role === 'hr';
 
-  // Organisation destinations are always listed, open or locked, because a
-  // closed door is information. A private one is listed only to whoever
-  // holds that plane — it is not anyone else's to know the shape of.
-  const visible = SPOTS.filter((s) => (s.plane === 'org' ? true : own));
+  // A destination on the plane you hold is listed, open before sign-in or
+  // locked ("Sign in first") until then — the account model is one plane
+  // per account now, not a role stacked on top of one everybody shares, so
+  // a destination on the *other* plane is never yours to open no matter
+  // what happens here. Listing it locked would only leak its name and
+  // shape to an account that can never reach it; the SVG room already
+  // hides those spots outright for the same reason, and this mirrors it.
+  const visible = SPOTS.filter((s) => (s.plane === 'org' ? org : own));
 
   const items = visible.map((base) => {
     const s = (base.altWhen && base.altWhen())
       ? Object.assign({}, base, { href: base.altHref, sub: base.altSub })
       : base;
-    const open = (s.plane === 'org' ? org : own) && !locked;
+    const open = !locked;
     if (open) {
       return `<li><a class="roomlist__item" href="${s.href}">
            <span class="roomlist__label">${s.label}</span>
            <span class="roomlist__sub">${s.sub}</span></a></li>`;
     }
-    const why = locked ? 'Sign in first' : 'Locked — holds group data only';
     return `<li><span class="roomlist__item is-locked" aria-disabled="true">
            <span class="roomlist__label">${s.label}</span>
-           <span class="roomlist__sub">${why}</span></span></li>`;
+           <span class="roomlist__sub">Sign in first</span></span></li>`;
   }).join('');
 
-  const note = org && !own && !locked
-    ? `<li><span class="roomlist__item is-locked" aria-disabled="true">
-         <span class="roomlist__label">Private plane</span>
-         <span class="roomlist__sub">Employees only — sealed from your account</span>
-       </span></li>`
-    : '';
-
-  return `<ul class="roomlist">${items}${note}</ul>`;
+  return `<ul class="roomlist">${items}</ul>`;
 }
 
 WW.room = {

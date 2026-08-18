@@ -1,23 +1,34 @@
-import Link from 'next/link'
-import { Empty, PageHead, PlaneBadge } from '@/components/chrome'
+import { createClient } from '@/lib/supabase/server'
+import { readIsHr } from '@/lib/role'
+import { LoadError, PageHead, RoleLocked } from '@/components/chrome'
 import { Shell } from '@/components/shell'
+import ComplaintsClient from './complaints-client'
 
-export default function Complaints() {
+export default async function Complaints() {
+  const supabase = await createClient()
+  const { isHr, error } = await readIsHr(supabase)
+
+  if (error) {
+    return (
+      <Shell plane="work">
+        <PageHead title="Complaints" />
+        <LoadError what="Your account" detail={error} />
+      </Shell>
+    )
+  }
+
+  if (isHr) {
+    return (
+      <Shell plane="work" isHr>
+        <PageHead title="Not available on this account" />
+        <RoleLocked audience="employee" />
+      </Shell>
+    )
+  }
+
   return (
     <Shell plane="work">
-      <PageHead
-        title="Complaints"
-        lead="A formal grievance, tracked as a case rather than a message."
-      />
-      <PlaneBadge plane="work" />
-      <Empty icon="📋" title="Not built yet">
-        <>
-          <Link href="/recognition">Recognition &amp; connection</Link>{' '}
-          already has a private, withdrawable way to ask HR or an external
-          service for support — worth checking before this becomes a second,
-          more formal case-tracking system alongside it.
-        </>
-      </Empty>
+      <ComplaintsClient />
     </Shell>
   )
 }

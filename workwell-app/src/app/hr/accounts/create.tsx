@@ -3,23 +3,9 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-/** Which planes a new account gets. Deliberately not a checkbox: an
- *  unticked box is a default nobody chose, and the difference between these
- *  two is the difference between an account that can only see its own week
- *  and one that can see the whole directory. */
-type Grant = 'private' | 'hr'
-
-const GRANTS: Record<Grant, { title: string; desc: string }> = {
-  private: {
-    title: 'Private',
-    desc: 'Their own check-ins, trends, nudges and leave. Nobody else can read any of it.',
-  },
-  hr: {
-    title: 'HR',
-    desc: 'All of the above, plus the directory, leave decisions and group patterns. Still never anyone’s check-ins.',
-  },
-}
-
+/** Every account created here is private-plane. There is exactly one HR
+ *  account for the organisation, and this form is not how it is made — see
+ *  the database migration that enforces that, not just this omission. */
 type Row = {
   key: string
   fullName: string
@@ -29,7 +15,6 @@ type Row = {
   jobTitleCustom: boolean
   department: string
   departmentCustom: boolean
-  grant: Grant | null
 }
 
 function blankRow(): Row {
@@ -42,7 +27,6 @@ function blankRow(): Row {
     jobTitleCustom: false,
     department: '',
     departmentCustom: false,
-    grant: null,
   }
 }
 
@@ -270,18 +254,11 @@ export function CreateAccount({ departments = [] }: { departments?: string[] }) 
   const [rows, setRows] = useState<Row[]>([blankRow()])
   const [customDepartments, setCustomDepartments] = useState<string[]>([])
   const departmentOptions = [...new Set([...departments, ...customDepartments])].sort()
-  const [typed, setTyped] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [results, setResults] = useState<Result[] | null>(null)
 
-  const anyHr = rows.some((r) => r.grant === 'hr')
-  // Case is not the point — deliberateness is. Someone who types "HR" has
-  // read the word either way. One confirmation for the whole batch: typing
-  // it once per row would not make anyone more careful, just more tired.
-  const hrConfirmed = !anyHr || typed.trim().toLowerCase() === 'hr'
-  const rowsReady = rows.every((r) => r.fullName.trim() && r.email.trim() && r.grant !== null)
-  const canSubmit = rowsReady && hrConfirmed
+  const canSubmit = rows.every((r) => r.fullName.trim() && r.email.trim())
 
   function updateRow(key: string, patch: Partial<Row>) {
     setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)))
@@ -297,7 +274,6 @@ export function CreateAccount({ departments = [] }: { departments?: string[] }) 
 
   function reset() {
     setRows([blankRow()])
-    setTyped('')
     setError(null)
   }
 
@@ -320,7 +296,6 @@ export function CreateAccount({ departments = [] }: { departments?: string[] }) 
             fullName: r.fullName,
             jobTitle: r.jobTitle,
             department: r.department,
-            isHr: r.grant === 'hr',
           })),
         }),
       })
@@ -468,33 +443,6 @@ export function CreateAccount({ departments = [] }: { departments?: string[] }) 
                 }}
               />
             </div>
-
-            <fieldset className="mt-3" style={{ border: 0, padding: 0, margin: 0 }}>
-              <legend className="field__label">What should this account be?</legend>
-              <div className="stack stack--tight mt-2">
-                {(Object.keys(GRANTS) as Grant[]).map((g) => (
-                  <label
-                    className={`pick${row.grant === g ? ' is-on' : ''}`}
-                    key={g}
-                    htmlFor={`grant-${row.key}-${g}`}
-                  >
-                    <input
-                      type="radio"
-                      id={`grant-${row.key}-${g}`}
-                      name={`grant-${row.key}`}
-                      checked={row.grant === g}
-                      onChange={() => updateRow(row.key, { grant: g })}
-                    />
-                    <span>
-                      <b>{GRANTS[g].title}</b>
-                      <span className="t-subtle" style={{ display: 'block' }}>
-                        {GRANTS[g].desc}
-                      </span>
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
           </div>
         ))}
       </div>
@@ -502,27 +450,6 @@ export function CreateAccount({ departments = [] }: { departments?: string[] }) 
       <button className="btn btn--secondary btn--sm mt-3" type="button" onClick={addRow}>
         + Add another
       </button>
-
-      {/* One gate for the whole batch. Granting HR by mis-clicking a radio is
-          the one mistake here that hands someone the directory, and it is
-          silent — nothing looks wrong afterwards. */}
-      {anyHr && (
-        <div className="field mt-4">
-          <label className="field__label" htmlFor="new-confirm">
-            Type <code>hr</code> to continue — at least one of these accounts
-            gets HR access
-          </label>
-          <input
-            id="new-confirm"
-            className="input"
-            value={typed}
-            autoComplete="off"
-            spellCheck={false}
-            placeholder="hr"
-            onChange={(e) => setTyped(e.target.value)}
-          />
-        </div>
-      )}
 
       <div className="row mt-5">
         <button className="btn btn--primary" type="submit" disabled={!canSubmit || busy}>

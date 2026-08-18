@@ -1,26 +1,34 @@
-import { Empty, PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
+import { createClient } from '@/lib/supabase/server'
+import { readIsHr } from '@/lib/role'
+import { LoadError, PageHead, RoleLocked } from '@/components/chrome'
 import { Shell } from '@/components/shell'
+import PayrollClient from './payroll-client'
 
-export default function Payroll() {
+export default async function Payroll() {
+  const supabase = await createClient()
+  const { isHr, error } = await readIsHr(supabase)
+
+  if (error) {
+    return (
+      <Shell plane="work">
+        <PageHead title="Payroll" />
+        <LoadError what="Your account" detail={error} />
+      </Shell>
+    )
+  }
+
+  if (isHr) {
+    return (
+      <Shell plane="work" isHr>
+        <PageHead title="Not available on this account" />
+        <RoleLocked audience="employee" />
+      </Shell>
+    )
+  }
+
   return (
     <Shell plane="work">
-      <PageHead
-        title="Payroll"
-        lead="Payslips, advances, and increments or promotions — together, since they're all the same salary record."
-      />
-      <PlaneBadge plane="work" />
-
-      <PrivacyNote
-        plane="work"
-        detail="Salary is the most sensitive record HR holds. Whatever is built here needs to be readable by the person it belongs to and by whoever actually runs payroll — nobody else, including other HR functions that don't need it."
-      >
-        <b>Needs its own, narrower access — not the general HR role.</b>{' '}
-      </PrivacyNote>
-
-      <Empty icon="💰" title="Not built yet">
-        Payslip history, pre-payment requests, and increment or promotion
-        records will live here once built.
-      </Empty>
+      <PayrollClient />
     </Shell>
   )
 }

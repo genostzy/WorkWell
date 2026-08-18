@@ -146,7 +146,7 @@
   --ease: cubic-bezier(.32, .72, .35, 1);
 
   /* ---- Layout ---- */
-  --sidebar-w: 25vw;
+  --sidebar-w: clamp(220px, 19vw, 280px);
   --topbar-h:  64px;
   --tabbar-h:  64px;
   --content-max: 1180px;
@@ -379,7 +379,6 @@
   --seq-500: #ABA290;
   --seq-600: #C9C2B4;
   --seq-700: #E3DED4;
-  --seq-700: #FAC7A6;
 }
 
 /* ==========================================================================

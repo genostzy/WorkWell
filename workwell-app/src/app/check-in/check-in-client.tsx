@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -299,7 +299,6 @@ export default function CheckInClient() {
   }
 
   const done = saved
-  const current = STEPS[step]
 
   return (
     <>

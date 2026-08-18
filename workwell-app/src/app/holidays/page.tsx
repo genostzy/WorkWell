@@ -1,18 +1,34 @@
-import { Empty, PageHead, PlaneBadge } from '@/components/chrome'
+import { createClient } from '@/lib/supabase/server'
+import { readIsHr } from '@/lib/role'
+import { LoadError, PageHead, RoleLocked } from '@/components/chrome'
 import { Shell } from '@/components/shell'
+import HolidaysClient from './holidays-client'
 
-export default function Holidays() {
+export default async function Holidays() {
+  const supabase = await createClient()
+  const { isHr, error } = await readIsHr(supabase)
+
+  if (error) {
+    return (
+      <Shell plane="work">
+        <PageHead title="Holidays" />
+        <LoadError what="Your account" detail={error} />
+      </Shell>
+    )
+  }
+
+  if (isHr) {
+    return (
+      <Shell plane="work" isHr>
+        <PageHead title="Not available on this account" />
+        <RoleLocked audience="employee" />
+      </Shell>
+    )
+  }
+
   return (
     <Shell plane="work">
-      <PageHead
-        title="Holidays"
-        lead="The company calendar — the days nobody is expected in."
-      />
-      <PlaneBadge plane="work" />
-      <Empty icon="📅" title="Not built yet">
-        Public holidays and any company-wide closures will live here once
-        it's built, separate from the leave you book yourself.
-      </Empty>
+      <HolidaysClient />
     </Shell>
   )
 }

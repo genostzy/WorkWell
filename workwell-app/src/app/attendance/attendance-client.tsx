@@ -1,0 +1,270 @@
+'use client'
+
+import { useCallback, useEffect, useState } from 'react'
+import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
+import { ConfirmButton } from '@/components/controls'
+import { createClient } from '@/lib/supabase/client'
+
+// Lunch is not something you clock — the app pauses it for you. Two fixed
+// hours, matching the standard PH lunch block; a real rollout would read
+// this from company policy instead of a constant.
+const LUNCH_START_MIN = 12 * 60
+const LUNCH_END_MIN = 13 * 60
+
+type DayLog = {
+  timeIn: string | null
+  lunchStart: string | null
+  lunchEnd: string | null
+  timeOut: string | null
+}
+
+const EMPTY_LOG: DayLog = { timeIn: null, lunchStart: null, lunchEnd: null, timeOut: null }
+
+type Row = {
+  day: string
+  time_in: string | null
+  lunch_start: string | null
+  lunch_end: string | null
+  time_out: string | null
+}
+
+function toLog(r?: Row): DayLog {
+  if (!r) return EMPTY_LOG
+  return { timeIn: r.time_in, lunchStart: r.lunch_start, lunchEnd: r.lunch_end, timeOut: r.time_out }
+}
+
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as const
+
+function weekDates() {
+  const now = new Date()
+  const day = now.getDay() || 7
+  const monday = new Date(now)
+  monday.setDate(now.getDate() - day + 1)
+  return DAYS.map((label, i) => {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    return { label, iso: d.toISOString().slice(0, 10), isToday: d.toDateString() === now.toDateString() }
+  })
+}
+
+function fmtTime(iso: string) {
+  return new Date(iso).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })
+}
+
+function minutesSinceMidnight(d: Date) {
+  return d.getHours() * 60 + d.getMinutes()
+}
+
+function hoursWorked(log: DayLog) {
+  if (!log.timeIn || !log.timeOut) return null
+  let ms = +new Date(log.timeOut) - +new Date(log.timeIn)
+  if (log.lunchStart && log.lunchEnd) ms -= +new Date(log.lunchEnd) - +new Date(log.lunchStart)
+  return Math.max(0, ms / 3600000)
+}
+
+function statusOf(log: DayLog) {
+  if (log.timeOut) return 'Done for the day'
+  if (log.lunchStart && !log.lunchEnd) return 'On lunch (auto)'
+  if (log.timeIn) return 'Working'
+  return 'Not timed in'
+}
+
+export default function AttendanceClient() {
+  const week = weekDates()
+  const today = week.find((d) => d.isToday)
+  const [logs, setLogs] = useState<Record<string, DayLog>>({})
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+
+  const reloadToday = useCallback(async () => {
+    if (!today) return
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('attendance')
+      .select('day, time_in, lunch_start, lunch_end, time_out')
+      .eq('day', today.iso)
+      .maybeSingle()
+    if (error) {
+      setActionError(error.message)
+      return
+    }
+    setLogs((s) => ({ ...s, [today.iso]: toLog(data as Row | undefined) }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [today?.iso])
+
+  useEffect(() => {
+    let cancelled = false
+
+    ;(async () => {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('attendance')
+        .select('day, time_in, lunch_start, lunch_end, time_out')
+        .gte('day', week[0].iso)
+        .lte('day', week[week.length - 1].iso)
+
+      if (cancelled) return
+      if (error) {
+        setLoadError(error.message)
+        setLoading(false)
+        return
+      }
+      const byDay: Record<string, DayLog> = {}
+      for (const r of (data ?? []) as Row[]) byDay[r.day] = toLog(r)
+      setLogs(byDay)
+      setLoading(false)
+    })()
+
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const todayLog = today ? logs[today.iso] ?? EMPTY_LOG : EMPTY_LOG
+
+  // The auto-pause: nothing to click, nothing to forget. While timed in and
+  // not yet out, the tick checks the wall clock against the lunch window
+  // and asks the server to stamp the pause and its resume. The RPCs guard
+  // their own idempotency, so a tick firing again before the reload lands
+  // is harmless.
+  useEffect(() => {
+    if (!today) return
+    const tick = async () => {
+      const log = logs[today.iso]
+      if (!log?.timeIn || log.timeOut) return
+      const mins = minutesSinceMidnight(new Date())
+      const supabase = createClient()
+
+      if (!log.lunchStart && mins >= LUNCH_START_MIN && mins < LUNCH_END_MIN) {
+        const { error } = await supabase.rpc('attendance_lunch_start')
+        if (error) setActionError(error.message)
+        else reloadToday()
+        return
+      }
+      if (log.lunchStart && !log.lunchEnd && mins >= LUNCH_END_MIN) {
+        const { error } = await supabase.rpc('attendance_lunch_end')
+        if (error) setActionError(error.message)
+        else reloadToday()
+      }
+    }
+    tick()
+    const id = window.setInterval(tick, 30000)
+    return () => window.clearInterval(id)
+  }, [today, logs, reloadToday])
+
+  async function timeIn() {
+    setActionError(null)
+    const supabase = createClient()
+    const { error } = await supabase.rpc('attendance_time_in')
+    if (error) setActionError(error.message)
+    else reloadToday()
+  }
+
+  async function timeOut() {
+    setActionError(null)
+    const supabase = createClient()
+    const { error } = await supabase.rpc('attendance_time_out')
+    if (error) setActionError(error.message)
+    else reloadToday()
+  }
+
+  const daysLogged = week.filter((d) => logs[d.iso]?.timeOut).length
+
+  return (
+    <>
+      <PageHead title="Attendance" lead="Time in, time out — lunch pauses itself." />
+      <PlaneBadge plane="work" />
+
+      <PrivacyNote
+        plane="work"
+        detail="A per-minute time record is a real change from the confirmation-only design this screen used to mock — worth knowing it's here. Lunch is paused automatically between 12:00 pm and 1:00 pm rather than clocked, so it never counts as worked time and never needs a separate button. This record is yours alone: it is not visible to HR, individually or aggregated."
+      >
+        <b>Self-only — never visible to HR.</b>{' '}
+      </PrivacyNote>
+
+      {(loadError || actionError) && (
+        <div className="banner banner--error mb-5" role="alert">
+          {loadError ?? actionError}
+        </div>
+      )}
+
+      <div className="card mb-5">
+        <div className="card__head">
+          <div>
+            <div className="card__title">Today</div>
+            <div className="card__sub">{loading ? 'Loading…' : statusOf(todayLog)}</div>
+          </div>
+          {!loading && !todayLog.timeIn && (
+            <button className="btn btn--primary btn--sm" type="button" onClick={timeIn}>
+              Time in
+            </button>
+          )}
+          {!loading && todayLog.timeIn && !todayLog.timeOut && (
+            <ConfirmButton label="Time out" confirmLabel="Time out" onConfirm={timeOut} />
+          )}
+        </div>
+
+        <div className="row row--between mt-4" style={{ flexWrap: 'wrap', gap: 'var(--s-4)' }}>
+          <div className="stat">
+            <span className="stat__value t-num">{todayLog.timeIn ? fmtTime(todayLog.timeIn) : '—'}</span>
+            <span className="stat__label">Time in</span>
+          </div>
+          <div className="stat">
+            <span className="stat__value t-num">
+              {todayLog.lunchStart ? fmtTime(todayLog.lunchStart) : '—'}
+              {todayLog.lunchEnd ? ` – ${fmtTime(todayLog.lunchEnd)}` : todayLog.lunchStart ? ' –' : ''}
+            </span>
+            <span className="stat__label">Lunch (auto)</span>
+          </div>
+          <div className="stat">
+            <span className="stat__value t-num">{todayLog.timeOut ? fmtTime(todayLog.timeOut) : '—'}</span>
+            <span className="stat__label">Time out</span>
+          </div>
+        </div>
+
+        <p className="field__hint mt-3">
+          {daysLogged} of {week.length} days completed this week.
+        </p>
+      </div>
+
+      <div className="card card--flush">
+        <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
+          <div className="card__title">This week</div>
+        </div>
+        <div className="table-scroll">
+          <table className="data-table">
+            <caption className="sr-only">This week&apos;s time in / time out</caption>
+            <thead>
+              <tr>
+                <th scope="col">Day</th>
+                <th scope="col">Time in</th>
+                <th scope="col">Lunch</th>
+                <th scope="col">Time out</th>
+                <th scope="col">Hours</th>
+              </tr>
+            </thead>
+            <tbody>
+              {week.map((d) => {
+                const log = logs[d.iso] ?? EMPTY_LOG
+                const hrs = hoursWorked(log)
+                return (
+                  <tr key={d.iso}>
+                    <th scope="row" style={{ fontWeight: d.isToday ? 700 : 600 }}>
+                      {d.label} {d.isToday && <span className="t-subtle">(today)</span>}
+                    </th>
+                    <td>{log.timeIn ? fmtTime(log.timeIn) : '—'}</td>
+                    <td>{log.lunchStart ? `${fmtTime(log.lunchStart)}–${log.lunchEnd ? fmtTime(log.lunchEnd) : '…'}` : '—'}</td>
+                    <td>{log.timeOut ? fmtTime(log.timeOut) : '—'}</td>
+                    <td className="t-num">{hrs != null ? `${hrs.toFixed(1)}h` : '—'}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  )
+}

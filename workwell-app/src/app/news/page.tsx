@@ -1,15 +1,34 @@
-import { Empty, PageHead, PlaneBadge } from '@/components/chrome'
+import { createClient } from '@/lib/supabase/server'
+import { readIsHr } from '@/lib/role'
+import { LoadError, PageHead, RoleLocked } from '@/components/chrome'
 import { Shell } from '@/components/shell'
+import NewsClient from './news-client'
 
-export default function News() {
+export default async function News() {
+  const supabase = await createClient()
+  const { isHr, error } = await readIsHr(supabase)
+
+  if (error) {
+    return (
+      <Shell plane="work">
+        <PageHead title="News" />
+        <LoadError what="Your account" detail={error} />
+      </Shell>
+    )
+  }
+
+  if (isHr) {
+    return (
+      <Shell plane="work" isHr>
+        <PageHead title="Not available on this account" />
+        <RoleLocked audience="employee" />
+      </Shell>
+    )
+  }
+
   return (
     <Shell plane="work">
-      <PageHead title="News" lead="Announcements from your organisation." />
-      <PlaneBadge plane="work" />
-      <Empty icon="📰" title="Not built yet">
-        A company-wide feed will live here — nothing personal, the same
-        posts everyone sees.
-      </Empty>
+      <NewsClient />
     </Shell>
   )
 }

@@ -1,18 +1,25 @@
-import { Empty, PageHead, PlaneBadge } from '@/components/chrome'
+import { createClient } from '@/lib/supabase/server'
+import { PageHead, RoleLocked } from '@/components/chrome'
 import { Shell } from '@/components/shell'
+import CustomFieldsClient from './custom-fields-client'
 
-export default function CustomFields() {
+export default async function CustomFields() {
+  const supabase = await createClient()
+  const { data: roles } = await supabase.from('person_roles').select('role')
+  const isHr = (roles ?? []).some((r) => r.role === 'hr')
+
+  if (!isHr) {
+    return (
+      <Shell plane="private">
+        <PageHead title="Not available on this account" />
+        <RoleLocked audience="hr" />
+      </Shell>
+    )
+  }
+
   return (
-    <Shell plane="work">
-      <PageHead
-        title="Custom data fields"
-        lead="Add fields to an employment record beyond the built-in ones."
-      />
-      <PlaneBadge plane="work" />
-      <Empty icon="🧩" title="Not built yet">
-        An admin screen for defining extra fields — and where they'd show up
-        on People — will live here.
-      </Empty>
+    <Shell plane="work" isHr>
+      <CustomFieldsClient />
     </Shell>
   )
 }

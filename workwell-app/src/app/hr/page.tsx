@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { LoadError, PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
+import { LoadError, PageHead, PlaneBadge, PrivacyNote, RoleLocked } from '@/components/chrome'
 import { Shell } from '@/components/shell'
 import { Decide } from './decide'
 
@@ -21,18 +21,7 @@ export default async function Hr() {
     return (
       <Shell current="hr" plane="private">
         <PageHead title="Not available on this account" />
-        <div className="card">
-          <div className="state">
-            <div className="state__icon" aria-hidden="true">
-              🔒
-            </div>
-            <h2 className="state__title">This area is for HR</h2>
-            <p className="state__text">
-              Your own data lives on the private plane, which nobody here can
-              read.
-            </p>
-          </div>
-        </div>
+        <RoleLocked audience="hr" />
       </Shell>
     )
   }
@@ -55,7 +44,7 @@ export default async function Hr() {
   const readError = peopleError ?? leaveError
   if (readError) {
     return (
-      <Shell current="hr" plane="org">
+      <Shell current="hr" plane="org" isHr>
         <PageHead title="People" />
         <PlaneBadge plane="work" />
         <LoadError what="The directory" detail={readError.message} />
@@ -68,7 +57,7 @@ export default async function Hr() {
   const pending = (leave ?? []).filter((l) => l.status === 'pending')
 
   return (
-    <Shell current="hr" plane="org">
+    <Shell current="hr" plane="org" isHr>
       <PageHead
         title="People"
         lead="Employment records for everyone at your organisation."

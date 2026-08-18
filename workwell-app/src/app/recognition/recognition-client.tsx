@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { LoadError, PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
+import { ConfirmButton } from '@/components/controls'
 import { createClient } from '@/lib/supabase/client'
 
 type Person = { id: string; full_name: string }
@@ -19,6 +20,7 @@ type SupportRequest = {
   status: string
   created_at: string
 }
+type TeamSignal = { id: string; created_at: string }
 
 /** Recognition and connection — PRD F5.
  *
@@ -33,6 +35,7 @@ export default function RecognitionClient() {
   const [people, setPeople] = useState<Person[]>([])
   const [received, setReceived] = useState<Appreciation[]>([])
   const [requests, setRequests] = useState<SupportRequest[]>([])
+  const [signals, setSignals] = useState<TeamSignal[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -52,6 +55,10 @@ export default function RecognitionClient() {
   const [supportError, setSupportError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
 
+  const [raising, setRaising] = useState(false)
+  const [raiseError, setRaiseError] = useState<string | null>(null)
+  const [signalBusyId, setSignalBusyId] = useState<string | null>(null)
+
   const load = useCallback(async () => {
     const supabase = createClient()
 
@@ -61,8 +68,53 @@ export default function RecognitionClient() {
       .maybeSingle()
     setMe(mine?.id ?? null)
 
-    const [{ data: ppl }, { data: apps, error: appError }, { data: reqs, error: reqError }] =
-      await Promise.all([
+    const [
+      { data: ppl },
+      { data: apps, error: appError },
+      { data: reqs, error: reqError },
+      { data: sigs, error: sigError },
+    ] = await Promise.all([
+      supabase.from('people').select('id, full_name').order('full_name'),
+      supabase
+        .from('appreciations')
+        .select('id, from_person, to_person, message, created_at')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('support_requests')
+        .select('id, body, route, status, created_at')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('team_signals')
+        .select('id, created_at')
+        .order('created_at', { ascending: false }),
+    ])
+
+    // A read that failed is not an empty inbox, and showing it as one is how
+    // a permission problem gets mistaken for "nobody has thanked you".
+    setLoadError((meError ?? appError ?? reqError ?? sigError)?.message ?? null)
+    setPeople((ppl ?? []).filter((p) => p.id !== mine?.id))
+    setReceived((apps ?? []).filter((a) => a.to_person === mine?.id))
+    setRequests(reqs ?? [])
+    setSignals(sigs ?? [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    ;(async () => {
+      const supabase = createClient()
+
+      const { data: mine, error: meError } = await supabase
+        .from('me')
+        .select('id')
+        .maybeSingle()
+      setMe(mine?.id ?? null)
+
+      const [
+        { data: ppl },
+        { data: apps, error: appError },
+        { data: reqs, error: reqError },
+        { data: sigs, error: sigError },
+      ] = await Promise.all([
         supabase.from('people').select('id, full_name').order('full_name'),
         supabase
           .from('appreciations')
@@ -72,20 +124,20 @@ export default function RecognitionClient() {
           .from('support_requests')
           .select('id, body, route, status, created_at')
           .order('created_at', { ascending: false }),
+        supabase
+          .from('team_signals')
+          .select('id, created_at')
+          .order('created_at', { ascending: false }),
       ])
 
-    // A read that failed is not an empty inbox, and showing it as one is how
-    // a permission problem gets mistaken for "nobody has thanked you".
-    setLoadError((meError ?? appError ?? reqError)?.message ?? null)
-    setPeople((ppl ?? []).filter((p) => p.id !== mine?.id))
-    setReceived((apps ?? []).filter((a) => a.to_person === mine?.id))
-    setRequests(reqs ?? [])
-    setLoading(false)
+      setLoadError((meError ?? appError ?? reqError ?? sigError)?.message ?? null)
+      setPeople((ppl ?? []).filter((p) => p.id !== mine?.id))
+      setReceived((apps ?? []).filter((a) => a.to_person === mine?.id))
+      setRequests(reqs ?? [])
+      setSignals(sigs ?? [])
+      setLoading(false)
+    })()
   }, [])
-
-  useEffect(() => {
-    load()
-  }, [load])
 
   // Without a person row every insert below fails on a not-null constraint,
   // and a constraint violation is a poor way to learn you have no access yet.
@@ -157,6 +209,28 @@ export default function RecognitionClient() {
     // visible to HR with no hint that taking it back had not worked. On
     // this screen of all screens that silence is the wrong answer.
     if (error) setSupportError(`Could not withdraw that: ${error.message}`)
+    else load()
+  }
+
+  async function raiseSignal() {
+    setRaising(true)
+    setRaiseError(null)
+    const supabase = createClient()
+    const { error } = await supabase.rpc('raise_team_signal')
+    setRaising(false)
+
+    if (error) setRaiseError(error.message)
+    else load()
+  }
+
+  async function withdrawSignal(id: string) {
+    setSignalBusyId(id)
+    setRaiseError(null)
+    const supabase = createClient()
+    const { error } = await supabase.rpc('withdraw_team_signal', { p_id: id })
+    setSignalBusyId(null)
+
+    if (error) setRaiseError(`Could not withdraw that: ${error.message}`)
     else load()
   }
 
@@ -418,6 +492,54 @@ export default function RecognitionClient() {
                 </p>
               </div>
             )}
+
+            <div className="card">
+              <div className="card__title mb-1">Something off with your team?</div>
+              <p className="card__sub mb-4">
+                No name, no detail — this isn&rsquo;t about any one person. HR
+                only ever sees it as a share of a group of eight or more,
+                the same protection Structural load already carries. Never
+                you, never a name.
+              </p>
+
+              {raiseError && (
+                <div className="banner banner--error mb-4" role="alert">
+                  {raiseError}
+                </div>
+              )}
+
+              <ConfirmButton
+                label="Raise a quiet signal"
+                confirmLabel="Raise it"
+                className="btn btn--secondary"
+                disabled={raising}
+                onConfirm={raiseSignal}
+              />
+
+              {signals.length > 0 && (
+                <div className="stack stack--tight mt-4">
+                  {signals.map((s) => (
+                    <div className="row row--between" key={s.id}>
+                      <span className="t-subtle">
+                        Raised{' '}
+                        {new Date(s.created_at).toLocaleDateString('en-GB', {
+                          day: 'numeric',
+                          month: 'short',
+                        })}
+                      </span>
+                      <button
+                        className="btn btn--ghost btn--sm"
+                        type="button"
+                        disabled={signalBusyId === s.id}
+                        onClick={() => withdrawSignal(s.id)}
+                      >
+                        {signalBusyId === s.id ? 'Withdrawing…' : 'Withdraw'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -1,18 +1,34 @@
-import { Empty, PageHead, PlaneBadge } from '@/components/chrome'
+import { createClient } from '@/lib/supabase/server'
+import { readIsHr } from '@/lib/role'
+import { LoadError, PageHead, RoleLocked } from '@/components/chrome'
 import { Shell } from '@/components/shell'
+import ResignationsClient from './resignations-client'
 
-export default function Resignations() {
+export default async function Resignations() {
+  const supabase = await createClient()
+  const { isHr, error } = await readIsHr(supabase)
+
+  if (error) {
+    return (
+      <Shell plane="work">
+        <PageHead title="Resignations" />
+        <LoadError what="Your account" detail={error} />
+      </Shell>
+    )
+  }
+
+  if (isHr) {
+    return (
+      <Shell plane="work" isHr>
+        <PageHead title="Not available on this account" />
+        <RoleLocked audience="employee" />
+      </Shell>
+    )
+  }
+
   return (
     <Shell plane="work">
-      <PageHead
-        title="Resignations"
-        lead="Hand in notice, and see where it stands."
-      />
-      <PlaneBadge plane="work" />
-      <Empty icon="✉️" title="Not built yet">
-        A formal notice flow — submitted, acknowledged, last day agreed —
-        will live here.
-      </Empty>
+      <ResignationsClient />
     </Shell>
   )
 }

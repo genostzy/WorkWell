@@ -1,9 +1,9 @@
 import { Wordmark } from '@/components/brandmark'
 
 /**
- * The office, arriving.
+ * Your space, arriving.
  *
- * This is the root loading state, so it covers the office and the sign-in
+ * This is the root loading state, so it covers your space and the sign-in
  * screen — both of which are the room, not the article column, which is why
  * it does not use the ScreenSkeleton the inner screens share.
  *
@@ -14,16 +14,13 @@ import { Wordmark } from '@/components/brandmark'
 export default function Loading() {
   return (
     <div className="room-shell is-fit">
-      <header className="room-top">
-        <div className="room-top__brand">
-          <Wordmark />
-        </div>
-        <span className="room-top__spacer" />
-      </header>
+      <div className="room-brand">
+        <Wordmark />
+      </div>
       <main className="room-stage">
         <div className="room-views is-on" data-view-panel="room">
           <p className="t-subtle" style={{ textAlign: 'center' }} role="status">
-            Opening the office…
+            Opening your space…
           </p>
         </div>
       </main>

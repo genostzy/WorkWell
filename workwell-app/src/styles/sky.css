@@ -18,9 +18,14 @@
   transition: background 4s linear;
 }
 
-/* Content sits above the sky. */
+/* Content sits above the sky. Excludes .signin-room-pane: it also carries
+   .room-shell (reusing the same room styling as a preview pane), but it
+   already declares its own position: absolute in signin.css to fill
+   .signin-split as a full-bleed background — this rule's position:relative,
+   same specificity and loaded later, was silently winning and collapsing
+   the split into two stacked blocks instead of a panel over a backdrop. */
 body.has-sky { background: transparent; }
-body.has-sky .room-shell { position: relative; z-index: 1; }
+body.has-sky .room-shell:not(.signin-room-pane) { position: relative; z-index: 1; }
 
 /* ------------------------------------------------------------ Sun & moon */
 

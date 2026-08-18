@@ -14,16 +14,16 @@ export type Account = {
   isSelf: boolean
 }
 
-/** The two consequential changes, each behind the word that names it.
- *
- *  Same safeguard as approving a request, for the same reason: granting HR
- *  by a mis-click hands someone the whole directory, and closing an account
- *  by a mis-click locks a colleague out of their own week. Neither looks
- *  wrong afterwards, so neither gets a bare button. */
-type Action = 'hr' | 'private' | 'close' | 'reopen' | 'reset'
+/** The consequential changes, each behind the word that names it. Granting
+ *  HR is not one of these any more — there is exactly one HR account, and
+ *  this screen has no path that creates a second one. "private" only ever
+ *  removes HR from a row that should never have had it, which is why it
+ *  still gets the same safeguard: closing an account by a mis-click locks
+ *  a colleague out of their own week, and neither looks wrong afterwards,
+ *  so neither gets a bare button. */
+type Action = 'private' | 'close' | 'reopen' | 'reset'
 
 const WORD: Record<Action, string> = {
-  hr: 'hr',
   private: 'private',
   close: 'close',
   reopen: 'reopen',
@@ -31,7 +31,6 @@ const WORD: Record<Action, string> = {
 }
 
 const ASKS: Record<Action, string> = {
-  hr: 'They will see every colleague’s employment record and the group patterns. Never anyone’s check-ins.',
   private: 'They keep their own private plane and lose the directory, leave decisions and group patterns.',
   close: 'They stop being able to open WorkWell. Their own check-ins are not deleted — they are theirs, and closing an account is not permission to destroy them.',
   reopen: 'They can open WorkWell again, with whatever access they had.',
@@ -93,10 +92,10 @@ function Confirm({
 
     const supabase = createClient()
     const { error } =
-      action === 'hr' || action === 'private'
+      action === 'private'
         ? await supabase.rpc('set_person_access', {
             p_person_id: person.id,
-            p_is_hr: action === 'hr',
+            p_is_hr: false,
           })
         : await supabase.rpc('set_person_status', {
             p_person_id: person.id,
@@ -229,13 +228,19 @@ function Manage({ person }: { person: Account }) {
 
   return (
     <div className="row" style={{ gap: 'var(--s-2)' }}>
-      <button
-        className="btn btn--secondary btn--sm"
-        type="button"
-        onClick={() => setAction(person.isHr ? 'private' : 'hr')}
-      >
-        {person.isHr ? 'Remove HR access' : 'Give HR access'}
-      </button>
+      {/* Granting HR is no longer offered here — the organisation has
+          exactly one HR account, enforced in the database, not just by this
+          button's absence. This stays only for the (should-never-happen)
+          case of correcting a second HR row by hand. */}
+      {person.isHr && (
+        <button
+          className="btn btn--secondary btn--sm"
+          type="button"
+          onClick={() => setAction('private')}
+        >
+          Remove HR access
+        </button>
+      )}
       <button
         className="btn btn--secondary btn--sm"
         type="button"

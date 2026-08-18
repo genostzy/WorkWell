@@ -15,8 +15,9 @@ import { BADGE, type Page, type Plane } from '@/components/chrome'
  * browser bundle and fail. Import Shell only from a page.tsx.
  */
 
-const TITLES: Record<Page, string> = {
-  home: 'The office',
+/** 'home' is deliberately absent — its title depends on isHr, handled
+ *  inline below rather than duplicated here. */
+const TITLES: Record<Exclude<Page, 'home'>, string> = {
   'check-in': 'Daily check-in',
   trends: 'Your trends',
   leave: 'Leave & profile',
@@ -74,47 +75,91 @@ export function Shell({
   children,
   current,
   plane = 'private',
+  isHr = false,
 }: {
   children: React.ReactNode
   current?: Page
   plane?: Plane
+  /** Swaps the "back to your space" chrome for "back to the dashboard" —
+   *  an HR/admin account has no space of its own, only the administration
+   *  screens. */
+  isHr?: boolean
 }) {
   const badge = BADGE[plane]
 
   return (
     <div className="app app--room" data-plane={plane}>
-      <Suspense fallback={<aside className="room-sidebar" aria-hidden="true" />}>
+      <Suspense
+        fallback={
+          <aside className="room-sidebar" aria-hidden="true">
+            <div className="sidebar-inner">
+              <div className="sidebar-brand">
+                <div className="skel" style={{ width: 30, height: 30, borderRadius: 'var(--r-xs)' }} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div className="skel skel--title" style={{ width: 80 }} />
+                  <div className="skel skel--text" style={{ width: 60 }} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 'var(--s-2)', gap: 6 }}>
+                <div className="skel" style={{ width: 48, height: 48, borderRadius: '50%' }} />
+                <div className="skel skel--text" style={{ width: 72 }} />
+              </div>
+              <div className="skel" style={{ height: 1, margin: 'var(--s-2) var(--s-2)' }} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, padding: '0 var(--s-3)' }}>
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <div key={i} className="skel" style={{ height: 52, borderRadius: 'var(--r-sm)' }} />
+                ))}
+              </div>
+            </div>
+          </aside>
+        }
+      >
         <RoomSidebarData />
       </Suspense>
 
       <div className="main">
         <header className="topbar">
-          {/* The mark is the way back. It was already a link to the office,
-              but nothing about it said so — a logo in the top-left is read
-              as a logo, and people looked for a back button instead. The
-              chevron is what turns it into one. */}
-          <Link className="topbar__home" href="/" aria-label="Back to the office">
-            <svg
-              className="topbar__back"
-              viewBox="0 0 24 24"
-              width="17"
-              height="17"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="m15 6-6 6 6 6" />
-            </svg>
-            <span className="sidebar__mark">
-              <Brandmark size={28} />
+          {/* The mark is the way back — except on the dashboard itself,
+              where "back" has nowhere to go, same as your space never
+              needed one on its own home screen. */}
+          {current === 'home' ? (
+            <span className="topbar__home topbar__home--static">
+              <span className="sidebar__mark">
+                <Brandmark size={28} />
+              </span>
             </span>
-            <span className="topbar__backword">The office</span>
-          </Link>
+          ) : (
+            <Link
+              className="topbar__home"
+              href="/"
+              aria-label={isHr ? 'Back to the dashboard' : 'Back to your space'}
+            >
+              <svg
+                className="topbar__back"
+                viewBox="0 0 24 24"
+                width="17"
+                height="17"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="m15 6-6 6 6 6" />
+              </svg>
+              <span className="sidebar__mark">
+                <Brandmark size={28} />
+              </span>
+              <span className="topbar__backword">{isHr ? 'Dashboard' : 'Your space'}</span>
+            </Link>
+          )}
           <span className="topbar__title">
-            {current ? TITLES[current] : 'WorkWell'}
+            {current === 'home'
+              ? isHr ? 'Administration' : 'Your space'
+              : current
+                ? TITLES[current]
+                : 'WorkWell'}
           </span>
           <span className="topbar__spacer" />
           <div className="topbar__actions">
@@ -139,9 +184,9 @@ export function Shell({
 
       <Link className="hub" href="/">
         <span className="hub__glyph" aria-hidden="true">
-          🏠
+          {isHr ? '📋' : '🏠'}
         </span>
-        The office
+        {isHr ? 'Dashboard' : 'Your space'}
       </Link>
     </div>
   )
