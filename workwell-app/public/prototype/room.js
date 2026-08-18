@@ -170,19 +170,19 @@ function roomSVG(opts) {
   const own = o.own !== undefined ? o.own : o.role !== 'hr';
   const org = o.org !== undefined ? o.org : o.role === 'hr';
 
-  /* --- ceiling lights ---
-     Drawn at every hour but only lit at night, so the room reads as a room
-     with its lights off rather than as a room that has been greyed out.
-     Purely scenery: no tabindex, no data-go, nothing to land on with a
-     keyboard, because a lamp is not somewhere you can go. */
+  /* --- room lighting ---
+     One even wash across the whole floor rather than a scatter of bulb-like
+     points — this reads as the room's own overhead lighting, not a lamp
+     sitting somewhere in it. Drawn at every hour but only bright at night,
+     so the room reads as a room with its lights off rather than one that
+     has been greyed out. A gradient, not a blurred shape: the fill covers
+     the entire floor, and blurring an area that size is real paint cost
+     for every frame it (or anything near it) repaints — a gradient costs
+     nothing extra to hold at that scale. Purely scenery: no tabindex, no
+     data-go, nothing to land on with a keyboard. */
   const lights = `
-    <g class="lamps" aria-hidden="true">
-      <circle class="lamp__glow" cx="190" cy="210" r="120"/>
-      <circle class="lamp__glow" cx="510" cy="523" r="132"/>
-      ${org ? `
-      <circle class="lamp__glow" cx="812" cy="140" r="118"/>
-      <circle class="lamp__glow" cx="505" cy="180" r="112"/>` : ''}
-    </g>`;
+    <rect class="room-glow" x="24" y="24" width="952" height="672" rx="22"
+          fill="url(#room-glow-grad)" aria-hidden="true"/>`;
 
   /* ------------------------------------------------------------- Layout
 
@@ -467,9 +467,23 @@ function roomSVG(opts) {
   <svg class="room__svg" viewBox="0 0 1000 720" role="img"
        aria-label="Top-down plan of your space. Use the destination buttons, or switch to the list view.">
 
+    <defs>
+      <radialGradient id="room-glow-grad" cx="50%" cy="50%" r="65%">
+        <stop offset="0%" stop-color="rgba(255,214,138,.9)"/>
+        <stop offset="100%" stop-color="rgba(255,214,138,0)"/>
+      </radialGradient>
+    </defs>
+
     <!-- floor & outer wall -->
     <rect class="floor" x="24" y="24" width="952" height="672" rx="22"/>
     <rect class="wall"  x="24" y="24" width="952" height="672" rx="22"/>
+
+    <!-- A soft halo hugging the wall's own outline — the room's light
+         reaching its edges, not a line drawn around the picture. Blurring
+         a stroke is cheap regardless of the shape's size: only the thin
+         painted band costs anything, unlike a blurred fill over the whole
+         floor. -->
+    <rect class="room-glow-ring" x="24" y="24" width="952" height="672" rx="22" aria-hidden="true"/>
 
     <!-- Centred on the open mid floor between the two rooms above and the
          front door below, not on the whole plan — the plan is no longer one

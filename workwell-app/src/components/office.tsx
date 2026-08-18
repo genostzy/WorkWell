@@ -121,6 +121,9 @@ export function Office({
   )
   const [phase, setPhase] = useState<string | null>(null)
   const [clock, setClock] = useState<string | null>(null)
+  const [confirmingSignOut, setConfirmingSignOut] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
+  const doorRef = useRef<Element | null>(null)
 
   const build = useCallback(() => {
     const WW = window.WW
@@ -227,13 +230,14 @@ export function Office({
       e.preventDefault()
 
       // The front door: same "important button" rule as everything else
-      // that ends a session — confirm once before it fires.
+      // that ends a session — confirm once before it fires. A themed
+      // dialog rather than window.confirm: the room is the one screen in
+      // this app with no header, no chrome to match a browser-native
+      // prompt against, and a plain confirm() reads like the app broke
+      // rather than like part of it.
       if (el.dataset.signout !== undefined) {
-        if (!window.confirm('Sign out of WorkWell?')) return
-        void signOutEverywhere().then(() => {
-          router.push('/')
-          router.refresh()
-        })
+        doorRef.current = target.closest('.frontdoor')
+        setConfirmingSignOut(true)
         return
       }
 
@@ -264,6 +268,30 @@ export function Office({
     },
     [navigate]
   )
+
+  const cancelSignOut = useCallback(() => {
+    setConfirmingSignOut(false)
+    // Focus goes back to the door, not lost to the body — the click that
+    // opened this dialog came from a keyboard just as often as a mouse.
+    ;(doorRef.current as HTMLElement | SVGElement | null)?.focus?.()
+  }, [])
+
+  const confirmSignOut = useCallback(() => {
+    setSigningOut(true)
+    void signOutEverywhere().then(() => {
+      router.push('/')
+      router.refresh()
+    })
+  }, [router])
+
+  useEffect(() => {
+    if (!confirmingSignOut) return
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') cancelSignOut()
+    }
+    window.addEventListener('keydown', onEsc)
+    return () => window.removeEventListener('keydown', onEsc)
+  }, [confirmingSignOut, cancelSignOut])
 
   return (
     <>
@@ -347,6 +375,46 @@ export function Office({
           </div>
         </main>
       </div>
+
+      {confirmingSignOut && (
+        <div
+          className="room-confirm"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="room-confirm-title"
+          aria-describedby="room-confirm-sub"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) cancelSignOut()
+          }}
+        >
+          <div className="room-confirm__card">
+            <p id="room-confirm-title" className="room-confirm__title">
+              Heading out?
+            </p>
+            <p id="room-confirm-sub" className="room-confirm__sub">
+              You&rsquo;ll need to sign back in to return to your space.
+            </p>
+            <div className="room-confirm__actions">
+              <button
+                className="btn btn--ghost"
+                type="button"
+                autoFocus
+                onClick={cancelSignOut}
+              >
+                Stay
+              </button>
+              <button
+                className="btn btn--primary"
+                type="button"
+                disabled={signingOut}
+                onClick={confirmSignOut}
+              >
+                {signingOut ? 'Signing out…' : 'Sign out'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

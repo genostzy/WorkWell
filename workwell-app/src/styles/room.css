@@ -207,35 +207,50 @@
     transparent 70%);
 }
 
-/* ------------------------------------------------------------------ Lamps
+/* ------------------------------------------------------------ Room light
 
-   No fixtures drawn any more — just the light itself, a slight ambient glow
-   at every hour that reads as "the room is lit" without a lamp object to
-   place or collide with. It brightens for quiet hours, the one time the
-   room actually needs it to carry legibility.
+   One even wash across the floor and a soft halo along the wall, rather
+   than a scatter of bulb-like points — this is the room's own overhead
+   lighting, not a lamp sitting somewhere in it. Both read as a slight
+   ambient glow at every hour, brightening for quiet hours, the one time
+   the room actually needs it to carry legibility.
 
-   The glow is a radial gradient painted through `fill`, which needs a real
-   gradient definition in SVG, so it is done with a filtered circle instead:
-   a blurred disc is the same thing and needs no <defs>. */
+   room-glow is painted through a radial gradient (defined once in the SVG's
+   own <defs>, not here) rather than a blurred fill — a blur that size costs
+   real paint on every repaint near it, and a gradient does not. room-glow-
+   ring stays a blurred stroke: the painted band is thin regardless of the
+   wall's size, so the blur cost stays small the way the old lamp discs'
+   did. */
 
-.lamp__glow {
-  fill: rgba(255, 214, 138, .5);
-  filter: blur(26px);
+.room-glow {
   opacity: .16;
   transition: opacity var(--dur-slow) var(--ease);
 }
 
-/* Night: the pool of light is what makes the floor legible again. */
-.room[data-phase="quiet"] .lamp__glow { opacity: .85; }
+.room-glow-ring {
+  fill: none;
+  stroke: rgba(255, 214, 138, .55);
+  stroke-width: 16;
+  filter: blur(18px);
+  opacity: .22;
+  transition: opacity var(--dur-slow) var(--ease);
+}
+
+/* Night: the light is what makes the floor legible again. */
+.room[data-phase="quiet"] .room-glow { opacity: .7; }
+.room[data-phase="quiet"] .room-glow-ring { opacity: .6; }
 
 /* Before anyone has come in, there is no one to light the room for. */
-.room[data-open="false"] .lamp__glow { opacity: 0; }
+.room[data-open="false"] .room-glow,
+.room[data-open="false"] .room-glow-ring { opacity: 0; }
 
 /* A blur this size is expensive to animate and pointless to anyone who has
    asked for less movement; the light still changes, it just arrives. */
-:root[data-motion="reduced"] .lamp__glow { transition: none; }
+:root[data-motion="reduced"] .room-glow,
+:root[data-motion="reduced"] .room-glow-ring { transition: none; }
 @media (prefers-reduced-motion: reduce) {
-  :root:where(:not([data-motion="full"])) .lamp__glow { transition: none; }
+  :root:where(:not([data-motion="full"])) .room-glow,
+  :root:where(:not([data-motion="full"])) .room-glow-ring { transition: none; }
 }
 
 /* Quiet hours: lights out.
@@ -393,6 +408,58 @@
   transition: opacity 560ms var(--ease);
 }
 .room[data-open="true"] .room__dim { opacity: 0; }
+
+/* ------------------------------------------------------- Sign-out confirm
+
+   A themed dialog over the room itself, not window.confirm(). The room is
+   the one screen in this app with no header and nothing chrome-native to
+   sit alongside — a browser prompt here reads like the app broke, not
+   like part of it. animation, not a transition: there is no prior state
+   to transition from, this mounts and unmounts with the dialog itself. */
+.room-confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s-5);
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  backdrop-filter: var(--glass-filter-3);
+  animation: fade-up var(--dur-fast) var(--ease) both;
+}
+
+.room-confirm__card {
+  width: min(360px, 100%);
+  padding: var(--s-6);
+  border-radius: var(--r-lg);
+  background: var(--glass-sheen), var(--noise), var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-2);
+  text-align: center;
+}
+
+.room-confirm__title {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-heavy);
+  margin-bottom: var(--s-2);
+}
+
+.room-confirm__sub {
+  color: var(--text-muted);
+  margin-bottom: var(--s-5);
+}
+
+.room-confirm__actions {
+  display: flex;
+  gap: var(--s-3);
+  justify-content: center;
+}
+
+:root[data-motion="reduced"] .room-confirm { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  :root:where(:not([data-motion="full"])) .room-confirm { animation: none; }
+}
 
 /* ------------------------------------------------------------- Check-in bubble */
 

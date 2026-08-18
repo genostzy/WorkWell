@@ -39,7 +39,10 @@ export function SignOut({ compact = false }: { compact?: boolean }) {
   return (
     <ConfirmButton
       label={busy ? 'Signing out…' : 'Sign out'}
-      confirmLabel="Sign out"
+      // Distinct from the base label on purpose — "Sign out" repeated next
+      // to a "Cancel" read as two unrelated actions, not as one action
+      // asking to be confirmed.
+      confirmLabel="Confirm sign out"
       className={compact ? 'btn btn--ghost btn--sm' : 'btn btn--secondary btn--sm'}
       disabled={busy}
       onConfirm={run}
