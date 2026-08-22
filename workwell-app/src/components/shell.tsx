@@ -3,6 +3,7 @@ import { Suspense } from 'react'
 import { SignOut } from '@/components/sign-out'
 import { Brandmark } from '@/components/brandmark'
 import { RoomSidebar } from '@/components/room-sidebar'
+import { SidebarToggle } from '@/components/sidebar-toggle'
 import { createClient } from '@/lib/supabase/server'
 import { BADGE, type Page, type Plane } from '@/components/chrome'
 
@@ -182,12 +183,7 @@ export function Shell({
         <main className="content">{children}</main>
       </div>
 
-      <Link className="hub" href="/">
-        <span className="hub__glyph" aria-hidden="true">
-          {isHr ? '📋' : '🏠'}
-        </span>
-        {isHr ? 'Dashboard' : 'Your space'}
-      </Link>
+      <SidebarToggle isHr={isHr} />
     </div>
   )
 }

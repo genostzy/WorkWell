@@ -685,6 +685,39 @@
   .app.app--room .main { grid-column: 1; }
   .room-sidebar { display: none; }
 
+  /* Sidebar open state: the hub button toggles this class on .app.
+     The sidebar slides in from the left as a full-height overlay with
+     a dimmed backdrop behind it. */
+  .sidebar-backdrop {
+    display: none;
+  }
+  .app.sidebar-open .room-sidebar {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    right: auto;
+    z-index: 100;
+    width: min(300px, 80vw);
+    background: var(--surface);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
+    animation: sidebar-in 250ms var(--ease) both;
+  }
+  .app.sidebar-open .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    background: rgba(16, 20, 18, 0.5);
+    border: none;
+    cursor: default;
+    animation: fade 250ms var(--ease) both;
+  }
+
+  @keyframes sidebar-in {
+    from { transform: translateX(-100%); }
+    to   { transform: translateX(0); }
+  }
+
   /* Clear both the tab bar and the hub button floating above it, or the
      hub lands on whatever sits at the bottom of the page. */
   .content {
