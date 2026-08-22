@@ -46,7 +46,7 @@ export default function WarningsClient() {
       <PageHead title="Warnings" lead="Formal disciplinary records." />
       <PlaneBadge plane="work" />
 
-      <div className="grid grid--sidebar-right">
+      <div className="grid grid--records">
         <div className="stack">
           <div className="card card--flush">
             <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
@@ -72,15 +72,15 @@ export default function WarningsClient() {
                   <tbody>
                     {warnings.map((w) => (
                       <tr key={w.id}>
-                        <th scope="row" style={{ fontWeight: 600 }}>{w.employee}</th>
+                        <th scope="row" style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{w.employee}</th>
                         <td><span className="chip">{w.category}</span></td>
-                        <td>{w.note}</td>
+                        <td style={{ maxWidth: '32ch' }}>{w.note}</td>
                         <td>
                           <span className={w.status === 'Active' ? 'chip chip--accent' : 'chip'}>
                             {w.status}
                           </span>
                         </td>
-                        <td>
+                        <td style={{ whiteSpace: 'nowrap' }}>
                           {w.status === 'Active' && (
                             <button className="btn btn--ghost btn--sm" type="button" onClick={() => resolve(w.id)}>
                               Mark resolved

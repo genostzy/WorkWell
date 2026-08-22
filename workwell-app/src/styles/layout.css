@@ -653,6 +653,7 @@
 .grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .grid--sidebar-right { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); align-items: start; }
+.grid--records { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; }
 
 .stack { display: flex; flex-direction: column; gap: var(--s-5); }
 .stack--tight { gap: var(--s-3); }
@@ -672,6 +673,7 @@
   :root { --sidebar-w: clamp(200px, 22vw, 240px); }
   .grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grid--sidebar-right { grid-template-columns: minmax(0, 1fr); }
+  .grid--records { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 860px) {
