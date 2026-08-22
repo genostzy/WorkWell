@@ -4,6 +4,13 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+/* Scroll stays live everywhere; the bar itself never shows. */
+* {
+  scrollbar-width: none;       /* Firefox */
+  -ms-overflow-style: none;    /* legacy Edge */
+}
+*::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
 /* The hidden attribute must beat any component's own display rule.
    Without this, `el.hidden = true` silently does nothing on anything styled
    display:flex/grid/inline-flex — which is most components here. */
@@ -134,7 +141,7 @@ button { cursor: pointer; background: none; border: none; padding: 0; }
      drop the blur so nothing looks like a rendering glitch under it. */
   body { background: Canvas; }
   .sidebar, .room-sidebar, .topbar, .card, .sheet,
-  .account__menu, .room-tile, .banner, .insight, .nudge, .feed__item {
+  .account__menu, .sidebar-tile, .banner, .insight, .nudge, .feed__item {
     backdrop-filter: none;
     background: Canvas;
   }

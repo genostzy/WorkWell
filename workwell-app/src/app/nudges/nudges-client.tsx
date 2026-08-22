@@ -42,6 +42,13 @@ export default function NudgesClient() {
     'nudge_prefs',
     DEFAULTS
   )
+  // Focus mode (Workspace) and nudges used to be two settings a person had
+  // to remember to set separately. Reading this one, read-only, is enough
+  // to make them cooperate — no new table, no write-back, just one less
+  // thing to notice and toggle by hand.
+  const { value: workspace } = usePrefs('workspace_prefs', {
+    focus_one_question: false,
+  })
   const [delivered, setDelivered] = useState<Delivered[]>([])
   const [logError, setLogError] = useState<string | null>(null)
   const [answering, setAnswering] = useState<string | null>(null)
@@ -58,8 +65,17 @@ export default function NudgesClient() {
   }, [])
 
   useEffect(() => {
-    loadDelivered()
-  }, [loadDelivered])
+    ;(async () => {
+      const supabase = createClient()
+      const today = new Date().toISOString().slice(0, 10)
+      const { data, error } = await supabase
+        .from('nudge_log')
+        .select('id, kind, action')
+        .eq('sent_on', today)
+      setLogError(error?.message ?? null)
+      setDelivered(data ?? [])
+    })()
+  }, [])
 
   // Answering used to ignore its own result, so a failed write left the
   // nudge sitting there and the three buttons doing nothing visible. A
@@ -81,7 +97,9 @@ export default function NudgesClient() {
   const open = delivered.filter((d) => d.action === null)
 
   const today = new Date().toISOString().slice(0, 10)
-  const muted = value.muted_until != null && value.muted_until >= today
+  const focusMode = workspace.focus_one_question
+  const explicitlyMuted = value.muted_until != null && value.muted_until >= today
+  const muted = explicitlyMuted || focusMode
   const anyOn = KINDS.some((k) => value[k.key])
 
   return (
@@ -92,10 +110,6 @@ export default function NudgesClient() {
       />
 
       <PlaneBadge plane="private" />
-
-      <PrivacyNote detail="Which nudges you use, whether you dismiss them, and how often they arrive are never reported to anyone. There is no acceptance rate anywhere in this product, because measuring that is the first step to nagging.">
-        <b>Nobody is told whether you follow these.</b>{' '}
-      </PrivacyNote>
 
       {loading ? (
         <div className="card">
@@ -108,16 +122,27 @@ export default function NudgesClient() {
             <div className="banner banner--info mb-5" role="status">
               <span aria-hidden="true">🔕</span>
               <span>
-                <b>Quiet for the rest of today.</b> Nothing will arrive until
-                tomorrow.
+                {focusMode ? (
+                  <>
+                    <b>Paused while focus mode is on.</b> Turn it off in
+                    Workspace to resume.
+                  </>
+                ) : (
+                  <>
+                    <b>Quiet for the rest of today.</b> Nothing will arrive
+                    until tomorrow.
+                  </>
+                )}
               </span>
-              <button
-                className="btn btn--ghost btn--sm"
-                type="button"
-                onClick={() => update({ muted_until: null })}
-              >
-                Unmute now
-              </button>
+              {!focusMode && (
+                <button
+                  className="btn btn--ghost btn--sm"
+                  type="button"
+                  onClick={() => update({ muted_until: null })}
+                >
+                  Unmute now
+                </button>
+              )}
             </div>
           )}
 
@@ -263,6 +288,10 @@ export default function NudgesClient() {
           </div>
         </>
       )}
+
+      <PrivacyNote detail="Which nudges you use, whether you dismiss them, and how often they arrive are never reported to anyone. There is no acceptance rate anywhere in this product, because measuring that is the first step to nagging.">
+        <b>Nobody is told whether you follow these.</b>{' '}
+      </PrivacyNote>
     </>
   )
 }

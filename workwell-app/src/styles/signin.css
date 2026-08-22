@@ -213,3 +213,90 @@
   .auth__mobilebrand { display: flex; }
   .auth__panel { justify-content: flex-start; padding-top: var(--s-9); }
 }
+
+/* ------------------------------------------------------- Sign-in, split */
+
+/* The form on the left, the locked office beside it — always both visible
+   at once, never a dialog raised over a picture.
+
+   The room pane is full-bleed underneath the panel from the very first
+   paint, not sized to "the space beside a 420px panel" — the panel simply
+   sits on top of the left edge of it. That is what makes the exit
+   transition below transform/opacity-only rather than a resize: the room
+   was always there at full size, so revealing it needs no layout change
+   at all, just the panel sliding off above it. Animating width or padding
+   here instead would force a layout recalculation on every frame, which
+   is what made an earlier version of this feel like it was stepping
+   rather than sliding. */
+.signin-split {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  /* Promoted to its own layer from first paint, not the instant the exit
+     class lands — a will-change added in the same frame as the transition
+     it's for can miss the first frame or two while the browser stands the
+     layer up, which is exactly the stutter "seamless" is asking to not
+     have. Cheap to leave on here: this element exists for one screen that
+     is gone within a second of being interacted with, never re-shown. */
+  will-change: transform, opacity;
+  /* Scopes layout/paint invalidation to this subtree, so the room SVG's
+     few dozen elements animating underneath never make the browser
+     re-check anything outside this box. */
+  contain: layout paint style;
+}
+
+.signin-room-pane {
+  position: absolute;
+  inset: 0;
+  contain: layout paint style;
+}
+
+.signin-panel {
+  position: relative;
+  z-index: 1;
+  width: min(420px, 100vw);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--s-8) var(--s-7);
+  background:
+    radial-gradient(120% 90% at 12% 8%, var(--accent-quiet) 0%, transparent 60%),
+    var(--surface-2);
+  border-right: 1px solid var(--border);
+  will-change: transform, opacity;
+  contain: layout paint style;
+  transition: transform 560ms var(--ease), opacity 560ms var(--ease);
+}
+
+/* Private-plane sign-in: the panel is the only thing that moves. It was
+   always sitting on top of the room's left edge, so sliding it fully off
+   is all "the room takes the centre" ever needed to be. Timed to match
+   .room__dim's own 560ms exactly (room.css) — the veil lifting behind it
+   and the panel leaving in front of it read as one motion, not two. */
+.signin-split.is-leaving-private .signin-panel {
+  transform: translateX(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* HR/admin sign-in: there is no room here for this account to unlock, so
+   nothing settles into place — the whole split slides off to the right
+   instead, and the real dashboard takes over underneath it. */
+.signin-split.is-leaving-hr {
+  transform: translateX(6vw);
+  opacity: 0;
+  transition: transform 560ms var(--ease), opacity 560ms var(--ease);
+}
+
+/* The split is a desktop composition — a login form squeezed next to a
+   locked floor plan is worse than just the form on a narrow screen. */
+@media (max-width: 900px) {
+  /* room.css's own `.room-shell { display: flex }` is unconditional and
+     loads after this file, so at equal specificity it would win over a
+     bare `.signin-room-pane` here regardless of what this media query
+     says — the compound selector, not source order, is what makes this
+     hide rule actually win. */
+  .room-shell.signin-room-pane { display: none; }
+  .signin-panel { position: static; width: 100%; border-right: 0; }
+}

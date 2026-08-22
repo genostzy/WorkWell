@@ -1,310 +1,433 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
+import { ConfirmButton } from '@/components/controls'
 import { createClient } from '@/lib/supabase/client'
-import { Empty } from '@/components/chrome'
+import { fmtDate } from '@/lib/format-date'
 
-type Record = {
+// Lunch is not something you clock — the app pauses it for you. Two fixed
+// hours, matching the standard PH lunch block; a real rollout would read
+// this from company policy instead of a constant.
+const LUNCH_START_MIN = 12 * 60
+const LUNCH_END_MIN = 13 * 60
+
+type DayLog = {
+  timeIn: string | null
+  lunchStart: string | null
+  lunchEnd: string | null
+  timeOut: string | null
+}
+
+const EMPTY_LOG: DayLog = { timeIn: null, lunchStart: null, lunchEnd: null, timeOut: null }
+
+type Row = {
+  day: string
+  time_in: string | null
+  lunch_start: string | null
+  lunch_end: string | null
+  time_out: string | null
+}
+
+function toLog(r?: Row): DayLog {
+  if (!r) return EMPTY_LOG
+  return { timeIn: r.time_in, lunchStart: r.lunch_start, lunchEnd: r.lunch_end, timeOut: r.time_out }
+}
+
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as const
+
+function weekDates() {
+  const now = new Date()
+  const day = now.getDay() || 7
+  const monday = new Date(now)
+  monday.setDate(now.getDate() - day + 1)
+  return DAYS.map((label, i) => {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    return { label, iso: d.toISOString().slice(0, 10), isToday: d.toDateString() === now.toDateString() }
+  })
+}
+
+function fmtTime(iso: string) {
+  return new Date(iso).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })
+}
+
+function minutesSinceMidnight(d: Date) {
+  return d.getHours() * 60 + d.getMinutes()
+}
+
+function hoursWorked(log: DayLog) {
+  if (!log.timeIn || !log.timeOut) return null
+  let ms = +new Date(log.timeOut) - +new Date(log.timeIn)
+  if (log.lunchStart && log.lunchEnd) ms -= +new Date(log.lunchEnd) - +new Date(log.lunchStart)
+  return Math.max(0, ms / 3600000)
+}
+
+function statusOf(log: DayLog) {
+  if (log.timeOut) return 'Done for the day'
+  if (log.lunchStart && !log.lunchEnd) return 'On lunch (auto)'
+  if (log.timeIn) return 'Working'
+  return 'Not timed in'
+}
+
+type ResetRequest = {
   id: string
-  clock_in: string
-  clock_out: string | null
-  date: string
-  note: string | null
+  day: string
+  reason: string
+  status: 'pending' | 'approved' | 'declined' | 'withdrawn'
 }
 
-type TodayAllRecord = {
-  person_id: string
-  clock_in: string
-  clock_out: string | null
-  date: string
-}
+export default function AttendanceClient() {
+  const week = weekDates()
+  const today = week.find((d) => d.isToday)
+  const [logs, setLogs] = useState<Record<string, DayLog>>({})
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
-type TodayAll = TodayAllRecord[]
+  const [resetRequests, setResetRequests] = useState<ResetRequest[]>([])
+  const [resetDay, setResetDay] = useState(today?.iso ?? week[0].iso)
+  const [resetReason, setResetReason] = useState('')
+  const [requesting, setRequesting] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
+  const [resetError, setResetError] = useState<string | null>(null)
+  const [withdrawingId, setWithdrawingId] = useState<string | null>(null)
 
-type Summary = {
-  id: string
-  name: string
-  clockedIn: boolean
-  clock_in: string | null
-  clock_out: string | null
-}[]
-
-function fmtTime(iso: string | null) {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  return Number.isNaN(d.getTime())
-    ? '—'
-    : d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-}
-
-function duration(clockIn: string, clockOut: string | null) {
-  const start = new Date(clockIn).getTime()
-  const end = clockOut ? new Date(clockOut).getTime() : Date.now()
-  const ms = end - start
-  if (ms < 0) return '—'
-  const h = Math.floor(ms / 3_600_000)
-  const m = Math.floor((ms % 3_600_000) / 60_000)
-  return h > 0 ? `${h}h ${m}m` : `${m}m`
-}
-
-function fmtDate(iso: string) {
-  const d = new Date(iso + 'T00:00:00')
-  return Number.isNaN(d.getTime())
-    ? '—'
-    : d.toLocaleDateString('en-GB', {
-        weekday: 'short',
-        day: 'numeric',
-        month: 'short',
-      })
-}
-
-export default function AttendanceClient({
-  todayRecord: initialToday,
-  history: initialHistory,
-  isHr,
-  summary: initialSummary,
-}: {
-  todayRecord: Record | null
-  history: Record[]
-  isHr: boolean
-  todayAll: TodayAll
-  names: Map<string, string>
-  summary: Summary
-}) {
-  const [todayRecord, setTodayRecord] = useState(initialToday)
-  const [history, setHistory] = useState(initialHistory)
-  const [summary, setSummary] = useState(initialSummary)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const refresh = useCallback(async () => {
+  const reloadResetRequests = useCallback(async () => {
     const supabase = createClient()
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-    const since = thirtyDaysAgo.toISOString().slice(0, 10)
-    const today = new Date().toISOString().slice(0, 10)
-
-    const { data: me } = await supabase.from('me').select('id').maybeSingle()
-    if (!me) return
-
-    const [
-      { data: myRecords },
-      { data: allRecords },
-      { data: people },
-    ] = await Promise.all([
-      supabase
-        .from('attendance')
-        .select('id, clock_in, clock_out, date, note')
-        .eq('person_id', me.id)
-        .gte('date', since)
-        .order('date', { ascending: false }),
-      isHr
-        ? supabase
-            .from('attendance')
-            .select('id, person_id, clock_in, clock_out, date, note')
-            .gte('date', since)
-            .order('date', { ascending: false })
-        : Promise.resolve({ data: null }),
-      isHr
-        ? supabase.from('people').select('id, full_name')
-        : Promise.resolve({ data: null }),
-    ])
-
-    const todayRec = (myRecords ?? []).find((r: Record) => r.date === today) ?? null
-    setTodayRecord(todayRec)
-    setHistory((myRecords ?? []).filter((r: Record) => r.date !== today))
-
-    if (isHr) {
-      const todayAllRecs = (allRecords ?? []).filter((r: Record) => r.date === today)
-      setSummary(
-        (people ?? []).map((p: { id: string; full_name: string }) => {
-          const rec = todayAllRecs.find((r) => r.person_id === p.id)
-          return {
-            id: p.id,
-            name: p.full_name,
-            clockedIn: rec ? !rec.clock_out : false,
-            clock_in: rec?.clock_in ?? null,
-            clock_out: rec?.clock_out ?? null,
-          }
-        })
-      )
+    const { data, error } = await supabase
+      .from('attendance_reset_requests')
+      .select('id, day, reason, status')
+      .order('created_at', { ascending: false })
+    if (error) {
+      setResetError(error.message)
+      return
     }
-  }, [isHr])
+    setResetRequests((data ?? []) as ResetRequest[])
+  }, [])
 
-  async function clockIn() {
-    setLoading(true)
-    setError(null)
+  const reloadToday = useCallback(async () => {
+    if (!today) return
     const supabase = createClient()
-    const { error: rpcError } = await supabase.rpc('clock_in')
-    setLoading(false)
-    if (rpcError) {
-      setError(rpcError.message)
-    } else {
-      await refresh()
+    const { data, error } = await supabase
+      .from('attendance')
+      .select('day, time_in, lunch_start, lunch_end, time_out')
+      .eq('day', today.iso)
+      .maybeSingle()
+    if (error) {
+      setActionError(error.message)
+      return
+    }
+    setLogs((s) => ({ ...s, [today.iso]: toLog(data as Row | undefined) }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [today?.iso])
+
+  useEffect(() => {
+    let cancelled = false
+
+    ;(async () => {
+      const supabase = createClient()
+      const [{ data, error }, { data: resets, error: resetsError }] = await Promise.all([
+        supabase
+          .from('attendance')
+          .select('day, time_in, lunch_start, lunch_end, time_out')
+          .gte('day', week[0].iso)
+          .lte('day', week[week.length - 1].iso),
+        supabase
+          .from('attendance_reset_requests')
+          .select('id, day, reason, status')
+          .order('created_at', { ascending: false }),
+      ])
+
+      if (cancelled) return
+      if (error) {
+        setLoadError(error.message)
+        setLoading(false)
+        return
+      }
+      const byDay: Record<string, DayLog> = {}
+      for (const r of (data ?? []) as Row[]) byDay[r.day] = toLog(r)
+      setLogs(byDay)
+      if (resetsError) setResetError(resetsError.message)
+      else setResetRequests((resets ?? []) as ResetRequest[])
+      setLoading(false)
+    })()
+
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const todayLog = today ? logs[today.iso] ?? EMPTY_LOG : EMPTY_LOG
+
+  // The auto-pause: nothing to click, nothing to forget. While timed in and
+  // not yet out, the tick checks the wall clock against the lunch window
+  // and asks the server to stamp the pause and its resume. The RPCs guard
+  // their own idempotency, so a tick firing again before the reload lands
+  // is harmless.
+  useEffect(() => {
+    if (!today) return
+    const tick = async () => {
+      const log = logs[today.iso]
+      if (!log?.timeIn || log.timeOut) return
+      const mins = minutesSinceMidnight(new Date())
+      const supabase = createClient()
+
+      if (!log.lunchStart && mins >= LUNCH_START_MIN && mins < LUNCH_END_MIN) {
+        const { error } = await supabase.rpc('attendance_lunch_start')
+        if (error) setActionError(error.message)
+        else reloadToday()
+        return
+      }
+      if (log.lunchStart && !log.lunchEnd && mins >= LUNCH_END_MIN) {
+        const { error } = await supabase.rpc('attendance_lunch_end')
+        if (error) setActionError(error.message)
+        else reloadToday()
+      }
+    }
+    tick()
+    const id = window.setInterval(tick, 30000)
+    return () => window.clearInterval(id)
+  }, [today, logs, reloadToday])
+
+  async function timeIn() {
+    setActionError(null)
+    const supabase = createClient()
+    const { error } = await supabase.rpc('attendance_time_in')
+    if (error) setActionError(error.message)
+    else reloadToday()
+  }
+
+  async function timeOut() {
+    setActionError(null)
+    const supabase = createClient()
+    const { error } = await supabase.rpc('attendance_time_out')
+    if (error) setActionError(error.message)
+    else reloadToday()
+  }
+
+  async function submitReset(e: React.FormEvent) {
+    e.preventDefault()
+    setResetError(null)
+    if (!resetReason.trim()) {
+      setResetError('A reason is required — it’s what HR reviews before touching anything.')
+      return
+    }
+
+    setRequesting(true)
+    const supabase = createClient()
+    const { error } = await supabase.rpc('request_attendance_reset', {
+      p_day: resetDay,
+      p_reason: resetReason.trim(),
+    })
+    setRequesting(false)
+
+    if (error) setResetError(error.message)
+    else {
+      setResetReason('')
+      setResetSent(true)
+      reloadResetRequests()
     }
   }
 
-  async function clockOut() {
-    setLoading(true)
-    setError(null)
+  async function withdrawRequest(id: string) {
+    setWithdrawingId(id)
+    setResetError(null)
     const supabase = createClient()
-    const { error: rpcError } = await supabase.rpc('clock_out')
-    setLoading(false)
-    if (rpcError) {
-      setError(rpcError.message)
-    } else {
-      await refresh()
-    }
+    const { error } = await supabase.rpc('withdraw_attendance_reset', { p_id: id })
+    setWithdrawingId(null)
+
+    if (error) setResetError(error.message)
+    else reloadResetRequests()
   }
 
-  const clockedIn = todayRecord && !todayRecord.clock_out
+  const daysLogged = week.filter((d) => logs[d.iso]?.timeOut).length
 
   return (
     <>
-      {error && (
+      <PageHead title="Attendance" lead="Time in, time out — lunch pauses itself." />
+      <PlaneBadge plane="work" />
+
+      {(loadError || actionError) && (
         <div className="banner banner--error mb-5" role="alert">
-          <span aria-hidden="true">⚠️</span>
-          <span>
-            <b>Something went wrong.</b> {error}
-          </span>
+          {loadError ?? actionError}
         </div>
       )}
 
-      {/* ---- Clock in / out button ---- */}
-      <div className="card">
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 'var(--s-4)',
-            padding: 'var(--s-5) 0',
-          }}
-        >
-          {todayRecord ? (
-            <div style={{ textAlign: 'center' }}>
-              <div className="t-subtle" style={{ marginBottom: 'var(--s-2)' }}>
-                {clockedIn ? 'Clocked in' : 'Clocked out'}
-              </div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>
-                {fmtTime(todayRecord.clock_in)}
-                {todayRecord.clock_out && (
-                  <> – {fmtTime(todayRecord.clock_out)}</>
-                )}
-              </div>
-              {todayRecord.clock_out && (
-                <div className="t-subtle" style={{ marginTop: 'var(--s-1)' }}>
-                  {duration(todayRecord.clock_in, todayRecord.clock_out)} today
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="t-subtle">Not clocked in yet today</div>
+      <div className="card mb-5">
+        <div className="card__head">
+          <div>
+            <div className="card__title">Today</div>
+            <div className="card__sub">{loading ? 'Loading…' : statusOf(todayLog)}</div>
+          </div>
+          {!loading && !todayLog.timeIn && (
+            <button className="btn btn--primary btn--sm" type="button" onClick={timeIn}>
+              Time in
+            </button>
           )}
+          {!loading && todayLog.timeIn && !todayLog.timeOut && (
+            <ConfirmButton label="Time out" confirmLabel="Time out" onConfirm={timeOut} />
+          )}
+        </div>
 
-          <button
-            className={`btn ${clockedIn ? 'btn--secondary' : 'btn--primary'}`}
-            type="button"
-            disabled={loading}
-            onClick={clockedIn ? clockOut : clockIn}
-            style={{ fontSize: '1.1rem', padding: 'var(--s-3) var(--s-6)' }}
-          >
-            {loading
-              ? 'Working…'
-              : clockedIn
-                ? 'Clock out'
-                : 'Clock in'}
-          </button>
+        <div className="row row--between mt-4" style={{ flexWrap: 'wrap', gap: 'var(--s-4)' }}>
+          <div className="stat">
+            <span className="stat__value t-num">{todayLog.timeIn ? fmtTime(todayLog.timeIn) : '—'}</span>
+            <span className="stat__label">Time in</span>
+          </div>
+          <div className="stat">
+            <span className="stat__value t-num">
+              {todayLog.lunchStart ? fmtTime(todayLog.lunchStart) : '—'}
+              {todayLog.lunchEnd ? ` – ${fmtTime(todayLog.lunchEnd)}` : todayLog.lunchStart ? ' –' : ''}
+            </span>
+            <span className="stat__label">Lunch (auto)</span>
+          </div>
+          <div className="stat">
+            <span className="stat__value t-num">{todayLog.timeOut ? fmtTime(todayLog.timeOut) : '—'}</span>
+            <span className="stat__label">Time out</span>
+          </div>
+        </div>
+
+        <p className="field__hint mt-3">
+          {daysLogged} of {week.length} days completed this week.
+        </p>
+      </div>
+
+      <div className="card card--flush">
+        <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
+          <div className="card__title">This week</div>
+        </div>
+        <div className="table-scroll">
+          <table className="data-table">
+            <caption className="sr-only">This week&apos;s time in / time out</caption>
+            <thead>
+              <tr>
+                <th scope="col">Day</th>
+                <th scope="col">Time in</th>
+                <th scope="col">Lunch</th>
+                <th scope="col">Time out</th>
+                <th scope="col">Hours</th>
+              </tr>
+            </thead>
+            <tbody>
+              {week.map((d) => {
+                const log = logs[d.iso] ?? EMPTY_LOG
+                const hrs = hoursWorked(log)
+                return (
+                  <tr key={d.iso}>
+                    <th scope="row" style={{ fontWeight: d.isToday ? 700 : 600 }}>
+                      {d.label} {d.isToday && <span className="t-subtle">(today)</span>}
+                    </th>
+                    <td>{log.timeIn ? fmtTime(log.timeIn) : '—'}</td>
+                    <td>{log.lunchStart ? `${fmtTime(log.lunchStart)}–${log.lunchEnd ? fmtTime(log.lunchEnd) : '…'}` : '—'}</td>
+                    <td>{log.timeOut ? fmtTime(log.timeOut) : '—'}</td>
+                    <td className="t-num">{hrs != null ? `${hrs.toFixed(1)}h` : '—'}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* ---- HR: today's summary ---- */}
-      {isHr && summary.length > 0 && (
-        <div className="card card--flush mt-5">
-          <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-            <div className="card__title">Today — all employees</div>
-            <div className="card__sub">
-              {summary.filter((s) => s.clockedIn).length} clocked in
-            </div>
-          </div>
-          <div className="table-scroll">
-            <table className="data-table">
-              <caption className="sr-only">
-                Today&apos;s attendance for all employees
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">Name</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Clock In</th>
-                  <th scope="col">Clock Out</th>
-                </tr>
-              </thead>
-              <tbody>
-                {summary.map((s) => (
-                  <tr key={s.id}>
-                    <th scope="row" style={{ fontWeight: 600 }}>
-                      {s.name}
-                    </th>
-                    <td>
-                      <span
-                        className={s.clockedIn ? 'chip chip--accent' : 'chip'}
-                      >
-                        {s.clockedIn ? 'In' : s.clock_in ? 'Out' : '—'}
-                      </span>
-                    </td>
-                    <td>{fmtTime(s.clock_in)}</td>
-                    <td>{fmtTime(s.clock_out)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      <div className="card mt-5">
+        <div className="card__title mb-1">Something wrong with a day?</div>
+        <p className="card__sub mb-4">
+          Say what happened. HR can only see and fix the one day you name, and only until your request is decided.
+        </p>
 
-      {/* ---- History ---- */}
-      {history.length > 0 ? (
-        <div className="card card--flush mt-5">
-          <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-            <div className="card__title">Recent attendance</div>
-            <div className="card__sub">Last 30 days</div>
+        {resetError && (
+          <div className="banner banner--error mb-4" role="alert">
+            {resetError}
           </div>
-          <div className="table-scroll">
-            <table className="data-table">
-              <caption className="sr-only">
-                Your attendance history
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">Date</th>
-                  <th scope="col">Clock In</th>
-                  <th scope="col">Clock Out</th>
-                  <th scope="col">Duration</th>
-                </tr>
-              </thead>
-              <tbody>
-                {history.map((r) => (
-                  <tr key={r.id}>
-                    <td style={{ fontWeight: 600 }}>{fmtDate(r.date)}</td>
-                    <td>{fmtTime(r.clock_in)}</td>
-                    <td>{fmtTime(r.clock_out)}</td>
-                    <td>{duration(r.clock_in, r.clock_out)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        )}
+        {resetSent && !resetError && (
+          <p className="confirmed mb-4" role="status">
+            <span aria-hidden="true">✓</span>
+            <span>Sent to HR for review.</span>
+          </p>
+        )}
+
+        <form onSubmit={submitReset}>
+          <div className="field">
+            <label className="field__label" htmlFor="reset-day">
+              Which day
+            </label>
+            <select
+              id="reset-day"
+              className="select"
+              value={resetDay}
+              onChange={(e) => {
+                setResetDay(e.target.value)
+                setResetSent(false)
+              }}
+            >
+              {week.map((d) => (
+                <option key={d.iso} value={d.iso}>
+                  {d.label}
+                  {d.isToday ? ' (today)' : ''}
+                </option>
+              ))}
+            </select>
           </div>
-        </div>
-      ) : (
-        !todayRecord && (
-          <div className="mt-5">
-            <Empty icon="🕘" title="No attendance yet">
-              Clock in to start tracking your hours.
-            </Empty>
+
+          <div className="field mt-4">
+            <label className="field__label" htmlFor="reset-reason">
+              Reason
+            </label>
+            <textarea
+              id="reset-reason"
+              className="textarea"
+              value={resetReason}
+              placeholder="What went wrong, so HR knows what to fix."
+              onChange={(e) => {
+                setResetReason(e.target.value)
+                setResetSent(false)
+              }}
+            />
           </div>
-        )
-      )}
+
+          <button className="btn btn--secondary mt-4" type="submit" disabled={requesting}>
+            {requesting ? 'Sending…' : 'Request a reset'}
+          </button>
+        </form>
+
+        {resetRequests.length > 0 && (
+          <div className="stack stack--tight mt-5">
+            <span className="field__label">Your requests</span>
+            {resetRequests.map((r) => (
+              <div className="row row--between" key={r.id} style={{ alignItems: 'flex-start' }}>
+                <div>
+                  <b>{fmtDate(r.day, { day: 'numeric', month: 'short' })}</b>
+                  <p className="t-subtle mt-1">{r.reason}</p>
+                </div>
+                <div className="row" style={{ flexWrap: 'nowrap', gap: 'var(--s-2)' }}>
+                  <span className={r.status === 'approved' ? 'chip chip--accent' : 'chip'}>
+                    {r.status}
+                  </span>
+                  {r.status === 'pending' && (
+                    <ConfirmButton
+                      label="Withdraw"
+                      confirmLabel="Withdraw"
+                      className="btn btn--ghost btn--sm"
+                      disabled={withdrawingId === r.id}
+                      onConfirm={() => withdrawRequest(r.id)}
+                    />
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <PrivacyNote
+        plane="work"
+        detail="A per-minute time record is a real change from the confirmation-only design this screen used to mock — worth knowing it's here. Lunch is paused automatically between 12:00 pm and 1:00 pm rather than clocked, so it never counts as worked time and never needs a separate button. This record is yours alone by default — never visible to HR, individually or aggregated. The one exception: if you request a reset with a reason below, HR can see and correct that single day while your request is open, and nothing else. Approve, decline, or withdraw it and the door closes again."
+      >
+        <b>Self-only, with one narrow exception you control.</b>{' '}
+      </PrivacyNote>
     </>
   )
 }

@@ -20,83 +20,36 @@
   overflow: hidden;
 }
 
-/* Looking at the room, the room is the whole screen — no bar across the
-   top of the picture. The header lifts out of flow and fades in only when
-   it's actually wanted (mouse near the top, or keyboard focus inside it —
-   sign-out/sign-in and the office wordmark stay one Tab away, never truly
-   gone), then fades back out. List view is untouched: is-fit is only set
-   for the room, so the header there keeps its normal place in the layout.
-   Mouse-only reveal is fine here — the room view isn't used on narrow
-   screens at all (auto-switched to List), where hover doesn't exist. */
-.room-shell.is-fit .room-top {
-  position: absolute;
-  top: 0; left: 0; right: 0;
+/* No bar across the top of the room any more — just the mark and the
+   room/list switch, both floating fixed over the background rather than
+   sitting in a header, so nothing but the room itself claims the top of
+   the screen. Sign-out moved into the room itself (the front door); List
+   view is still one real button away, not just a picture. */
+.room-brand {
+  position: fixed;
+  top: var(--s-4);
+  left: var(--s-4);
   z-index: 2;
-  opacity: 0;
-  transition: opacity var(--dur-med) var(--ease);
-  /* Not pointer-events:none — the header's own box is naturally just the
-     thin bar at the very top, not the whole screen, so it can stay
-     hoverable while invisible without ever sitting over the room's own
-     click targets below it. That's also why the trigger below is
-     `.room-top:hover`, not `.room-shell:hover`: the shell fills the whole
-     viewport, so hovering it would mean "the header shows whenever the
-     mouse is anywhere on the page at all" — not what "tucked away" means. */
-}
-.room-shell.is-fit .room-top:hover,
-.room-shell.is-fit .room-top:focus-within {
-  opacity: 1;
-}
-:root[data-motion="reduced"] .room-shell.is-fit .room-top { transition: none; }
-@media (prefers-reduced-motion: reduce) {
-  :root:where(:not([data-motion="full"])) .room-shell.is-fit .room-top { transition: none; }
-}
-
-.room-top {
   display: flex;
   align-items: center;
-  gap: var(--s-3);
-  padding: var(--s-2) var(--s-6);
+  padding: var(--s-2) var(--s-3);
+  background: var(--surface-2);
+  backdrop-filter: var(--glass-filter-1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  pointer-events: none;
 }
-.room-top__brand { display: flex; align-items: center; gap: var(--s-3); }
-.room-top__name { font-size: var(--fs-lg); font-weight: var(--fw-heavy); letter-spacing: -0.02em; }
-.room-top__spacer { margin-left: auto; }
+.room-brand .wordmark { display: flex; align-items: center; gap: var(--s-2); }
+.room-brand .wordmark__text { display: flex; flex-direction: column; line-height: var(--lh-tight); }
+.room-brand .wordmark__name { font-size: var(--fs-sm); font-weight: var(--fw-heavy); }
+.room-brand .wordmark__by { font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--text-muted); }
 
-/* The Room/List switch stays fully functional — the page still auto-picks
-   List on a narrow screen, and it's still in the tab order for anyone who
-   needs an explicit way to it — but a sighted mouse user doesn't need to
-   see a toggle for a choice the page already makes for them most of the
-   time. Visible again the instant it's focused, so a keyboard user tabbing
-   through never loses track of where they landed. */
-.room-top .segmented {
-  position: absolute;
-  width: 1px; height: 1px;
-  padding: 0; margin: -1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-  border: 0;
+.room-nav-toggle {
+  position: fixed;
+  top: var(--s-4);
+  right: var(--s-4);
+  z-index: 2;
 }
-.room-top .segmented:focus-within {
-  position: static;
-  width: auto; height: auto;
-  padding: 3px; margin: 0;
-  overflow: visible;
-  clip: auto;
-  white-space: normal;
-}
-
-/* The header sits at the top, so the account menu must drop downward and
-   align right rather than use the sidebar's upward default. */
-.room-top .account { flex: none; min-width: 0; }
-.room-top .account__btn { width: auto; }
-.room-top .account__menu {
-  top: calc(100% + 10px);
-  bottom: auto;
-  left: auto; right: 0;
-  width: 264px;
-}
-.room-top .account__name,
-.room-top .account__role { max-width: 22ch; }
 
 .room-stage {
   flex: 1;
@@ -104,7 +57,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 var(--s-5) var(--s-5);
+  /* 72px clears .room-brand / .room-nav-toggle, both fixed at the same
+     var(--s-4) inset — the stage would otherwise centre the room right
+     underneath them. */
+  padding: 72px var(--s-5) var(--s-5);
   width: 100%;
 }
 
@@ -197,8 +153,10 @@
 .reader.is-open { fill: var(--accent); }
 .ink-dot { fill: var(--text); }
 
-/* Sealed employee floor, shown to organisation accounts. Deliberately blank:
-   an HR leader has no business seeing whose desk is whose. */
+/* Sealed employee floor — room.js's fallback for an account with no private
+   plane. No account reaches it in this app any more: HR/admin never renders
+   the room at all now (see room.js's own/org comment), so this styles a
+   state the generator still supports but this app no longer produces. */
 .sealed__fill {
   fill: var(--room-fill-2);
   stroke: var(--room-ink);
@@ -249,52 +207,50 @@
     transparent 70%);
 }
 
-/* ------------------------------------------------------------------ Lamps
+/* ------------------------------------------------------------ Room light
 
-   The room is drawn with its lights in it at every hour; what changes is
-   whether they are on. During the day they are furniture — a faint outline
-   you stop noticing. At night they are the only thing holding the room up.
+   One even wash across the floor and a soft halo along the wall, rather
+   than a scatter of bulb-like points — this is the room's own overhead
+   lighting, not a lamp sitting somewhere in it. Both read as a slight
+   ambient glow at every hour, brightening for quiet hours, the one time
+   the room actually needs it to carry legibility.
 
-   The glow is a radial gradient painted through `fill`, which needs a real
-   gradient definition in SVG, so it is done with a filtered circle instead:
-   a blurred disc is the same thing and needs no <defs>. */
+   room-glow is painted through a radial gradient (defined once in the SVG's
+   own <defs>, not here) rather than a blurred fill — a blur that size costs
+   real paint on every repaint near it, and a gradient does not. room-glow-
+   ring stays a blurred stroke: the painted band is thin regardless of the
+   wall's size, so the blur cost stays small the way the old lamp discs'
+   did. */
 
-.lamp__shade { fill: var(--furn-2, var(--surface-3)); }
-.lamp__flex { stroke: var(--furn-2, var(--surface-3)); stroke-width: 2; }
-.lamp__bulb { fill: var(--surface-3); }
-
-.lamp__glow {
-  fill: rgba(255, 214, 138, .5);
-  filter: blur(26px);
-  opacity: 0;
+.room-glow {
+  opacity: .16;
   transition: opacity var(--dur-slow) var(--ease);
 }
 
-/* Daytime: the fittings are barely there. */
-.lamp__shade, .lamp__flex, .lamp__bulb {
-  opacity: .35;
+.room-glow-ring {
+  fill: none;
+  stroke: rgba(255, 214, 138, .55);
+  stroke-width: 16;
+  filter: blur(18px);
+  opacity: .22;
   transition: opacity var(--dur-slow) var(--ease);
 }
 
-/* Night: lights on. The bulb is the brightest thing in the room and the
-   pool beneath it is what makes the floor legible again. */
-.room[data-phase="quiet"] .lamp__glow { opacity: 1; }
-.room[data-phase="quiet"] .lamp__shade,
-.room[data-phase="quiet"] .lamp__flex { opacity: .9; }
-.room[data-phase="quiet"] .lamp__bulb {
-  opacity: 1;
-  fill: rgb(255, 226, 165);
-}
+/* Night: the light is what makes the floor legible again. */
+.room[data-phase="quiet"] .room-glow { opacity: .7; }
+.room[data-phase="quiet"] .room-glow-ring { opacity: .6; }
 
-/* Before anyone has come in, the lights are off whatever the hour — an
-   empty office at 9am does not have its lamps burning. */
-.room[data-open="false"] .lamp__glow { opacity: 0; }
+/* Before anyone has come in, there is no one to light the room for. */
+.room[data-open="false"] .room-glow,
+.room[data-open="false"] .room-glow-ring { opacity: 0; }
 
 /* A blur this size is expensive to animate and pointless to anyone who has
    asked for less movement; the light still changes, it just arrives. */
-:root[data-motion="reduced"] .lamp__glow { transition: none; }
+:root[data-motion="reduced"] .room-glow,
+:root[data-motion="reduced"] .room-glow-ring { transition: none; }
 @media (prefers-reduced-motion: reduce) {
-  :root:where(:not([data-motion="full"])) .lamp__glow { transition: none; }
+  :root:where(:not([data-motion="full"])) .room-glow,
+  :root:where(:not([data-motion="full"])) .room-glow-ring { transition: none; }
 }
 
 /* Quiet hours: lights out.
@@ -386,15 +342,6 @@
   stroke-width: 4;
 }
 
-/* Locked room: visibly present, deliberately not enterable. */
-.spot--locked { cursor: not-allowed; }
-.spot--locked .spot__art { opacity: .45; }
-.spot--locked:hover .spot__art { transform: none; }
-.spot--locked .spot__tagbg { fill: var(--surface-2); stroke-dasharray: 5 4; }
-.spot--locked:hover .spot__tagbg { fill: var(--surface-2); stroke: var(--border-strong); }
-.spot--locked:hover .spot__tagtext { fill: var(--text); }
-.spot--locked:hover .spot__tagsub  { fill: var(--text-subtle); }
-
 /* ------------------------------------------------------------------ Doors */
 
 .doorleaf {
@@ -408,25 +355,20 @@
 .room[data-open="true"] .doorleaf--l { transform: rotate(-72deg); }
 .room[data-open="true"] .doorleaf--r { transform: rotate(72deg); }
 
-.frontdoor { cursor: pointer; outline: none; }
+/* Interactive now — it signs you out — so it carries the plain `.spot`
+   class instead of a bespoke rule; only its own two parts need anything
+   beyond that. */
 .frontdoor__hit { fill: transparent; }
 .frontdoor__pulse {
   fill: var(--accent);
   opacity: .18;
   transform-box: view-box;
   transform-origin: 500px 686px;
-  animation: doorpulse 2.2s var(--ease) infinite;
 }
-@keyframes doorpulse {
-  0%, 100% { transform: scale(.72); opacity: .30; }
-  50%      { transform: scale(1.12); opacity: .06; }
-}
-.frontdoor:focus-visible .spot__tagbg { stroke: var(--focus-ring); stroke-width: 4; }
 
-/* Once inside, the door stops advertising itself. */
-.room[data-open="true"] .frontdoor { pointer-events: none; }
-.room[data-open="true"] .frontdoor__pulse,
-.room[data-open="true"] .frontdoor .spot__tag { opacity: 0; transition: opacity var(--dur-med) var(--ease); }
+/* Once inside, the door's pulse goes with it — its tag fades the same way
+   every other spot's does, covered by the general rule below. */
+.room[data-open="true"] .frontdoor__pulse { opacity: 0; transition: opacity var(--dur-med) var(--ease); }
 
 /* ----------------------------------------------------------------- Avatar */
 
@@ -445,19 +387,12 @@
 
 /* ------------------------------------------------------- Locked room state */
 
-/* Until you sign in, nothing but the door responds. Scoped to .spot so the
-   front door keeps its own label — it is the only thing you can act on, so
-   it must stay readable. */
+/* Until you sign in, the whole room is scenery — the door (now `.spot
+   .frontdoor`, covered by these same rules) included. */
 .room[data-open="false"] .spot { pointer-events: none; }
 .room[data-open="false"] .spot .spot__art { opacity: .32; }
 .room[data-open="false"] .spot .spot__tag { opacity: 0; }
 .room[data-open="false"] .rug { opacity: .25; }
-
-/* Lift the door above the dimming veil so it reads as the way in. */
-.room[data-open="false"] .frontdoor .spot__tagbg { fill: var(--accent); stroke: var(--accent); }
-.room[data-open="false"] .frontdoor .spot__tagtext,
-.room[data-open="false"] .frontdoor .spot__tagsub { fill: var(--text-on-accent); }
-.room[data-open="false"] .doorleaf { fill: var(--accent); }
 
 .room__dim {
   position: absolute;
@@ -465,9 +400,66 @@
   border-radius: var(--r-lg);
   background: color-mix(in srgb, var(--bg) 42%, transparent);
   pointer-events: none;
-  transition: opacity var(--dur-slow) var(--ease);
+  will-change: opacity;
+  /* 560ms, not --dur-slow (380ms): the only place this ever transitions is
+     the sign-in room unlocking, right alongside the panel's own 560ms exit
+     in signin.css. Matched on purpose — the veil lifting and the panel
+     leaving are one motion, not two that happen to overlap. */
+  transition: opacity 560ms var(--ease);
 }
 .room[data-open="true"] .room__dim { opacity: 0; }
+
+/* ------------------------------------------------------- Sign-out confirm
+
+   A themed dialog over the room itself, not window.confirm(). The room is
+   the one screen in this app with no header and nothing chrome-native to
+   sit alongside — a browser prompt here reads like the app broke, not
+   like part of it. animation, not a transition: there is no prior state
+   to transition from, this mounts and unmounts with the dialog itself. */
+.room-confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s-5);
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  backdrop-filter: var(--glass-filter-3);
+  animation: fade-up var(--dur-fast) var(--ease) both;
+}
+
+.room-confirm__card {
+  width: min(360px, 100%);
+  padding: var(--s-6);
+  border-radius: var(--r-lg);
+  background: var(--glass-sheen), var(--noise), var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-2);
+  text-align: center;
+}
+
+.room-confirm__title {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-heavy);
+  margin-bottom: var(--s-2);
+}
+
+.room-confirm__sub {
+  color: var(--text-muted);
+  margin-bottom: var(--s-5);
+}
+
+.room-confirm__actions {
+  display: flex;
+  gap: var(--s-3);
+  justify-content: center;
+}
+
+:root[data-motion="reduced"] .room-confirm { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  :root:where(:not([data-motion="full"])) .room-confirm { animation: none; }
+}
 
 /* ------------------------------------------------------------- Check-in bubble */
 
@@ -597,7 +589,7 @@ a.roomlist__item:hover { border-color: var(--accent); background: var(--accent-q
   .room-top { padding: var(--s-3) var(--s-4); gap: var(--s-2); }
   .room-top__name { display: none; }
   .room-top .account__text { display: none; }
-  .room-stage { padding: 0 var(--s-3) var(--s-5); }
+  .room-stage { padding: 72px var(--s-3) var(--s-5); }
   .spot__tagtext { font-size: 18px; }
   .spot__tagsub  { font-size: 13px; }
 }

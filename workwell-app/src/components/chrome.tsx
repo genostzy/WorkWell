@@ -134,6 +134,43 @@ export function Empty({
   )
 }
 
+/** The plane boundary, said as a locked door rather than a blank page.
+ *  One account is ever HR; everyone else is strictly private-plane, so
+ *  each side of that line gets exactly one message, used everywhere the
+ *  line is crossed rather than copy-pasted per screen. */
+export function RoleLocked({
+  audience,
+  detail,
+}: {
+  audience: 'hr' | 'employee'
+  /** Overrides the default explanation, for a screen where the generic
+   *  line is not specific enough to be reassuring on its own. */
+  detail?: string
+}) {
+  const copy =
+    audience === 'hr'
+      ? {
+          title: 'This area is for HR',
+          text: detail ?? 'Your own data lives on the private plane, which nobody here can read.',
+        }
+      : {
+          title: 'This area is for employees',
+          text: detail ?? "HR/admin accounts hold no private plane of their own — there is nothing on this screen for this account.",
+        }
+
+  return (
+    <div className="card">
+      <div className="state">
+        <div className="state__icon" aria-hidden="true">
+          🔒
+        </div>
+        <h2 className="state__title">{copy.title}</h2>
+        <p className="state__text">{copy.text}</p>
+      </div>
+    </div>
+  )
+}
+
 export function PageHead({ title, lead }: { title: string; lead?: string }) {
   return (
     <div className="page-head">

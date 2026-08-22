@@ -70,7 +70,7 @@ export function OwnProfile({ legalName }: { legalName: string }) {
     <div className="card">
       <div className="card__head">
         <div>
-          <div className="card__title">How the office knows you</div>
+          <div className="card__title">How your space knows you</div>
           <div className="card__sub">
             Yours alone — none of this reaches your employment record
           </div>
@@ -155,7 +155,7 @@ export function OwnProfile({ legalName }: { legalName: string }) {
       </div>
 
       <div className="field mt-4">
-        <span className="field__label">How the office greets you</span>
+        <span className="field__label">How your space greets you</span>
         <Segmented
           label="Greeting"
           value={value.greeting as 'warm' | 'plain'}

@@ -48,10 +48,6 @@ export default function WorkspaceClient() {
 
       <PlaneBadge plane="private" />
 
-      <PrivacyNote detail="These preferences are part of your private plane. They are not in your employment record, HR cannot query them, and nobody is told that you use high contrast or reduced motion.">
-        <b>Nobody is told which of these you use.</b>{' '}
-      </PrivacyNote>
-
       {loading ? (
         <div className="card">
           <div className="skel skel--title" />
@@ -141,7 +137,7 @@ export default function WorkspaceClient() {
               <div className="stack stack--tight">
                 <ToggleRow
                   title="One question per screen"
-                  desc="The check-in becomes a single step at a time"
+                  desc="The check-in becomes a single step at a time, and health nudges pause while it's on"
                   on={value.focus_one_question}
                   onChange={(focus_one_question) =>
                     update({ focus_one_question })
@@ -184,6 +180,10 @@ export default function WorkspaceClient() {
           </div>
         </>
       )}
+
+      <PrivacyNote detail="These preferences are part of your private plane. They are not in your employment record, HR cannot query them, and nobody is told that you use high contrast or reduced motion.">
+        <b>Nobody is told which of these you use.</b>{' '}
+      </PrivacyNote>
     </>
   )
 }

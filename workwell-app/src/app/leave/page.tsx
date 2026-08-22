@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
-import { Empty, LoadError, PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
+import { readIsHr } from '@/lib/role'
+import { Empty, LoadError, PageHead, PlaneBadge, PrivacyNote, RoleLocked } from '@/components/chrome'
 import { Shell } from '@/components/shell'
 import { LeaveForm } from './form'
 import { OwnProfile } from './profile'
@@ -28,10 +29,31 @@ function days(a: string, b: string) {
 export default async function Leave() {
   const supabase = await createClient()
 
-  const { data: me, error: meError } = await supabase
-    .from('me')
-    .select('id, full_name')
-    .maybeSingle()
+  // Independent reads — run together rather than paying two round trips
+  // for a page that used to need only one.
+  const [{ isHr, error: roleError }, { data: me, error: meError }] =
+    await Promise.all([
+      readIsHr(supabase),
+      supabase.from('me').select('id, full_name').maybeSingle(),
+    ])
+
+  if (roleError) {
+    return (
+      <Shell plane="work">
+        <PageHead title="Leave and profile" />
+        <LoadError what="Your account" detail={roleError} />
+      </Shell>
+    )
+  }
+
+  if (isHr) {
+    return (
+      <Shell plane="work" isHr>
+        <PageHead title="Not available on this account" />
+        <RoleLocked audience="employee" />
+      </Shell>
+    )
+  }
 
   // Without a person row there is no employment record to read and nothing
   // to book against, so ask for neither — an .eq on an empty id is a query
@@ -104,13 +126,6 @@ export default async function Leave() {
       />
 
       <PlaneBadge plane="work" />
-
-      <PrivacyNote
-        plane="work"
-        detail="Your check-ins, mood, notes and trends stay on the private plane and are never attached to a leave request. Asking for a day off says nothing about how you are."
-      >
-        <b>Your employer does see this one.</b>{' '}
-      </PrivacyNote>
 
       <div className="grid grid--sidebar-right">
         <div className="stack">
@@ -203,7 +218,7 @@ export default async function Leave() {
             <ul className="stack stack--tight" style={{ fontSize: 'var(--fs-sm)' }}>
               {[
                 'Your check-ins, mood, energy or pressure',
-                'Your quiet hours, or when you were active',
+                'Your quiet hours, or when you were active — unless you ask HR to fix a day',
                 'Which nudges you use, or whether you use WorkWell at all',
                 'What you called yourself, or the colour above',
               ].map((t) => (
@@ -281,6 +296,13 @@ export default async function Leave() {
           )}
         </div>
       </div>
+
+      <PrivacyNote
+        plane="work"
+        detail="Your check-ins, mood, notes and trends stay on the private plane and are never attached to a leave request. Asking for a day off says nothing about how you are."
+      >
+        <b>Your employer does see this one.</b>{' '}
+      </PrivacyNote>
     </Shell>
   )
 }

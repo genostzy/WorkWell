@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -299,7 +299,6 @@ export default function CheckInClient() {
   }
 
   const done = saved
-  const current = STEPS[step]
 
   return (
     <>
@@ -309,10 +308,6 @@ export default function CheckInClient() {
       />
 
       <PlaneBadge plane="private" />
-
-      <PrivacyNote detail="Not the values, not the dates, not whether you checked in at all. That is what makes an honest answer possible.">
-        <b>Your employer cannot see these answers.</b>{' '}
-      </PrivacyNote>
 
       {error && (
         <div className="banner banner--error mb-5" role="alert">
@@ -508,6 +503,10 @@ export default function CheckInClient() {
           </Link>
         </div>
       </div>
+
+      <PrivacyNote detail="Not the values, not the dates, not whether you checked in at all. That is what makes an honest answer possible.">
+        <b>Your employer cannot see these answers.</b>{' '}
+      </PrivacyNote>
     </>
   )
 }

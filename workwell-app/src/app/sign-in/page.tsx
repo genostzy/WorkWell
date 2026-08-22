@@ -4,9 +4,8 @@ import { SignInRoom } from '@/components/sign-in-room'
 
 /**
  * Reaching this page is always deliberate — a direct visit, or a redirect
- * from a guarded route — so the sheet is already up rather than asking for
- * a second click on the door. The locked office stands behind it either
- * way, so the page is recognisably the same place you are signing in to.
+ * from a guarded route — and it's the same screen either way: the form is
+ * always up, with the locked office beside it.
  *
  * Someone already signed in has no business here. It happens easily: a
  * stale tab, a bookmark, the back button after signing in. Asking them to
@@ -40,5 +39,5 @@ export default async function SignIn({ searchParams }: PageProps<'/sign-in'>) {
       ? 'That link has expired or was already used. Send yourself a fresh one.'
       : undefined
 
-  return <SignInRoom openOnLoad notice={notice} />
+  return <SignInRoom notice={notice} />
 }

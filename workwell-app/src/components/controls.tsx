@@ -1,5 +1,7 @@
 'use client'
 
+import { useState } from 'react'
+
 /** The prototype's switch and segmented control, wired.
  *  These replace the inert versions from the design previews. */
 
@@ -70,6 +72,56 @@ export function Segmented<T extends string>({
         </button>
       ))}
     </div>
+  )
+}
+
+/** A button for anything consequential enough to regret an accidental
+ *  click, short of the typed-word confirmation the account-closing actions
+ *  in hr/accounts/manage.tsx use for stakes higher than these. One click
+ *  arms it — the button becomes "Sure?" beside a Cancel — a second click on
+ *  the same spot actually fires `onConfirm`. Nothing happens on a single,
+ *  possibly-accidental click. */
+export function ConfirmButton({
+  label,
+  confirmLabel = 'Sure?',
+  className = 'btn btn--secondary btn--sm',
+  disabled,
+  onConfirm,
+}: {
+  label: string
+  confirmLabel?: string
+  className?: string
+  disabled?: boolean
+  onConfirm: () => void
+}) {
+  const [armed, setArmed] = useState(false)
+
+  if (armed) {
+    return (
+      <span className="confirm-inline">
+        <button
+          className={className}
+          type="button"
+          autoFocus
+          disabled={disabled}
+          onClick={() => {
+            setArmed(false)
+            onConfirm()
+          }}
+        >
+          {confirmLabel}
+        </button>
+        <button className="btn btn--ghost btn--sm" type="button" onClick={() => setArmed(false)}>
+          Cancel
+        </button>
+      </span>
+    )
+  }
+
+  return (
+    <button className={className} type="button" disabled={disabled} onClick={() => setArmed(true)}>
+      {label}
+    </button>
   )
 }
 
