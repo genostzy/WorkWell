@@ -316,3 +316,82 @@ body.has-sky .app { position: relative; z-index: 1; }
   border-radius: var(--r-xs);
   padding: 0 4px;
 }
+
+/* ===================================================== Page transitions
+
+   The shell (sidebar + topbar) persists across navigations via the
+   (app)/layout.tsx route group. Only the content area swaps. These
+   transitions make that swap feel smooth rather than instantaneous. */
+
+.content {
+  animation: page-in 0.2s ease-out;
+}
+
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .content {
+    animation: none;
+  }
+}
+
+:root[data-motion="reduced"] .content {
+  animation: none;
+}
+
+/* ===================================================== Shadcn skeletons
+
+   Polished skeleton components that match the shadcn/ui design language.
+   The existing .skel class provides the shimmer animation; these add
+   card-shaped containers and layout structure. */
+
+.content-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+}
+
+.skel-card-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.skel-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--s-5);
+  animation: skel-fade-in 0.3s ease-out both;
+}
+
+.skel-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--s-4);
+}
+
+.skel-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+@keyframes skel-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skel-card {
+    animation: none;
+  }
+}
+
+:root[data-motion="reduced"] .skel-card {
+  animation: none;
+}
