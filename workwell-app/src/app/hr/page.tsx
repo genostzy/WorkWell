@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { LoadError, PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { Shell } from '@/components/shell'
 import { Decide } from './decide'
+import { DirectoryFilter } from './directory-filter'
+import { ExportCsv } from '@/components/export-csv'
 
 function fmt(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', {
@@ -50,8 +52,6 @@ export default async function Hr() {
       .order('created_at', { ascending: false }),
   ])
 
-  // An empty directory and a directory that would not load look identical
-  // once the rows are gone, and only one of them means "add someone".
   const readError = peopleError ?? leaveError
   if (readError) {
     return (
@@ -66,6 +66,17 @@ export default async function Hr() {
   const byPerson = new Map((employment ?? []).map((e) => [e.person_id, e]))
   const names = new Map((people ?? []).map((p) => [p.id, p.full_name]))
   const pending = (leave ?? []).filter((l) => l.status === 'pending')
+
+  const directoryData = (people ?? []).map((p) => {
+    const e = byPerson.get(p.id)
+    return {
+      id: p.id,
+      name: p.full_name,
+      title: e?.job_title ?? '—',
+      department: e?.department ?? '—',
+      status: p.status,
+    }
+  })
 
   return (
     <Shell current="hr" plane="org">
@@ -83,8 +94,6 @@ export default async function Hr() {
         <b>Employment data only.</b>{' '}
       </PrivacyNote>
 
-      {/* Access decisions all live on Accounts. Two screens able to create
-          or change the same account is how one of them ends up stale. */}
       <div className="card">
         <div className="card__head">
           <div>
@@ -96,6 +105,20 @@ export default async function Hr() {
         </div>
         <Link className="btn btn--secondary btn--sm mt-3" href="/hr/accounts">
           Manage accounts
+        </Link>
+      </div>
+
+      <div className="card">
+        <div className="card__head">
+          <div>
+            <div className="card__title">Decision history</div>
+            <div className="card__sub">
+              All decisions made across the product
+            </div>
+          </div>
+        </div>
+        <Link className="btn btn--secondary btn--sm mt-3" href="/hr/decisions">
+          View decision history
         </Link>
       </div>
 
@@ -135,7 +158,7 @@ export default async function Hr() {
                   {fmt(l.starts_on)} – {fmt(l.ends_on)}
                 </p>
                 {l.note && <p className="t-subtle">{l.note}</p>}
-                <Decide id={l.id} />
+                <Decide id={l.id} personId={l.person_id} />
               </div>
             ))}
           </div>
@@ -152,48 +175,19 @@ export default async function Hr() {
           </div>
         </div>
         {(people ?? []).length === 0 ? (
-          // A table of headers with no rows under them reads as a failure.
           <p className="t-subtle" style={{ padding: '0 var(--s-5) var(--s-5)' }}>
             Nobody has been added yet. Approve someone on{' '}
             <Link href="/hr/accounts">Accounts</Link> and they appear here.
           </p>
         ) : (
-        <div className="table-scroll">
-          <table className="data-table">
-            <caption className="sr-only">Employee directory</caption>
-            <thead>
-              <tr>
-                <th scope="col">Name</th>
-                <th scope="col">Title</th>
-                <th scope="col">Department</th>
-                <th scope="col">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(people ?? []).map((p) => {
-                const e = byPerson.get(p.id)
-                return (
-                  <tr key={p.id}>
-                    <th scope="row" style={{ fontWeight: 600 }}>
-                      {p.full_name}
-                    </th>
-                    <td>{e?.job_title ?? '—'}</td>
-                    <td>{e?.department ?? '—'}</td>
-                    <td>
-                      <span
-                        className={
-                          p.status === 'active' ? 'chip chip--accent' : 'chip'
-                        }
-                      >
-                        {p.status}
-                      </span>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+          <>
+            <DirectoryFilter data={directoryData} />
+            <div style={{ padding: 'var(--s-3) var(--s-5)' }}>
+              <ExportCsv data={directoryData} filename="directory.csv">
+                Export CSV
+              </ExportCsv>
+            </div>
+          </>
         )}
       </div>
     </Shell>

@@ -3,17 +3,9 @@ import { Suspense } from 'react'
 import { SignOut } from '@/components/sign-out'
 import { Brandmark } from '@/components/brandmark'
 import { RoomSidebar } from '@/components/room-sidebar'
+import { Notifications } from '@/components/notifications'
 import { createClient } from '@/lib/supabase/server'
 import { BADGE, type Page, type Plane } from '@/components/chrome'
-
-/**
- * Reads the database — for the room sidebar's account data — which is why
- * this file is separate from chrome.tsx. Several screens (check-in, nudges,
- * recognition, boundaries, workspace) are fully client-rendered and import
- * PageHead and friends from chrome.tsx directly; if Shell lived there too,
- * their build would try to pull this file's `next/headers` usage into the
- * browser bundle and fail. Import Shell only from a page.tsx.
- */
 
 const TITLES: Record<Page, string> = {
   home: 'The office',
@@ -24,18 +16,6 @@ const TITLES: Record<Page, string> = {
   org: 'Structural load',
 }
 
-/**
- * Fetches what the sidebar room needs and renders it, isolated behind its
- * own Suspense boundary so a slow read here never holds up the rest of the
- * screen — Shell itself stays synchronous, which is what lets loading.tsx's
- * skeleton keep appearing instantly on navigation.
- *
- * Nothing is rendered for an account with no active person behind it (a
- * signed-in auth user waiting on HR, or a closed account) — there is no one
- * for the room to represent, and `.app` only reserves the sidebar column
- * when a `.room-sidebar` actually exists, so those screens just stay full
- * width rather than showing a hollow column.
- */
 async function RoomSidebarData() {
   const supabase = await createClient()
   const { data: claims } = await supabase.auth.getClaims()
@@ -62,14 +42,6 @@ async function RoomSidebarData() {
   )
 }
 
-/**
- * The shell for every screen that is not the office itself.
- *
- * The office room now rides along on the left of every one of these too —
- * the same picture, scaled down, doubling as navigation the whole time
- * rather than only when you go back to it. The floating hub button still
- * carries that job on narrow screens, where the room does not fit.
- */
 export function Shell({
   children,
   current,
@@ -89,10 +61,6 @@ export function Shell({
 
       <div className="main">
         <header className="topbar">
-          {/* The mark is the way back. It was already a link to the office,
-              but nothing about it said so — a logo in the top-left is read
-              as a logo, and people looked for a back button instead. The
-              chevron is what turns it into one. */}
           <Link className="topbar__home" href="/" aria-label="Back to the office">
             <svg
               className="topbar__back"
@@ -118,6 +86,7 @@ export function Shell({
           </span>
           <span className="topbar__spacer" />
           <div className="topbar__actions">
+            <Notifications />
             <span
               className={plane === 'org' ? 'chip' : 'chip chip--accent'}
               title={badge.sub}
@@ -128,7 +97,6 @@ export function Shell({
           </div>
         </header>
 
-        {/* Shown on narrow screens, where the chip alone is too quiet. */}
         <div className="plane-strip">
           <span aria-hidden="true">{badge.icon}</span>
           <span>{badge.sub}</span>

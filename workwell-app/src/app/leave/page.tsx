@@ -3,6 +3,7 @@ import { Empty, LoadError, PageHead, PlaneBadge, PrivacyNote } from '@/component
 import { Shell } from '@/components/shell'
 import { LeaveForm } from './form'
 import { OwnProfile } from './profile'
+import { ExportCsv } from '@/components/export-csv'
 
 // A missing or unparseable date must not reach the page as the string
 // "Invalid Date", which is what toLocaleDateString returns for one and
@@ -78,6 +79,13 @@ export default async function Leave() {
   const fullName = me.full_name
   const employment = employmentResult?.data ?? null
   const rows = requestResult?.data ?? []
+  const exportRows = rows.map((r) => ({
+    type: r.kind,
+    starts_on: r.starts_on,
+    ends_on: r.ends_on,
+    status: r.status,
+    note: r.note ?? '',
+  }))
   const taken = rows
     .filter((r) => r.status === 'approved')
     .reduce((sum, r) => sum + days(r.starts_on, r.ends_on), 0)
@@ -157,6 +165,13 @@ export default async function Leave() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+            {rows.length > 0 && (
+              <div style={{ padding: 'var(--s-3) var(--s-5)' }}>
+                <ExportCsv data={exportRows} filename="leave-requests.csv">
+                  Export CSV
+                </ExportCsv>
               </div>
             )}
           </div>
