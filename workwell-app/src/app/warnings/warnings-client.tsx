@@ -57,40 +57,34 @@ export default function WarningsClient() {
                 None on file.
               </p>
             ) : (
-              <div className="table-scroll">
-                <table className="data-table">
-                  <caption className="sr-only">Warning records</caption>
-                  <thead>
-                    <tr>
-                      <th scope="col">Employee</th>
-                      <th scope="col">Category</th>
-                      <th scope="col">Note</th>
-                      <th scope="col">Status</th>
-                      <th scope="col"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {warnings.map((w) => (
-                      <tr key={w.id}>
-                        <th scope="row" style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{w.employee}</th>
-                        <td><span className="chip">{w.category}</span></td>
-                        <td style={{ maxWidth: '32ch' }}>{w.note}</td>
-                        <td>
-                          <span className={w.status === 'Active' ? 'chip chip--accent' : 'chip'}>
-                            {w.status}
-                          </span>
-                        </td>
-                        <td style={{ whiteSpace: 'nowrap' }}>
-                          {w.status === 'Active' && (
-                            <button className="btn btn--ghost btn--sm" type="button" onClick={() => resolve(w.id)}>
-                              Mark resolved
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {warnings.map((w) => (
+                  <div
+                    key={w.id}
+                    style={{
+                      padding: 'var(--s-4) var(--s-5)',
+                      borderBottom: '1px solid var(--border)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s-3)', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', flexWrap: 'wrap' }}>
+                        <b style={{ fontWeight: 600 }}>{w.employee}</b>
+                        <span className="chip">{w.category}</span>
+                        <span className={w.status === 'Active' ? 'chip chip--accent' : 'chip'}>
+                          {w.status}
+                        </span>
+                      </div>
+                      {w.status === 'Active' && (
+                        <button className="btn btn--ghost btn--sm" type="button" onClick={() => resolve(w.id)}>
+                          Mark resolved
+                        </button>
+                      )}
+                    </div>
+                    <p style={{ marginTop: 'var(--s-2)', color: 'var(--text-muted)', fontSize: 'var(--fs-sm)' }}>
+                      {w.note}
+                    </p>
+                  </div>
+                ))}
               </div>
             )}
           </div>

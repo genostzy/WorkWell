@@ -5,7 +5,7 @@ import { Brandmark } from '@/components/brandmark'
 import { RoomSidebar } from '@/components/room-sidebar'
 import { SidebarToggle } from '@/components/sidebar-toggle'
 import { createClient } from '@/lib/supabase/server'
-import { BADGE, type Page, type Plane } from '@/components/chrome'
+import { type Page, type Plane } from '@/components/chrome'
 
 /**
  * Reads the database — for the room sidebar's account data — which is why
@@ -86,8 +86,6 @@ export function Shell({
    *  screens. */
   isHr?: boolean
 }) {
-  const badge = BADGE[plane]
-
   return (
     <div className="app app--room" data-plane={plane}>
       <Suspense
@@ -164,21 +162,9 @@ export function Shell({
           </span>
           <span className="topbar__spacer" />
           <div className="topbar__actions">
-            <span
-              className={plane === 'org' ? 'chip' : 'chip chip--accent'}
-              title={badge.sub}
-            >
-              {badge.icon} {badge.label}
-            </span>
             <SignOut compact />
           </div>
         </header>
-
-        {/* Shown on narrow screens, where the chip alone is too quiet. */}
-        <div className="plane-strip">
-          <span aria-hidden="true">{badge.icon}</span>
-          <span>{badge.sub}</span>
-        </div>
 
         <main className="content">{children}</main>
       </div>
