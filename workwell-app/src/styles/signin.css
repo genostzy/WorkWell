@@ -252,10 +252,14 @@
 }
 
 .signin-panel {
-  position: relative;
+  position: absolute;
   z-index: 1;
-  width: min(420px, 100vw);
-  min-height: 100vh;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(420px, calc(100vw - 2 * var(--s-6)));
+  max-height: calc(100vh - 2 * var(--s-6));
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -263,34 +267,37 @@
   background:
     radial-gradient(120% 90% at 12% 8%, var(--accent-quiet) 0%, transparent 60%),
     var(--surface-2);
-  border-right: 1px solid var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.06),
+    0 8px 24px rgba(0, 0, 0, 0.08);
   will-change: transform, opacity;
   contain: layout paint style;
   transition: transform 560ms var(--ease), opacity 560ms var(--ease);
 }
 
-/* Private-plane sign-in: the panel is the only thing that moves. It was
-   always sitting on top of the room's left edge, so sliding it fully off
-   is all "the room takes the centre" ever needed to be. Timed to match
-   .room__dim's own 560ms exactly (room.css) — the veil lifting behind it
+/* Private-plane sign-in: the panel was sitting over the room, so sliding
+   it up and fading it reveals the room underneath. Timed to match
+   .room__dim's own 560ms exactly — the veil lifting behind it
    and the panel leaving in front of it read as one motion, not two. */
 .signin-split.is-leaving-private .signin-panel {
-  transform: translateX(-100%);
+  transform: translate(-50%, -50%) translateY(-40px) scale(0.97);
   opacity: 0;
   pointer-events: none;
 }
 
 /* HR/admin sign-in: there is no room here for this account to unlock, so
-   nothing settles into place — the whole split slides off to the right
-   instead, and the real dashboard takes over underneath it. */
-.signin-split.is-leaving-hr {
-  transform: translateX(6vw);
+   nothing settles into place — the panel fades and scales down instead,
+   and the real dashboard takes over underneath it. */
+.signin-split.is-leaving-hr .signin-panel {
+  transform: translate(-50%, -50%) scale(0.95);
   opacity: 0;
   transition: transform 560ms var(--ease), opacity 560ms var(--ease);
 }
 
-/* The split is a desktop composition — a login form squeezed next to a
-   locked floor plan is worse than just the form on a narrow screen. */
+/* The panel is a centered card overlay — on narrow screens the room is
+   hidden and the card takes full width with generous padding. */
 @media (max-width: 900px) {
   /* room.css's own `.room-shell { display: flex }` is unconditional and
      loads after this file, so at equal specificity it would win over a
@@ -298,5 +305,7 @@
      says — the compound selector, not source order, is what makes this
      hide rule actually win. */
   .room-shell.signin-room-pane { display: none; }
-  .signin-panel { position: static; width: 100%; border-right: 0; }
+  .signin-panel {
+    width: min(420px, calc(100vw - 2 * var(--s-4)));
+  }
 }
