@@ -459,7 +459,7 @@ export function Office({
                 Stay
               </button>
               <button
-                className="btn btn--primary"
+                className="btn btn--danger"
                 type="button"
                 disabled={signingOut}
                 onClick={confirmSignOut}

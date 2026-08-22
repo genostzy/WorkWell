@@ -44,6 +44,7 @@ export function SignOut({ compact = false }: { compact?: boolean }) {
       // asking to be confirmed.
       confirmLabel="Confirm sign out"
       className={compact ? 'btn btn--ghost btn--sm' : 'btn btn--secondary btn--sm'}
+      confirmClassName="btn btn--danger btn--sm"
       disabled={busy}
       onConfirm={run}
     />
