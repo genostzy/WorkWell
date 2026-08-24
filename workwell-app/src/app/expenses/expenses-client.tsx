@@ -1,49 +1,95 @@
 'use client'
 
-import { useState } from 'react'
-import { PageHead, PlaneBadge } from '@/components/chrome'
+import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { fmtDate } from '@/lib/format-date'
 
 type Claim = {
   id: string
   category: string
   amount: number
-  date: string
-  note: string
-  status: 'Submitted' | 'Approved' | 'Reimbursed'
+  spent_on: string
+  note: string | null
+  status: 'Submitted' | 'Approved' | 'Reimbursed' | 'Declined'
 }
 
 const CATEGORIES = ['Travel', 'Meals', 'Equipment', 'Training', 'Other'] as const
-
-const SEED: Claim[] = [
-  { id: 'e1', category: 'Travel', amount: 1450, date: '2026-07-18', note: 'Client site visit, round trip', status: 'Reimbursed' },
-  { id: 'e2', category: 'Equipment', amount: 3200, date: '2026-08-02', note: 'Replacement mouse and headset', status: 'Approved' },
-]
 
 function peso(n: number) {
   return `₱${n.toLocaleString('en-PH')}`
 }
 
 export default function ExpensesClient() {
-  const [claims, setClaims] = useState<Claim[]>(SEED)
+  const [personId, setPersonId] = useState<string | null>(null)
+  const [claims, setClaims] = useState<Claim[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
   const [category, setCategory] = useState<string>(CATEGORIES[0])
   const [amount, setAmount] = useState('')
   const [date, setDate] = useState('')
   const [note, setNote] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
 
-  function submit(e: React.FormEvent) {
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const supabase = createClient()
+      const { data: me, error: meError } = await supabase
+        .from('me')
+        .select('id')
+        .maybeSingle()
+      if (cancelled) return
+      if (meError) {
+        setLoadError(meError.message)
+        setLoading(false)
+        return
+      }
+      setPersonId(me?.id ?? null)
+
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('id, category, amount, spent_on, note, status')
+        .order('created_at', { ascending: false })
+      if (cancelled) return
+      if (error) setLoadError(error.message)
+      else setClaims((data ?? []) as Claim[])
+      setLoading(false)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  async function submit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    if (!personId) return setError('This account is not linked to a person yet.')
     const value = Number(amount)
     if (!amount || Number.isNaN(value) || value <= 0) return setError('Enter an amount greater than zero.')
     if (!date) return setError('Choose the date of the expense.')
 
-    setClaims((c) => [
-      { id: crypto.randomUUID(), category, amount: value, date, note: note.trim(), status: 'Submitted' },
-      ...c,
-    ])
+    setSending(true)
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('expenses')
+      .insert({
+        person_id: personId,
+        category,
+        amount: value,
+        spent_on: date,
+        note: note.trim() || null,
+      })
+      .select('id, category, amount, spent_on, note, status')
+      .single()
+    setSending(false)
+
+    if (error) return setError(error.message)
+
+    setClaims((c) => [data as Claim, ...c])
     setCategory(CATEGORIES[0])
     setAmount('')
     setDate('')
@@ -62,7 +108,16 @@ export default function ExpensesClient() {
             <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
               <div className="card__title">Your claims</div>
             </div>
-            {claims.length === 0 ? (
+            {loadError && (
+              <div className="banner banner--error" style={{ margin: '0 var(--s-5) var(--s-5)' }} role="alert">
+                {loadError}
+              </div>
+            )}
+            {loading ? (
+              <div style={{ padding: '0 var(--s-5) var(--s-5)' }}>
+                <div className="skel skel--text" />
+              </div>
+            ) : claims.length === 0 ? (
               <p className="t-subtle" style={{ padding: '0 var(--s-5) var(--s-5)' }}>
                 Nothing claimed yet.
               </p>
@@ -82,10 +137,10 @@ export default function ExpensesClient() {
                     {claims.map((c) => (
                       <tr key={c.id}>
                         <th scope="row" style={{ fontWeight: 600 }}>{c.category}</th>
-                        <td>{fmtDate(c.date)}</td>
+                        <td>{fmtDate(c.spent_on)}</td>
                         <td className="t-num">{peso(c.amount)}</td>
                         <td>
-                          <span className={c.status === 'Reimbursed' ? 'chip chip--accent' : 'chip'}>
+                          <span className={c.status === 'Reimbursed' || c.status === 'Approved' ? 'chip chip--accent' : 'chip'}>
                             {c.status}
                           </span>
                         </td>
@@ -101,7 +156,7 @@ export default function ExpensesClient() {
         <div className="stack">
           <form className="card" onSubmit={submit}>
             <div className="card__title">Submit a claim</div>
-            <p className="card__sub">Goes to your manager for approval.</p>
+            <p className="card__sub">Goes to HR for approval.</p>
 
             {error && (
               <div className="banner banner--error" role="alert">{error}</div>
@@ -137,11 +192,20 @@ export default function ExpensesClient() {
             </div>
 
             <div className="mt-4">
-              <button className="btn btn--primary" type="submit">Submit claim</button>
+              <button className="btn btn--primary" type="submit" disabled={sending}>
+                {sending ? 'Sending…' : 'Submit claim'}
+              </button>
             </div>
           </form>
         </div>
       </div>
+
+      <PrivacyNote
+        plane="work"
+        detail="A claim is visible to you and to HR of your organisation from the moment you submit it — the same access as leave requests. Nothing about it reaches the private plane, and nothing you record elsewhere (check-ins, mood, boundaries) is ever attached to a claim."
+      >
+        <b>Seen by HR the moment you submit it.</b>{' '}
+      </PrivacyNote>
     </>
   )
 }
