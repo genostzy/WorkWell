@@ -1,6 +1,6 @@
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Office } from '@/components/office'
-import { AdminDashboard } from '@/components/admin-dashboard'
 import { SignInRoom } from '@/components/sign-in-room'
 import { PageHead } from '@/components/chrome'
 import { Shell } from '@/components/shell'
@@ -105,15 +105,9 @@ export default async function Home() {
   ])
   const isHr = (roles ?? []).some((r) => r.role === 'hr')
 
-  // An HR/admin account has no office to walk around in — it holds no
-  // private plane, so a room built to navigate one has nothing to show it.
-  // Its whole plane is the administration list, laid out as a dashboard.
+  // An HR/admin account goes straight to Structural load — no hub in between.
   if (isHr) {
-    return (
-      <Shell current="home" plane="work" isHr>
-        <AdminDashboard name={profile?.preferred_name || me.full_name} />
-      </Shell>
-    )
+    redirect('/org')
   }
 
   // The office is the interface, not a menu. The room is the navigation

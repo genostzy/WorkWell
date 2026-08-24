@@ -85,12 +85,14 @@ export function ConfirmButton({
   label,
   confirmLabel = 'Sure?',
   className = 'btn btn--secondary btn--sm',
+  confirmClassName,
   disabled,
   onConfirm,
 }: {
   label: string
   confirmLabel?: string
   className?: string
+  confirmClassName?: string
   disabled?: boolean
   onConfirm: () => void
 }) {
@@ -100,7 +102,7 @@ export function ConfirmButton({
     return (
       <span className="confirm-inline">
         <button
-          className={className}
+          className={confirmClassName ?? className}
           type="button"
           autoFocus
           disabled={disabled}

@@ -4,13 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
-export function Decide({
-  id,
-  personId,
-}: {
-  id: string
-  personId: string
-}) {
+export function ExpenseDecide({ id }: { id: string }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState<string | null>(null)
@@ -22,27 +16,16 @@ export function Decide({
 
     const supabase = createClient()
     const { error } = await supabase
-      .from('leave_requests')
+      .from('expenses')
       .update({ status, decided_at: new Date().toISOString() })
       .eq('id', id)
 
-    if (error) {
-      setBusy(false)
-      setError(error.message)
-      return
-    }
-
-    await supabase.from('notifications').insert({
-      person_id: personId,
-      kind: 'leave_decided',
-      title: 'Leave request ' + status,
-      body: 'Your leave request has been ' + status + '.',
-      link: '/leave',
-    })
-
     setBusy(false)
-    setDone(status)
-    router.refresh()
+    if (error) setError(error.message)
+    else {
+      setDone(status)
+      router.refresh()
+    }
   }
 
   if (done) {
