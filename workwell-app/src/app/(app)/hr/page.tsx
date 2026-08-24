@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { LoadError, PageHead, PlaneBadge, PrivacyNote, RoleLocked } from '@/components/chrome'
 import { Decide } from '../../hr/decide'
 import { DecideAttendanceReset } from '../../hr/decide-attendance-reset'
+import { DecideExpense } from '../../hr/decide-expense'
+import { DecidePayrollRequest } from '../../hr/decide-payroll-request'
 
 function fmt(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', {
@@ -32,6 +34,8 @@ export default async function Hr() {
     { data: leave, error: leaveError },
     { data: resets, error: resetsError },
     { data: resetAttendance },
+    { data: expenses, error: expensesError },
+    { data: payrollRequests, error: payrollRequestsError },
   ] = await Promise.all([
     supabase.from('people').select('id, full_name, status').order('full_name'),
     supabase.from('employment').select('person_id, job_title, department'),
@@ -44,9 +48,19 @@ export default async function Hr() {
       .select('id, person_id, day, reason, status')
       .order('created_at', { ascending: false }),
     supabase.from('attendance').select('person_id, day, time_in, lunch_start, lunch_end, time_out'),
+    supabase
+      .from('expenses')
+      .select('id, person_id, category, amount, spent_on, note, status')
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('payroll_requests')
+      .select('id, person_id, kind, note, status')
+      .order('created_at', { ascending: false }),
   ])
 
-  const readError = peopleError ?? leaveError ?? resetsError
+  // An empty directory and a directory that would not load look identical
+  // once the rows are gone, and only one of them means "add someone".
+  const readError = peopleError ?? leaveError ?? resetsError ?? expensesError ?? payrollRequestsError
   if (readError) {
     return (
       <>
@@ -64,6 +78,16 @@ export default async function Hr() {
   const pendingResets = (resets ?? []).filter((r) => r.status === 'pending')
   const attendanceFor = new Map(
     (resetAttendance ?? []).map((a) => [`${a.person_id}:${a.day}`, a])
+  )
+
+  // Approved sits alongside Submitted here — both still need something from
+  // HR (a decision, then a reimbursement), unlike Reimbursed and Declined
+  // which are the two states nothing more ever happens to.
+  const openExpenses = (expenses ?? []).filter(
+    (e) => e.status === 'Submitted' || e.status === 'Approved'
+  )
+  const pendingPayrollRequests = (payrollRequests ?? []).filter(
+    (r) => r.status === 'Pending'
   )
 
   return (
@@ -169,6 +193,59 @@ export default async function Hr() {
                 </div>
               )
             })}
+          </div>
+        )}
+      </div>
+
+      <div className="card">
+        <div className="card__head">
+          <div>
+            <div className="card__title">Expenses to review</div>
+            <div className="card__sub">Submitted claims, and approved ones waiting to be marked paid</div>
+          </div>
+        </div>
+        {openExpenses.length === 0 ? (
+          <p className="t-subtle">Nothing waiting on you.</p>
+        ) : (
+          <div className="stack">
+            {openExpenses.map((e) => (
+              <div className="card card--quiet" key={e.id} style={{ margin: 0 }}>
+                <div className="row row--between">
+                  <b>{names.get(e.person_id) ?? 'Someone'}</b>
+                  <span className="chip">{e.category}</span>
+                </div>
+                <p className="t-subtle mt-2">
+                  {fmt(e.spent_on)} · ₱{Number(e.amount).toLocaleString('en-PH')}
+                </p>
+                {e.note && <p className="t-subtle">{e.note}</p>}
+                <DecideExpense id={e.id} status={e.status} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="card">
+        <div className="card__head">
+          <div>
+            <div className="card__title">Payroll requests to review</div>
+            <div className="card__sub">Awaiting a decision from you</div>
+          </div>
+        </div>
+        {pendingPayrollRequests.length === 0 ? (
+          <p className="t-subtle">Nothing waiting on you.</p>
+        ) : (
+          <div className="stack">
+            {pendingPayrollRequests.map((r) => (
+              <div className="card card--quiet" key={r.id} style={{ margin: 0 }}>
+                <div className="row row--between">
+                  <b>{names.get(r.person_id) ?? 'Someone'}</b>
+                  <span className="chip">{r.kind}</span>
+                </div>
+                <p className="t-subtle mt-2">{r.note}</p>
+                <DecidePayrollRequest id={r.id} />
+              </div>
+            ))}
           </div>
         )}
       </div>
