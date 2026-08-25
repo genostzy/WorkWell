@@ -92,12 +92,16 @@ export function RoomSidebar({
   initials,
   colour = 'accent',
   avatarUrl = null,
+  avatarOffsetX = 50,
+  avatarOffsetY = 50,
 }: {
   isHr: boolean
   name: string
   initials?: string | null
   colour?: string
   avatarUrl?: string | null
+  avatarOffsetX?: number
+  avatarOffsetY?: number
 }) {
   const pathname = usePathname()
   const displayInitials = initials?.trim() || initialsOf(name)
@@ -128,7 +132,12 @@ export function RoomSidebar({
         <Link href="/profile" className="sidebar-avatar">
           <div className="sidebar-avatar__circle" data-avatar-colour={colour}>
             {avatarUrl ? (
-              <img src={avatarUrl} alt="" className="sidebar-avatar__photo" />
+              <img
+                src={avatarUrl}
+                alt=""
+                className="sidebar-avatar__photo"
+                style={{ objectPosition: `${avatarOffsetX}% ${avatarOffsetY}%` }}
+              />
             ) : (
               <span className="sidebar-avatar__initials">{displayInitials}</span>
             )}

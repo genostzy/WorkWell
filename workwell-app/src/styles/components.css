@@ -915,6 +915,7 @@ details.table-view summary:hover { color: var(--text); }
 /* Accent-tinted so initials actually read — surface-3 on surface is barely
    a difference in dark mode. */
 .avatar {
+  position: relative;
   width: 38px; height: 38px;
   flex: none;
   border-radius: 50%;
@@ -926,7 +927,12 @@ details.table-view summary:hover { color: var(--text); }
   overflow: hidden;
 }
 
+/* Positioned rather than width/height: 100% — see .sidebar-avatar__photo
+   in layout.css for why a percentage height on a grid-cell image can't be
+   trusted to stay square. */
 .avatar__photo {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;

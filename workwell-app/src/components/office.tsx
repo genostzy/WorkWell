@@ -102,6 +102,8 @@ export function Office({
   colour = 'accent',
   greeting = 'warm',
   avatarUrl = null,
+  avatarOffsetX = 50,
+  avatarOffsetY = 50,
 }: {
   /** Preferred name if one is set, otherwise the employment record's. */
   name: string
@@ -111,6 +113,9 @@ export function Office({
   greeting?: string
   /** A signed URL for the figure's photo; null draws the colour dot instead. */
   avatarUrl?: string | null
+  /** Where within the photo the crop is centred, 0-100 each axis. */
+  avatarOffsetX?: number
+  avatarOffsetY?: number
 }) {
   const router = useRouter()
   const roomRef = useRef<HTMLDivElement>(null)
@@ -186,10 +191,15 @@ export function Office({
     // every call, so there is never a stale image node to clean up first.
     // Radius matches .room-avatar__dot's own CSS-set r (room.css) minus a
     // few px for the ring — keep the two in step if that size changes.
+    //
+    // A foreignObject rather than an SVG <image>: preserveAspectRatio only
+    // offers nine fixed alignment points, not the continuous position
+    // Profile settings' sliders produce. A plain HTML <img> with the same
+    // object-fit/object-position the sidebar and profile card use gets an
+    // identical crop everywhere the photo appears, from one shared rule.
     const avatarGroup = roomRef.current.querySelector('.room-avatar')
     if (avatarGroup && avatarUrl) {
       const svgNS = 'http://www.w3.org/2000/svg'
-      const xlinkNS = 'http://www.w3.org/1999/xlink'
       const photoRadius = 21
       const photoSize = photoRadius * 2
 
@@ -202,17 +212,24 @@ export function Office({
       clip.appendChild(clipCircle)
       avatarGroup.appendChild(clip)
 
-      const image = document.createElementNS(svgNS, 'image')
-      image.setAttribute('class', 'room-avatar__photo')
-      image.setAttribute('x', String(500 - photoRadius))
-      image.setAttribute('y', String(672 - photoRadius))
-      image.setAttribute('width', String(photoSize))
-      image.setAttribute('height', String(photoSize))
-      image.setAttribute('preserveAspectRatio', 'xMidYMid slice')
-      image.setAttribute('clip-path', 'url(#room-avatar-clip)')
-      image.setAttributeNS(xlinkNS, 'href', avatarUrl)
-      image.setAttribute('href', avatarUrl)
-      avatarGroup.appendChild(image)
+      const fo = document.createElementNS(svgNS, 'foreignObject')
+      fo.setAttribute('x', String(500 - photoRadius))
+      fo.setAttribute('y', String(672 - photoRadius))
+      fo.setAttribute('width', String(photoSize))
+      fo.setAttribute('height', String(photoSize))
+      fo.setAttribute('clip-path', 'url(#room-avatar-clip)')
+
+      const image = document.createElement('img')
+      image.className = 'room-avatar__photo'
+      image.alt = ''
+      image.src = avatarUrl
+      image.style.width = '100%'
+      image.style.height = '100%'
+      image.style.display = 'block'
+      image.style.objectFit = 'cover'
+      image.style.objectPosition = `${avatarOffsetX}% ${avatarOffsetY}%`
+      fo.appendChild(image)
+      avatarGroup.appendChild(fo)
     }
 
     if (listRef.current) {
@@ -222,7 +239,7 @@ export function Office({
     setPhase(WW.room.phaseAt(minutes))
     setClock(WW.room.formatTime(minutes))
     setLoaded(true)
-  }, [name, initials, colour, avatarUrl])
+  }, [name, initials, colour, avatarUrl, avatarOffsetX, avatarOffsetY])
 
   useIsomorphicLayoutEffect(() => {
     const mq = window.matchMedia('(max-width: 860px)')
