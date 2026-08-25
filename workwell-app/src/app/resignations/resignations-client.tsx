@@ -1,28 +1,117 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { ConfirmButton } from '@/components/controls'
 import { fmtDate } from '@/lib/format-date'
 
+type Resignation = {
+  id: string
+  last_day: string
+  status: 'Submitted' | 'Acknowledged' | 'Withdrawn'
+}
+
 export default function ResignationsClient() {
+  const [personId, setPersonId] = useState<string | null>(null)
+  const [current, setCurrent] = useState<Resignation | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
   const [lastDay, setLastDay] = useState('')
   const [reason, setReason] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [sent, setSent] = useState<{ lastDay: string } | null>(null)
+  const [sending, setSending] = useState(false)
+  const [withdrawing, setWithdrawing] = useState(false)
 
-  function submit(e: React.FormEvent) {
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const supabase = createClient()
+      const { data: me, error: meError } = await supabase.from('me').select('id').maybeSingle()
+      if (cancelled) return
+      if (meError) {
+        setLoadError(meError.message)
+        setLoading(false)
+        return
+      }
+      setPersonId(me?.id ?? null)
+
+      const { data, error } = await supabase
+        .from('resignations')
+        .select('id, last_day, status')
+        .neq('status', 'Withdrawn')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (cancelled) return
+      if (error) setLoadError(error.message)
+      setCurrent((data as Resignation) ?? null)
+      setLoading(false)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  async function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!lastDay) return setError('Choose your proposed last day.')
     setError(null)
-    setSent({ lastDay })
+    if (!personId) return setError('This account is not linked to a person yet.')
+    if (!lastDay) return setError('Choose your proposed last day.')
+
+    setSending(true)
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('resignations')
+      .insert({ person_id: personId, last_day: lastDay, reason: reason.trim() || null })
+      .select('id, last_day, status')
+      .single()
+    setSending(false)
+
+    if (error) return setError(error.message)
+    setCurrent(data as Resignation)
   }
 
-  if (sent) {
+  async function withdraw() {
+    if (!current) return
+    setWithdrawing(true)
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('resignations')
+      .update({ status: 'Withdrawn' })
+      .eq('id', current.id)
+    setWithdrawing(false)
+
+    if (error) return setLoadError(error.message)
+    setCurrent(null)
+    setLastDay('')
+    setReason('')
+  }
+
+  if (loading) {
     return (
       <>
         <PageHead title="Resignations" lead="Hand in notice, and see where it stands." />
         <PlaneBadge plane="work" />
+        <div className="card">
+          <div className="skel skel--text" />
+        </div>
+      </>
+    )
+  }
+
+  if (current) {
+    return (
+      <>
+        <PageHead title="Resignations" lead="Hand in notice, and see where it stands." />
+        <PlaneBadge plane="work" />
+
+        {loadError && (
+          <div className="banner banner--error mb-5" role="alert">
+            {loadError}
+          </div>
+        )}
 
         <div className="card">
           <h2 className="card__title mb-3">Notice submitted</h2>
@@ -36,24 +125,31 @@ export default function ResignationsClient() {
                 </tr>
                 <tr>
                   <th scope="row" style={{ fontWeight: 600 }}>Acknowledged by HR</th>
-                  <td><span className="chip">Pending</span></td>
+                  <td>
+                    <span className={current.status === 'Acknowledged' ? 'chip chip--accent' : 'chip'}>
+                      {current.status === 'Acknowledged' ? 'Done' : 'Pending'}
+                    </span>
+                  </td>
                 </tr>
                 <tr>
                   <th scope="row" style={{ fontWeight: 600 }}>Last day agreed</th>
                   <td>
-                    {fmtDate(sent.lastDay, { day: 'numeric', month: 'long', year: 'numeric' })}{' '}
+                    {fmtDate(current.last_day, { day: 'numeric', month: 'long', year: 'numeric' })}{' '}
                     <span className="t-subtle">(proposed)</span>
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <ConfirmButton
-            label="Withdraw notice"
-            confirmLabel="Withdraw"
-            className="btn btn--secondary mt-4"
-            onConfirm={() => setSent(null)}
-          />
+          {current.status === 'Submitted' && (
+            <ConfirmButton
+              label="Withdraw notice"
+              confirmLabel="Withdraw"
+              className="btn btn--secondary mt-4"
+              onConfirm={withdraw}
+              disabled={withdrawing}
+            />
+          )}
         </div>
 
         <PrivacyNote
@@ -94,7 +190,9 @@ export default function ResignationsClient() {
         </div>
 
         <div className="mt-4">
-          <button className="btn btn--primary" type="submit">Submit notice</button>
+          <button className="btn btn--primary" type="submit" disabled={sending}>
+            {sending ? 'Sending…' : 'Submit notice'}
+          </button>
         </div>
       </form>
 

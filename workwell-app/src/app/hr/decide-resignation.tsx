@@ -4,27 +4,21 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
-export function Decide({
-  id,
-  personId,
-}: {
-  id: string
-  personId: string
-}) {
+export function DecideResignation({ id, personId }: { id: string; personId: string }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
-  const [done, setDone] = useState<string | null>(null)
+  const [done, setDone] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function decide(status: 'approved' | 'declined') {
+  async function acknowledge() {
     setBusy(true)
     setError(null)
 
     const supabase = createClient()
     const { data: me } = await supabase.from('me').select('id').maybeSingle()
     const { error } = await supabase
-      .from('leave_requests')
-      .update({ status, decided_by: me?.id ?? null, decided_at: new Date().toISOString() })
+      .from('resignations')
+      .update({ status: 'Acknowledged', decided_by: me?.id ?? null, decided_at: new Date().toISOString() })
       .eq('id', id)
 
     if (error) {
@@ -35,14 +29,14 @@ export function Decide({
 
     await supabase.from('notifications').insert({
       person_id: personId,
-      kind: 'leave_decided',
-      title: 'Leave request ' + status,
-      body: 'Your leave request has been ' + status + '.',
-      link: '/leave',
+      kind: 'resignation_updated',
+      title: 'Your notice has been acknowledged',
+      body: 'HR has acknowledged the resignation notice you submitted.',
+      link: '/resignations',
     })
 
     setBusy(false)
-    setDone(status)
+    setDone(true)
     router.refresh()
   }
 
@@ -50,7 +44,7 @@ export function Decide({
     return (
       <p className="confirmed mt-3" role="status">
         <span aria-hidden="true">✓</span>
-        <span>{done === 'approved' ? 'Approved.' : 'Declined.'}</span>
+        <span>Acknowledged.</span>
       </p>
     )
   }
@@ -58,20 +52,13 @@ export function Decide({
   return (
     <>
       {error && (
-        <div className="banner banner--error" role="alert">
+        <div className="banner banner--error mt-3" role="alert">
           {error}
         </div>
       )}
       <div className="row mt-3">
-        <button className="btn btn--primary btn--sm" disabled={busy} onClick={() => decide('approved')}>
-          Approve
-        </button>
-        <button
-          className="btn btn--secondary btn--sm"
-          disabled={busy}
-          onClick={() => decide('declined')}
-        >
-          Decline
+        <button className="btn btn--primary btn--sm" disabled={busy} onClick={acknowledge}>
+          Acknowledge
         </button>
       </div>
     </>

@@ -1,29 +1,58 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge } from '@/components/chrome'
 
-type Field = { id: string; name: string; type: 'Text' | 'Number' | 'Date' | 'Select' }
+type Field = { id: string; name: string; field_type: 'Text' | 'Number' | 'Date' | 'Select' }
 
 const TYPES = ['Text', 'Number', 'Date', 'Select'] as const
 
-const SEED: Field[] = [
-  { id: 'f1', name: 'Emergency contact', type: 'Text' },
-  { id: 'f2', name: 'Shirt size', type: 'Select' },
-  { id: 'f3', name: 'Work anniversary bonus paid', type: 'Date' },
-]
-
 export default function CustomFieldsClient() {
-  const [fields, setFields] = useState<Field[]>(SEED)
+  const [fields, setFields] = useState<Field[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
   const [name, setName] = useState('')
   const [type, setType] = useState<string>(TYPES[0])
   const [error, setError] = useState<string | null>(null)
+  const [sending, setSending] = useState(false)
 
-  function submit(e: React.FormEvent) {
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('custom_fields')
+        .select('id, name, field_type')
+        .order('created_at')
+      if (cancelled) return
+      if (error) setLoadError(error.message)
+      setFields((data ?? []) as Field[])
+      setLoading(false)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  async function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim()) return setError('Give the field a name.')
     setError(null)
-    setFields((f) => [...f, { id: crypto.randomUUID(), name: name.trim(), type: type as Field['type'] }])
+    if (!name.trim()) return setError('Give the field a name.')
+
+    setSending(true)
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('custom_fields')
+      .insert({ name: name.trim(), field_type: type })
+      .select('id, name, field_type')
+      .single()
+    setSending(false)
+
+    if (error) return setError(error.message)
+
+    setFields((f) => [...f, data as Field])
     setName('')
     setType(TYPES[0])
   }
@@ -43,25 +72,40 @@ export default function CustomFieldsClient() {
               <h2 className="card__title">Defined fields</h2>
               <div className="card__sub">Shown on every record, on People</div>
             </div>
-            <div className="table-scroll">
-              <table className="data-table">
-                <caption className="sr-only">Custom employment record fields</caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Field</th>
-                    <th scope="col">Type</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {fields.map((f) => (
-                    <tr key={f.id}>
-                      <th scope="row" style={{ fontWeight: 600 }}>{f.name}</th>
-                      <td><span className="chip">{f.type}</span></td>
+            {loadError && (
+              <div className="banner banner--error" style={{ margin: '0 var(--s-5) var(--s-5)' }} role="alert">
+                {loadError}
+              </div>
+            )}
+            {loading ? (
+              <div style={{ padding: '0 var(--s-5) var(--s-5)' }}>
+                <div className="skel skel--text" />
+              </div>
+            ) : fields.length === 0 ? (
+              <p className="t-subtle" style={{ padding: '0 var(--s-5) var(--s-5)' }}>
+                No fields defined yet.
+              </p>
+            ) : (
+              <div className="table-scroll">
+                <table className="data-table">
+                  <caption className="sr-only">Custom employment record fields</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Field</th>
+                      <th scope="col">Type</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {fields.map((f) => (
+                      <tr key={f.id}>
+                        <th scope="row" style={{ fontWeight: 600 }}>{f.name}</th>
+                        <td><span className="chip">{f.field_type}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
 
@@ -84,7 +128,9 @@ export default function CustomFieldsClient() {
             </div>
 
             <div className="mt-4">
-              <button className="btn btn--primary" type="submit">Add field</button>
+              <button className="btn btn--primary" type="submit" disabled={sending}>
+                {sending ? 'Adding…' : 'Add field'}
+              </button>
             </div>
           </form>
         </div>

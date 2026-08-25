@@ -4,9 +4,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
-/** Unlike leave_requests' Decide (which leaves decided_by unset), HR here
- *  does have a person row of its own -- decided_by is a real FK, so this
- *  fills it in rather than leaving an audit column permanently empty. */
 export function DecideExpense({
   id,
   status,

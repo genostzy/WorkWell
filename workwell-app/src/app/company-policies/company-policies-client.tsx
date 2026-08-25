@@ -1,23 +1,63 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { ToggleRow } from '@/components/controls'
 import { fmtDate } from '@/lib/format-date'
 
-type Policy = { id: string; title: string; updated: string }
-
-const POLICIES: Policy[] = [
-  { id: 'p1', title: 'Code of conduct', updated: '2026-01-12' },
-  { id: 'p2', title: 'Leave and time off', updated: '2026-02-03' },
-  { id: 'p3', title: 'Data & device security', updated: '2026-04-20' },
-  { id: 'p4', title: 'Anti-harassment policy', updated: '2026-05-15' },
-  { id: 'p5', title: 'Expense reimbursement', updated: '2026-06-01' },
-]
+type Policy = { id: string; title: string; updated_on: string }
 
 export default function CompanyPoliciesClient() {
+  const [personId, setPersonId] = useState<string | null>(null)
+  const [policies, setPolicies] = useState<Policy[]>([])
   const [ack, setAck] = useState<Record<string, boolean>>({})
-  const done = POLICIES.filter((p) => ack[p.id]).length
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const supabase = createClient()
+      const { data: me, error: meError } = await supabase.from('me').select('id').maybeSingle()
+      if (cancelled) return
+      if (meError) {
+        setLoadError(meError.message)
+        setLoading(false)
+        return
+      }
+      setPersonId(me?.id ?? null)
+
+      const [{ data: ps, error: psError }, { data: acks, error: acksError }] = await Promise.all([
+        supabase.from('policies').select('id, title, updated_on').order('title'),
+        supabase.from('policy_acks').select('policy_id'),
+      ])
+      if (cancelled) return
+      if (psError ?? acksError) setLoadError((psError ?? acksError)!.message)
+      setPolicies((ps ?? []) as Policy[])
+      setAck(Object.fromEntries((acks ?? []).map((a) => [a.policy_id, true])))
+      setLoading(false)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  async function acknowledge(policyId: string) {
+    if (!personId) return
+    setBusy(policyId)
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('policy_acks')
+      .insert({ policy_id: policyId, person_id: personId })
+    setBusy(null)
+
+    if (error) return setLoadError(error.message)
+    setAck((a) => ({ ...a, [policyId]: true }))
+  }
+
+  const done = policies.filter((p) => ack[p.id]).length
 
   return (
     <>
@@ -27,30 +67,49 @@ export default function CompanyPoliciesClient() {
       />
       <PlaneBadge plane="work" />
 
-      <div className="card mb-5">
-        <div className="stat">
-          <span className="stat__value t-num">{done}</span>
-          <span className="stat__label">of {POLICIES.length} acknowledged</span>
+      {loadError && (
+        <div className="banner banner--error mb-5" role="alert">
+          {loadError}
         </div>
-        <div className="meter mt-3">
-          <div className="meter__track">
-            <div className="meter__fill" style={{ width: `${(done / POLICIES.length) * 100}%` }} />
-          </div>
-        </div>
-      </div>
+      )}
 
-      <div className="stack">
-        {POLICIES.map((p) => (
-          <div className="card" key={p.id}>
-            <ToggleRow
-              title={p.title}
-              desc={`Updated ${fmtDate(p.updated)}${ack[p.id] ? ' · Acknowledged' : ''}`}
-              on={!!ack[p.id]}
-              onChange={(on) => setAck((a) => ({ ...a, [p.id]: on }))}
-            />
+      {loading ? (
+        <div className="card">
+          <div className="skel skel--text" />
+        </div>
+      ) : (
+        <>
+          <div className="card mb-5">
+            <div className="stat">
+              <span className="stat__value t-num">{done}</span>
+              <span className="stat__label">of {policies.length} acknowledged</span>
+            </div>
+            <div className="meter mt-3">
+              <div className="meter__track">
+                <div
+                  className="meter__fill"
+                  style={{ width: `${policies.length === 0 ? 0 : (done / policies.length) * 100}%` }}
+                />
+              </div>
+            </div>
           </div>
-        ))}
-      </div>
+
+          <div className="stack">
+            {policies.map((p) => (
+              <div className="card" key={p.id}>
+                <ToggleRow
+                  title={p.title}
+                  desc={`Updated ${fmtDate(p.updated_on)}${ack[p.id] ? ' · Acknowledged' : ''}`}
+                  on={!!ack[p.id]}
+                  onChange={(next) => {
+                    if (next && !ack[p.id] && busy !== p.id) acknowledge(p.id)
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       <PrivacyNote
         plane="work"

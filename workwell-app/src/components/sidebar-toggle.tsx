@@ -53,7 +53,7 @@ export function SidebarToggle({ isHr }: { isHr: boolean }) {
         <span className="hub__glyph" aria-hidden="true">
           {isHr ? '📋' : '🏠'}
         </span>
-        {isHr ? 'Dashboard' : 'Your space'}
+        {isHr ? 'Administration' : 'Your space'}
       </button>
     </>
   )

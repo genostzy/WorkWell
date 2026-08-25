@@ -87,7 +87,7 @@ export function Shell({
    *  per page.tsx. */
   title?: string
   plane?: Plane
-  /** Swaps the "back to your space" chrome for "back to the dashboard" —
+  /** Swaps the "back to your space" chrome for "back to administration" —
    *  an HR/admin account has no space of its own, only the administration
    *  screens. */
   isHr?: boolean
@@ -124,9 +124,9 @@ export function Shell({
 
       <div className="main">
         <header className="topbar">
-          {/* The mark is the way back — except on the dashboard itself,
-              where "back" has nowhere to go, same as your space never
-              needed one on its own home screen. */}
+          {/* The mark is the way back — except on administration's own
+              home screen, where "back" has nowhere to go, same as your
+              space never needed one on its own home screen. */}
           {current === 'home' ? (
             <span className="topbar__home topbar__home--static">
               <span className="sidebar__mark">
@@ -137,7 +137,7 @@ export function Shell({
             <Link
               className="topbar__home"
               href="/"
-              aria-label={isHr ? 'Back to the dashboard' : 'Back to your space'}
+              aria-label={isHr ? 'Back to administration' : 'Back to your space'}
             >
               <svg
                 className="topbar__back"
@@ -156,7 +156,7 @@ export function Shell({
               <span className="sidebar__mark">
                 <Brandmark size={28} />
               </span>
-              <span className="topbar__backword">{isHr ? 'Dashboard' : 'Your space'}</span>
+              <span className="topbar__backword">{isHr ? 'Administration' : 'Your space'}</span>
             </Link>
           )}
           <span className="topbar__title">
