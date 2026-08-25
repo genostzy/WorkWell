@@ -55,7 +55,7 @@ export default function LetterHeadsClient() {
       <div className="grid grid--sidebar-right">
         <div className="stack">
           <form className="card" onSubmit={generate}>
-            <div className="card__title">Generate a letter</div>
+            <h2 className="card__title">Generate a letter</h2>
             <p className="card__sub">Fills a template from an employment record.</p>
 
             <div className="mt-4">
@@ -79,7 +79,7 @@ export default function LetterHeadsClient() {
 
           <div className="card card--flush">
             <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-              <div className="card__title">Available templates</div>
+              <h2 className="card__title">Available templates</h2>
             </div>
             <div className="table-scroll">
               <table className="data-table">
@@ -99,7 +99,7 @@ export default function LetterHeadsClient() {
         <div className="stack">
           {preview ? (
             <div className="card">
-              <div className="card__title mb-1">{preview.template}</div>
+              <h2 className="card__title mb-1">{preview.template}</h2>
               <div className="card__sub mb-3">Preview — not sent or saved</div>
               <p style={{ whiteSpace: 'pre-wrap' }}>{preview.body}</p>
             </div>

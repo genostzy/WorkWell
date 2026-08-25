@@ -118,9 +118,9 @@ export function Notifications() {
             zIndex: 100,
           }}
         >
-          <div className="card__title" style={{ padding: 'var(--s-3) var(--s-4)' }}>
+          <h2 className="card__title" style={{ padding: 'var(--s-3) var(--s-4)' }}>
             Notifications
-          </div>
+          </h2>
           {notifications.length === 0 ? (
             <p className="t-subtle" style={{ padding: 'var(--s-3) var(--s-4)' }}>
               All caught up.

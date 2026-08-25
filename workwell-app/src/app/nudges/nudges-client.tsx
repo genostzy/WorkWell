@@ -149,7 +149,7 @@ export default function NudgesClient() {
           <div className="card">
             <div className="card__head">
               <div>
-                <div className="card__title">Waiting for you</div>
+                <h2 className="card__title">Waiting for you</h2>
                 <div className="card__sub">
                   Delivered hourly during your working window
                 </div>
@@ -223,7 +223,7 @@ export default function NudgesClient() {
 
           <div className="grid grid--2">
             <div className="card">
-              <div className="card__title mb-2">Which nudges you&rsquo;d like</div>
+              <h2 className="card__title mb-2">Which nudges you&rsquo;d like</h2>
               <p className="card__sub mb-4">All off by default</p>
               <div className="stack stack--tight">
                 {KINDS.map((k) => (
@@ -240,12 +240,12 @@ export default function NudgesClient() {
             </div>
 
             <div className="card">
-              <div className="card__title mb-3">
+              <h2 className="card__title mb-3">
                 Never interrupt{' '}
                 <span className="t-subtle" style={{ fontWeight: 500 }}>
                   — enforced
                 </span>
-              </div>
+              </h2>
               <p className="t-subtle mb-4">
                 These are not preferences. They hold whatever else you turn on.
               </p>
@@ -269,7 +269,7 @@ export default function NudgesClient() {
           <div className="card card--quiet">
             <div className="row row--between">
               <div>
-                <div className="card__title">Daily cap</div>
+                <h2 className="card__title">Daily cap</h2>
                 <p className="card__sub">
                   {delivered.length} of at most {value.daily_cap} today. The cap
                   is the point.

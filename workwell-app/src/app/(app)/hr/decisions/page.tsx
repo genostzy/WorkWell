@@ -65,7 +65,7 @@ export default async function DecisionHistory() {
 
       <div className="card card--flush mt-5">
         <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-          <div className="card__title">All decisions</div>
+          <h2 className="card__title">All decisions</h2>
           <div className="card__sub">
             {rows.length === 1 ? '1 decision' : `${rows.length} decisions`}
           </div>

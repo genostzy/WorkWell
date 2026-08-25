@@ -495,7 +495,7 @@ export default function CheckInClient() {
       <div className="card card--quiet mt-5">
         <div className="row row--between">
           <div>
-            <div className="card__title">Prefer a different format?</div>
+            <h2 className="card__title">Prefer a different format?</h2>
             <p className="t-subtle mt-2">Emoji, sliders, or plain words.</p>
           </div>
           <Link className="btn btn--secondary btn--sm nowrap" href="/workspace">

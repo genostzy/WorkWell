@@ -50,7 +50,7 @@ export default function WarningsClient() {
         <div className="stack">
           <div className="card card--flush">
             <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-              <div className="card__title">Records</div>
+              <h2 className="card__title">Records</h2>
             </div>
             {warnings.length === 0 ? (
               <p className="t-subtle" style={{ padding: '0 var(--s-5) var(--s-5)' }}>
@@ -92,7 +92,7 @@ export default function WarningsClient() {
 
         <div className="stack">
           <form className="card" onSubmit={submit}>
-            <div className="card__title">Raise a warning</div>
+            <h2 className="card__title">Raise a warning</h2>
 
             {error && <div className="banner banner--error" role="alert">{error}</div>}
 

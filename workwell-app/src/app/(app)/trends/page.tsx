@@ -172,7 +172,7 @@ export default async function Trends() {
 
       {signals.length > 0 && (
         <div className="card card--accent">
-          <div className="card__title mb-2">Worth noticing</div>
+          <h2 className="card__title mb-2">Worth noticing</h2>
           <p className="t-subtle">
             Your last {RECENT} check-ins run {describeSignals(signals)} than
             the weeks before them. Not a score, not a diagnosis — a pattern
@@ -186,7 +186,7 @@ export default async function Trends() {
         <div className="card">
           <div className="card__head">
             <div>
-              <div className="card__title">Your typical day</div>
+              <h2 className="card__title">Your typical day</h2>
               <div className="card__sub">
                 Averaged across everything you have recorded
               </div>
@@ -208,7 +208,7 @@ export default async function Trends() {
         </div>
       ) : (
         <div className="card card--quiet">
-          <div className="card__title mb-2">Not enough data yet</div>
+          <h2 className="card__title mb-2">Not enough data yet</h2>
           <p className="t-subtle">
             {ENOUGH - rows.length} more check-in
             {ENOUGH - rows.length === 1 ? '' : 's'} and a pattern can be
@@ -220,7 +220,7 @@ export default async function Trends() {
 
       <div className="card card--flush mt-5">
         <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-          <div className="card__title">Every entry</div>
+          <h2 className="card__title">Every entry</h2>
           <div className="card__sub">Most recent first</div>
         </div>
         <div className="table-scroll">

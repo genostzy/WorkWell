@@ -62,7 +62,7 @@ export function LeaveForm({ personId }: { personId: string | null }) {
 
   return (
     <form className="card" onSubmit={submit}>
-      <div className="card__title">Request time off</div>
+      <h2 className="card__title">Request time off</h2>
       <p className="card__sub">Goes to your manager for approval.</p>
 
       {error && (

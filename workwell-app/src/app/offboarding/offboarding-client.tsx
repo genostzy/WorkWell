@@ -52,7 +52,7 @@ export default function OffboardingClient() {
 
       <div className="card">
         <div className="card__head">
-          <div className="card__title">{selected}</div>
+          <h2 className="card__title">{selected}</h2>
           <span className="chip chip--accent">{done} of {CHECKLIST.length}</span>
         </div>
         <div className="meter mt-3 mb-4">

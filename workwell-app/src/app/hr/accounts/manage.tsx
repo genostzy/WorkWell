@@ -173,7 +173,7 @@ function Manage({ person }: { person: Account }) {
   if (password) {
     return (
       <div className="card card--accent mt-3" style={{ margin: 0 }}>
-        <div className="card__title mb-2">New temporary password</div>
+        <h2 className="card__title mb-2">New temporary password</h2>
         <div className="row" style={{ gap: 'var(--s-2)' }}>
           <code className="input" style={{ flex: 1, letterSpacing: '0.04em' }}>
             {password}
@@ -263,7 +263,7 @@ export function Accounts({ accounts }: { accounts: Account[] }) {
   if (accounts.length === 0) {
     return (
       <div className="card">
-        <div className="card__title">Accounts</div>
+        <h2 className="card__title">Accounts</h2>
         <p className="t-subtle mt-2">Nobody has an account yet.</p>
       </div>
     )

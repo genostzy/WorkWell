@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { PageHead, PlaneBadge } from '@/components/chrome'
+import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 
 type Case = { id: string; summary: string; status: 'Submitted' | 'In review' | 'Resolved' }
 
@@ -40,7 +40,7 @@ export default function ComplaintsClient() {
         <div className="stack">
           <div className="card card--flush">
             <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-              <div className="card__title">Your cases</div>
+              <h2 className="card__title">Your cases</h2>
             </div>
             {cases.length === 0 ? (
               <p className="t-subtle" style={{ padding: '0 var(--s-5) var(--s-5)' }}>
@@ -66,7 +66,7 @@ export default function ComplaintsClient() {
 
         <div className="stack">
           <form className="card" onSubmit={submit}>
-            <div className="card__title">File a case</div>
+            <h2 className="card__title">File a case</h2>
             <p className="card__sub">Goes to HR as a tracked case, not a chat message.</p>
 
             {error && <div className="banner banner--error" role="alert">{error}</div>}
@@ -88,6 +88,13 @@ export default function ComplaintsClient() {
           </form>
         </div>
       </div>
+
+      <PrivacyNote
+        plane="work"
+        detail="A case is visible to HR from the moment you file it — there's no private, HR-only-on-request path here the way Recognition & connection has. Nothing you track privately (check-ins, mood, boundaries) is ever attached to a case."
+      >
+        <b>Goes straight to HR — not anonymous.</b>{' '}
+      </PrivacyNote>
     </>
   )
 }

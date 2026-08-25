@@ -51,7 +51,7 @@ export default function HolidaysClient() {
 
       <div className="card card--flush">
         <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-          <div className="card__title">Upcoming</div>
+          <h2 className="card__title">Upcoming</h2>
         </div>
         {upcoming.length === 0 ? (
           <p className="t-subtle" style={{ padding: '0 var(--s-5) var(--s-5)' }}>
@@ -85,7 +85,7 @@ export default function HolidaysClient() {
       {past.length > 0 && (
         <div className="card card--flush card--quiet mt-4">
           <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-            <div className="card__title">Already passed this year</div>
+            <h2 className="card__title">Already passed this year</h2>
           </div>
           <div className="table-scroll">
             <table className="data-table">

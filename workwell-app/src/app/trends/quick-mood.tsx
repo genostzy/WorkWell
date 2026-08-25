@@ -73,7 +73,7 @@ export function QuickMood() {
 
   return (
     <div className="card card--quiet">
-      <div className="card__title mb-1">How&rsquo;s right now?</div>
+      <h2 className="card__title mb-1">How&rsquo;s right now?</h2>
       <p className="card__sub mb-3">
         One tap — the full check-in still asks the rest, whenever you want it.
       </p>
