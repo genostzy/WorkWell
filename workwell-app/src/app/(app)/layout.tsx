@@ -1,10 +1,23 @@
 import { Suspense } from 'react'
+import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { readIsHr } from '@/lib/role'
 import { Shell } from '@/components/shell'
 import { ContentSkeleton } from '@/components/content-skeleton'
+import { ROUTE_META } from '@/lib/route-meta'
+import type { Plane } from '@/components/chrome'
 
-async function ShellData({ children, isHr }: { children: React.ReactNode; isHr: boolean }) {
+async function ShellData({
+  children,
+  isHr,
+  title,
+  plane,
+}: {
+  children: React.ReactNode
+  isHr: boolean
+  title?: string
+  plane?: Plane
+}) {
   const supabase = await createClient()
   const { data: me } = await supabase
     .from('me')
@@ -17,7 +30,7 @@ async function ShellData({ children, isHr }: { children: React.ReactNode; isHr: 
   }
 
   return (
-    <Shell isHr={isHr}>
+    <Shell isHr={isHr} title={title} plane={plane}>
       {children}
     </Shell>
   )
@@ -27,9 +40,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const supabase = await createClient()
   const { isHr } = await readIsHr(supabase)
 
+  // Set by proxy.ts on every request — see route-meta.ts for why this is
+  // the only way a layout (a Server Component, rendered once for every
+  // route under this group) can know which specific page it's wrapping.
+  const pathname = (await headers()).get('x-pathname') ?? ''
+  const meta = ROUTE_META[pathname]
+
   return (
     <Suspense fallback={
-      <div className="app app--room" data-plane="private">
+      <div className="app app--room" data-plane={meta?.plane ?? 'private'}>
         <aside className="room-sidebar" aria-hidden="true">
           <div className="sidebar-inner">
             <div className="sidebar-brand">
@@ -60,7 +79,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </div>
     }>
-      <ShellData isHr={isHr}>{children}</ShellData>
+      <ShellData isHr={isHr} title={meta?.title} plane={meta?.plane}>
+        {children}
+      </ShellData>
     </Suspense>
   )
 }

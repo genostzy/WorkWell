@@ -2,6 +2,15 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function proxy(request: NextRequest) {
+  // Server Components have no built-in way to read the current pathname —
+  // (app)/layout.tsx needs it to pick the right topbar title and plane
+  // colour for whichever page is actually being rendered, now that Shell
+  // lives once in the layout instead of once per page.tsx. Every
+  // NextResponse.next({ request }) below reuses this same, already-mutated
+  // request object, so setting it once here is enough for it to reach
+  // every non-redirect path.
+  request.headers.set('x-pathname', request.nextUrl.pathname)
+
   let response = NextResponse.next({ request })
 
   const supabase = createServerClient(
