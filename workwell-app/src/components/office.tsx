@@ -330,8 +330,17 @@ export function Office({
 
   return (
     <>
-      {/* room before sky: sky.js reads WW.room for the current minute. */}
-      <Script src="/prototype/room.js" strategy="afterInteractive" />
+      {/* room before sky: sky.js reads WW.room for the current minute. Both
+          get onReady={build}, not just sky's — afterInteractive scripts
+          aren't guaranteed to finish loading in declaration order (a cold
+          cache can have sky.js's request win the race), and without this
+          build() would run once, too early, see WW.room still undefined,
+          bail, and never get called again until the next-minute clock
+          tick — up to a minute stuck on "Opening your space…". build()
+          itself no-ops safely if room.js hasn't landed yet, so calling it
+          from whichever script finishes first is harmless; it's the one
+          that finishes last that actually builds the room. */}
+      <Script src="/prototype/room.js" strategy="afterInteractive" onReady={build} />
       <Script
         src="/prototype/sky.js"
         strategy="afterInteractive"
