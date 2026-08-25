@@ -1,23 +1,11 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge } from '@/components/chrome'
 import { fmtDate } from '@/lib/format-date'
 
-type Holiday = { date: string; name: string }
-
-// Illustrative company calendar — separate from the leave you book yourself.
-const HOLIDAYS: Holiday[] = [
-  { date: '2026-01-01', name: "New Year's Day" },
-  { date: '2026-02-25', name: 'EDSA People Power Anniversary' },
-  { date: '2026-04-03', name: 'Good Friday' },
-  { date: '2026-05-01', name: 'Labour Day' },
-  { date: '2026-06-12', name: 'Independence Day' },
-  { date: '2026-08-21', name: 'Ninoy Aquino Day' },
-  { date: '2026-08-31', name: 'National Heroes Day' },
-  { date: '2026-11-30', name: 'Bonifacio Day' },
-  { date: '2026-12-25', name: 'Christmas Day' },
-  { date: '2026-12-30', name: 'Rizal Day' },
-]
+type Holiday = { id: string; observed_on: string; name: string }
 
 function daysUntil(iso: string) {
   const ms = +new Date(iso + 'T00:00:00') - +new Date(new Date().toDateString())
@@ -25,9 +13,31 @@ function daysUntil(iso: string) {
 }
 
 export default function HolidaysClient() {
+  const [holidays, setHolidays] = useState<Holiday[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('holidays')
+        .select('id, observed_on, name')
+        .order('observed_on')
+      if (cancelled) return
+      if (error) setLoadError(error.message)
+      setHolidays((data ?? []) as Holiday[])
+      setLoading(false)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const today = new Date().toISOString().slice(0, 10)
-  const upcoming = HOLIDAYS.filter((h) => h.date >= today)
-  const past = HOLIDAYS.filter((h) => h.date < today)
+  const upcoming = holidays.filter((h) => h.observed_on >= today)
+  const past = holidays.filter((h) => h.observed_on < today)
   const next = upcoming[0]
 
   return (
@@ -38,71 +48,85 @@ export default function HolidaysClient() {
       />
       <PlaneBadge plane="work" />
 
-      {next && (
-        <div className="card card--accent mb-5">
-          <div className="stat">
-            <span className="stat__value t-num">{daysUntil(next.date)}</span>
-            <span className="stat__label">
-              days until {next.name}, {fmtDate(next.date, { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}
-            </span>
-          </div>
+      {loadError && (
+        <div className="banner banner--error mb-5" role="alert">
+          {loadError}
         </div>
       )}
 
-      <div className="card card--flush">
-        <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-          <h2 className="card__title">Upcoming</h2>
+      {loading ? (
+        <div className="card mb-5">
+          <div className="skel skel--text" />
         </div>
-        {upcoming.length === 0 ? (
-          <p className="t-subtle" style={{ padding: '0 var(--s-5) var(--s-5)' }}>
-            Nothing left on the calendar this year.
-          </p>
-        ) : (
-          <div className="table-scroll">
-            <table className="data-table">
-              <caption className="sr-only">Upcoming holidays</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Date</th>
-                  <th scope="col">Holiday</th>
-                </tr>
-              </thead>
-              <tbody>
-                {upcoming.map((h) => (
-                  <tr key={h.date}>
-                    <td>{fmtDate(h.date, { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}</td>
-                    <th scope="row" style={{ fontWeight: 600 }}>
-                      {h.name}
-                    </th>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      ) : (
+        <>
+          {next && (
+            <div className="card card--accent mb-5">
+              <div className="stat">
+                <span className="stat__value t-num">{daysUntil(next.observed_on)}</span>
+                <span className="stat__label">
+                  days until {next.name}, {fmtDate(next.observed_on, { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}
+                </span>
+              </div>
+            </div>
+          )}
 
-      {past.length > 0 && (
-        <div className="card card--flush card--quiet mt-4">
-          <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-            <h2 className="card__title">Already passed this year</h2>
+          <div className="card card--flush">
+            <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
+              <h2 className="card__title">Upcoming</h2>
+            </div>
+            {upcoming.length === 0 ? (
+              <p className="t-subtle" style={{ padding: '0 var(--s-5) var(--s-5)' }}>
+                Nothing left on the calendar this year.
+              </p>
+            ) : (
+              <div className="table-scroll">
+                <table className="data-table">
+                  <caption className="sr-only">Upcoming holidays</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Date</th>
+                      <th scope="col">Holiday</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {upcoming.map((h) => (
+                      <tr key={h.id}>
+                        <td>{fmtDate(h.observed_on, { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}</td>
+                        <th scope="row" style={{ fontWeight: 600 }}>
+                          {h.name}
+                        </th>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
-          <div className="table-scroll">
-            <table className="data-table">
-              <caption className="sr-only">Past holidays</caption>
-              <tbody>
-                {past.map((h) => (
-                  <tr key={h.date}>
-                    <td className="t-subtle">{fmtDate(h.date, { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}</td>
-                    <th scope="row" className="t-subtle" style={{ fontWeight: 500 }}>
-                      {h.name}
-                    </th>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+
+          {past.length > 0 && (
+            <div className="card card--flush card--quiet mt-4">
+              <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
+                <h2 className="card__title">Already passed this year</h2>
+              </div>
+              <div className="table-scroll">
+                <table className="data-table">
+                  <caption className="sr-only">Past holidays</caption>
+                  <tbody>
+                    {past.map((h) => (
+                      <tr key={h.id}>
+                        <td className="t-subtle">{fmtDate(h.observed_on, { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}</td>
+                        <th scope="row" className="t-subtle" style={{ fontWeight: 500 }}>
+                          {h.name}
+                        </th>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </>
   )

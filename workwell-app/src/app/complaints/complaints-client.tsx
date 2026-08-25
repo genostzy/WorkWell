@@ -1,21 +1,67 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 
 type Case = { id: string; summary: string; status: 'Submitted' | 'In review' | 'Resolved' }
 
 export default function ComplaintsClient() {
+  const [personId, setPersonId] = useState<string | null>(null)
   const [cases, setCases] = useState<Case[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
   const [summary, setSummary] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [sending, setSending] = useState(false)
 
-  function submit(e: React.FormEvent) {
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const supabase = createClient()
+      const { data: me, error: meError } = await supabase.from('me').select('id').maybeSingle()
+      if (cancelled) return
+      if (meError) {
+        setLoadError(meError.message)
+        setLoading(false)
+        return
+      }
+      setPersonId(me?.id ?? null)
+
+      const { data, error } = await supabase
+        .from('complaints')
+        .select('id, summary, status')
+        .order('created_at', { ascending: false })
+      if (cancelled) return
+      if (error) setLoadError(error.message)
+      setCases((data ?? []) as Case[])
+      setLoading(false)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  async function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!summary.trim()) return setError('Say what happened, even briefly.')
     setError(null)
-    setCases((c) => [{ id: crypto.randomUUID(), summary: summary.trim(), status: 'Submitted' }, ...c])
+    if (!personId) return setError('This account is not linked to a person yet.')
+    if (!summary.trim()) return setError('Say what happened, even briefly.')
+
+    setSending(true)
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('complaints')
+      .insert({ person_id: personId, summary: summary.trim() })
+      .select('id, summary, status')
+      .single()
+    setSending(false)
+
+    if (error) return setError(error.message)
+
+    setCases((c) => [data as Case, ...c])
     setSummary('')
   }
 
@@ -42,7 +88,16 @@ export default function ComplaintsClient() {
             <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
               <h2 className="card__title">Your cases</h2>
             </div>
-            {cases.length === 0 ? (
+            {loadError && (
+              <div className="banner banner--error" style={{ margin: '0 var(--s-5) var(--s-5)' }} role="alert">
+                {loadError}
+              </div>
+            )}
+            {loading ? (
+              <div style={{ padding: '0 var(--s-5) var(--s-5)' }}>
+                <div className="skel skel--text" />
+              </div>
+            ) : cases.length === 0 ? (
               <p className="t-subtle" style={{ padding: '0 var(--s-5) var(--s-5)' }}>
                 Nothing filed.
               </p>
@@ -83,7 +138,9 @@ export default function ComplaintsClient() {
             </div>
 
             <div className="mt-4">
-              <button className="btn btn--primary" type="submit">File case</button>
+              <button className="btn btn--primary" type="submit" disabled={sending}>
+                {sending ? 'Filing…' : 'File case'}
+              </button>
             </div>
           </form>
         </div>

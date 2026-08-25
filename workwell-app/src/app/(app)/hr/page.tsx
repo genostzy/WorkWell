@@ -5,6 +5,8 @@ import { Decide } from '../../hr/decide'
 import { DecideAttendanceReset } from '../../hr/decide-attendance-reset'
 import { DecideExpense } from '../../hr/decide-expense'
 import { DecidePayrollRequest } from '../../hr/decide-payroll-request'
+import { DecideComplaint } from '../../hr/decide-complaint'
+import { DecideResignation } from '../../hr/decide-resignation'
 
 function fmt(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', {
@@ -36,6 +38,8 @@ export default async function Hr() {
     { data: resetAttendance },
     { data: expenses, error: expensesError },
     { data: payrollRequests, error: payrollRequestsError },
+    { data: complaints, error: complaintsError },
+    { data: resignations, error: resignationsError },
   ] = await Promise.all([
     supabase.from('people').select('id, full_name, status').order('full_name'),
     supabase.from('employment').select('person_id, job_title, department'),
@@ -56,11 +60,21 @@ export default async function Hr() {
       .from('payroll_requests')
       .select('id, person_id, kind, note, status')
       .order('created_at', { ascending: false }),
+    supabase
+      .from('complaints')
+      .select('id, person_id, summary, status')
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('resignations')
+      .select('id, person_id, last_day, reason, status')
+      .order('created_at', { ascending: false }),
   ])
 
   // An empty directory and a directory that would not load look identical
   // once the rows are gone, and only one of them means "add someone".
-  const readError = peopleError ?? leaveError ?? resetsError ?? expensesError ?? payrollRequestsError
+  const readError =
+    peopleError ?? leaveError ?? resetsError ?? expensesError ?? payrollRequestsError
+    ?? complaintsError ?? resignationsError
   if (readError) {
     return (
       <>
@@ -89,6 +103,8 @@ export default async function Hr() {
   const pendingPayrollRequests = (payrollRequests ?? []).filter(
     (r) => r.status === 'Pending'
   )
+  const openComplaints = (complaints ?? []).filter((c) => c.status !== 'Resolved')
+  const pendingResignations = (resignations ?? []).filter((r) => r.status === 'Submitted')
 
   return (
     <>
@@ -244,6 +260,56 @@ export default async function Hr() {
                 </div>
                 <p className="t-subtle mt-2">{r.note}</p>
                 <DecidePayrollRequest id={r.id} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="card">
+        <div className="card__head">
+          <div>
+            <h2 className="card__title">Complaints to review</h2>
+            <div className="card__sub">Filed cases, not yet resolved</div>
+          </div>
+        </div>
+        {openComplaints.length === 0 ? (
+          <p className="t-subtle">Nothing waiting on you.</p>
+        ) : (
+          <div className="stack">
+            {openComplaints.map((c) => (
+              <div className="card card--quiet" key={c.id} style={{ margin: 0 }}>
+                <div className="row row--between">
+                  <b>{names.get(c.person_id) ?? 'Someone'}</b>
+                  <span className="chip">{c.status}</span>
+                </div>
+                <p className="t-subtle mt-2">{c.summary}</p>
+                <DecideComplaint id={c.id} personId={c.person_id} status={c.status} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="card">
+        <div className="card__head">
+          <div>
+            <h2 className="card__title">Resignations to acknowledge</h2>
+            <div className="card__sub">Notice given, awaiting your acknowledgement</div>
+          </div>
+        </div>
+        {pendingResignations.length === 0 ? (
+          <p className="t-subtle">Nothing waiting on you.</p>
+        ) : (
+          <div className="stack">
+            {pendingResignations.map((r) => (
+              <div className="card card--quiet" key={r.id} style={{ margin: 0 }}>
+                <div className="row row--between">
+                  <b>{names.get(r.person_id) ?? 'Someone'}</b>
+                  <span className="chip">{fmt(r.last_day)}</span>
+                </div>
+                {r.reason && <p className="t-subtle mt-2">{r.reason}</p>}
+                <DecideResignation id={r.id} personId={r.person_id} />
               </div>
             ))}
           </div>

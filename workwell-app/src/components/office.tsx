@@ -156,7 +156,7 @@ export function Office({
     const minutes = WW.room.nowMinutes()
 
     // Office renders only for private-plane accounts now — HR/admin lands on
-    // the dashboard instead (see page.tsx) and never reaches this component.
+    // /org instead (see page.tsx) and never reaches this component.
     // So `own` is unconditionally true and `org` unconditionally false: every
     // org-gated spot in the room always renders locked, because the single
     // account that could ever open it is never the one standing in the room.
