@@ -185,6 +185,26 @@
   --seq-700: #1E2536;
 }
 
+/* Between private's near-black and org's warm mid-grey — same weight/warmth
+   axis, one step in. */
+[data-plane="work"] {
+  --accent:          #383A3F;
+  --accent-text:     #383A3F;   /* 10.6:1 on --bg */
+  --accent-hover:    #1E1B18;
+  --accent-quiet:    rgba(56, 58, 63, .08);
+  --accent-quiet-2:  rgba(56, 58, 63, .14);
+  --accent-border:   rgba(56, 58, 63, .28);
+  --accent-ring:     rgba(56, 58, 63, .22);
+
+  --seq-100: #EAEBED;
+  --seq-200: #D4D6D9;
+  --seq-300: #B4B6BA;
+  --seq-400: #8A8C91;
+  --seq-500: #5F626B;
+  --seq-600: #444650;
+  --seq-700: #2B2D33;
+}
+
 [data-plane="org"] {
   --accent:          #6B6459;
   --accent-text:     #524C43;   /* 6.2:1 on --bg */
@@ -280,6 +300,24 @@
     --seq-700: #E7EBF1;
   }
 
+  :root:where(:not([data-theme="light"])) [data-plane="work"] {
+    --accent:         #DFDEDA;
+    --accent-text:    #EAE9E5;
+    --accent-hover:   #F2F0EC;
+    --accent-quiet:   rgba(223, 222, 218, .12);
+    --accent-quiet-2: rgba(223, 222, 218, .18);
+    --accent-border:  rgba(223, 222, 218, .28);
+    --accent-ring:    rgba(223, 222, 218, .22);
+
+    --seq-100: #25282E;
+    --seq-200: #393C44;
+    --seq-300: #555860;
+    --seq-400: #7B7D81;
+    --seq-500: #A2A3A5;
+    --seq-600: #C6C6C7;
+    --seq-700: #E5E5E4;
+  }
+
   :root:where(:not([data-theme="light"])) [data-plane="org"] {
     --accent:         #C9C2B4;
     --accent-text:    #D6D0C4;
@@ -361,6 +399,24 @@
   --seq-500: #9AA4B6;
   --seq-600: #C4CAD6;
   --seq-700: #E7EBF1;
+}
+
+:root[data-theme="dark"] [data-plane="work"] {
+  --accent:         #DFDEDA;
+  --accent-text:    #EAE9E5;
+  --accent-hover:   #F2F0EC;
+  --accent-quiet:   rgba(223, 222, 218, .12);
+  --accent-quiet-2: rgba(223, 222, 218, .18);
+  --accent-border:  rgba(223, 222, 218, .28);
+  --accent-ring:    rgba(223, 222, 218, .22);
+
+  --seq-100: #25282E;
+  --seq-200: #393C44;
+  --seq-300: #555860;
+  --seq-400: #7B7D81;
+  --seq-500: #A2A3A5;
+  --seq-600: #C6C6C7;
+  --seq-700: #E5E5E4;
 }
 
 :root[data-theme="dark"] [data-plane="org"] {

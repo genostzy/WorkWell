@@ -75,11 +75,16 @@ async function RoomSidebarData() {
 export function Shell({
   children,
   current,
+  title,
   plane = 'private',
   isHr = false,
 }: {
   children: React.ReactNode
   current?: Page
+  /** Overrides the current/TITLES lookup below — how (app)/layout.tsx
+   *  passes a route-driven title now that Shell is no longer called once
+   *  per page.tsx. */
+  title?: string
   plane?: Plane
   /** Swaps the "back to your space" chrome for "back to the dashboard" —
    *  an HR/admin account has no space of its own, only the administration
@@ -156,9 +161,7 @@ export function Shell({
           <span className="topbar__title">
             {current === 'home'
               ? isHr ? 'Administration' : 'Your space'
-              : current
-                ? TITLES[current]
-                : 'WorkWell'}
+              : (title ?? (current ? TITLES[current] : 'WorkWell'))}
           </span>
           <span className="topbar__spacer" />
           <div className="topbar__actions">
