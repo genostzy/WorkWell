@@ -2,7 +2,6 @@ import { createClient } from '@/lib/supabase/server'
 import { readIsHr } from '@/lib/role'
 import { Empty, LoadError, PageHead, PlaneBadge, PrivacyNote, RoleLocked } from '@/components/chrome'
 import { LeaveForm } from '../../leave/form'
-import { OwnProfile } from '../../leave/profile'
 import { ExportCsv } from '@/components/export-csv'
 
 // A missing or unparseable date must not reach the page as the string
@@ -33,13 +32,13 @@ export default async function Leave() {
   const [{ isHr, error: roleError }, { data: me, error: meError }] =
     await Promise.all([
       readIsHr(supabase),
-      supabase.from('me').select('id, full_name').maybeSingle(),
+      supabase.from('me').select('id').maybeSingle(),
     ])
 
   if (roleError) {
     return (
       <>
-        <PageHead title="Leave and profile" />
+        <PageHead title="Leave" />
         <LoadError what="Your account" detail={roleError} />
       </>
     )
@@ -77,7 +76,7 @@ export default async function Leave() {
   if (readError) {
     return (
       <>
-        <PageHead title="Leave and profile" />
+        <PageHead title="Leave" />
         <PlaneBadge plane="work" />
         <LoadError what="Your leave record" detail={readError.message} />
       </>
@@ -87,7 +86,7 @@ export default async function Leave() {
   if (!me) {
     return (
       <>
-        <PageHead title="Leave and profile" />
+        <PageHead title="Leave" />
         <PlaneBadge plane="work" />
         <Empty icon="🔑" title="No employment record yet">
           Leave belongs to an employment record, and yours is created when HR
@@ -97,7 +96,6 @@ export default async function Leave() {
     )
   }
 
-  const fullName = me.full_name
   const employment = employmentResult?.data ?? null
   const rows = requestResult?.data ?? []
   const exportRows = rows.map((r) => ({
@@ -120,7 +118,7 @@ export default async function Leave() {
   return (
     <>
       <PageHead
-        title="Leave and profile"
+        title="Leave"
         lead="The one part of WorkWell your employer does see — and only this part."
       />
 
@@ -128,8 +126,6 @@ export default async function Leave() {
 
       <div className="grid grid--sidebar-right">
         <div className="stack">
-          <OwnProfile legalName={fullName} />
-
           <LeaveForm personId={me.id} />
 
           <div className="card card--flush">

@@ -91,11 +91,13 @@ export function RoomSidebar({
   name,
   initials,
   colour = 'accent',
+  avatarUrl = null,
 }: {
   isHr: boolean
   name: string
   initials?: string | null
   colour?: string
+  avatarUrl?: string | null
 }) {
   const pathname = usePathname()
   const displayInitials = initials?.trim() || initialsOf(name)
@@ -120,24 +122,19 @@ export function RoomSidebar({
           </span>
         </div>
 
-        {/* Avatar — for a private-plane account, a link to Leave & profile.
-            HR/admin has no employment record of its own for that page to
-            show, so its avatar is a plain label, not a dead link. */}
-        {isHr ? (
-          <div className="sidebar-avatar">
-            <div className="sidebar-avatar__circle" data-avatar-colour={colour}>
+        {/* Avatar — a link to profile settings. Every account has its own
+            row on the private plane now, HR/admin included, so this is a
+            live link for both rather than a plain label for one of them. */}
+        <Link href="/profile" className="sidebar-avatar">
+          <div className="sidebar-avatar__circle" data-avatar-colour={colour}>
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="" className="sidebar-avatar__photo" />
+            ) : (
               <span className="sidebar-avatar__initials">{displayInitials}</span>
-            </div>
-            <span className="sidebar-avatar__name">{name}</span>
+            )}
           </div>
-        ) : (
-          <Link href="/leave" className="sidebar-avatar">
-            <div className="sidebar-avatar__circle" data-avatar-colour={colour}>
-              <span className="sidebar-avatar__initials">{displayInitials}</span>
-            </div>
-            <span className="sidebar-avatar__name">{name}</span>
-          </Link>
-        )}
+          <span className="sidebar-avatar__name">{name}</span>
+        </Link>
 
         <div className="sidebar-divider" />
 

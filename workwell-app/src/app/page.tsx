@@ -100,7 +100,7 @@ export default async function Home() {
     supabase.from('person_roles').select('role'),
     supabase
       .from('profile')
-      .select('preferred_name, avatar_initials, avatar_colour, greeting')
+      .select('preferred_name, avatar_initials, avatar_colour, avatar_path, greeting')
       .maybeSingle(),
   ])
   const isHr = (roles ?? []).some((r) => r.role === 'hr')
@@ -110,6 +110,17 @@ export default async function Home() {
     redirect('/org')
   }
 
+  // Signed rather than public — the bucket's RLS is what makes a photo as
+  // private as the colour and initials sitting right beside it in the same
+  // row, and a public URL would have bypassed that entirely.
+  const avatarUrl = profile?.avatar_path
+    ? (
+        await supabase.storage
+          .from('avatars')
+          .createSignedUrl(profile.avatar_path, 3600)
+      ).data?.signedUrl ?? null
+    : null
+
   // The office is the interface, not a menu. The room is the navigation
   // surface; the plain list beside it is never optional.
   return (
@@ -118,6 +129,7 @@ export default async function Home() {
       initials={profile?.avatar_initials ?? null}
       colour={profile?.avatar_colour ?? 'accent'}
       greeting={profile?.greeting ?? 'warm'}
+      avatarUrl={avatarUrl}
     />
   )
 }

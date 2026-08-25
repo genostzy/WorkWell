@@ -923,6 +923,14 @@ details.table-view summary:hover { color: var(--text); }
   display: grid; place-items: center;
   font-size: var(--fs-sm);
   font-weight: var(--fw-heavy);
+  overflow: hidden;
+}
+
+.avatar__photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 .feed__name { font-weight: var(--fw-bold); font-size: var(--fs-md); }
 .feed__time { font-size: var(--fs-xs); color: var(--text-subtle); }

@@ -23,7 +23,7 @@ import { type Page, type Plane } from '@/components/chrome'
 const TITLES: Record<Exclude<Page, 'home'>, string> = {
   'check-in': 'Daily check-in',
   trends: 'Your trends',
-  leave: 'Leave & profile',
+  leave: 'Leave',
   hr: 'People',
   org: 'Structural load',
 }
@@ -50,11 +50,22 @@ async function RoomSidebarData() {
     supabase.from('person_roles').select('role'),
     supabase
       .from('profile')
-      .select('preferred_name, avatar_initials, avatar_colour')
+      .select('preferred_name, avatar_initials, avatar_colour, avatar_path')
       .maybeSingle(),
   ])
 
   if (!me || me.status === 'left') return null
+
+  // Signed rather than public — the bucket's RLS is what makes a photo as
+  // private as the colour and initials sitting right beside it in the same
+  // row, and a public URL would have bypassed that entirely.
+  const avatarUrl = profile?.avatar_path
+    ? (
+        await supabase.storage
+          .from('avatars')
+          .createSignedUrl(profile.avatar_path, 3600)
+      ).data?.signedUrl ?? null
+    : null
 
   return (
     <RoomSidebar
@@ -62,6 +73,7 @@ async function RoomSidebarData() {
       name={profile?.preferred_name || me.full_name}
       initials={profile?.avatar_initials ?? null}
       colour={profile?.avatar_colour ?? 'accent'}
+      avatarUrl={avatarUrl}
     />
   )
 }
