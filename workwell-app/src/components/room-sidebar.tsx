@@ -1,6 +1,7 @@
 'use client'
 
-import { useRouter, usePathname } from 'next/navigation'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { Brandmark } from '@/components/brandmark'
 import { initialsOf } from '@/components/office'
 
@@ -53,24 +54,35 @@ function SidebarTile({
   spot,
   active,
   index,
-  onClick,
 }: {
   spot: Spot
   active: boolean
   index: number
-  onClick: () => void
 }) {
+  if (!spot.href) {
+    return (
+      <button
+        type="button"
+        className="sidebar-tile sidebar-tile--locked"
+        disabled
+        style={{ animationDelay: `${index * 30}ms` }}
+      >
+        <span className="sidebar-tile__label">{spot.label}</span>
+        <span className="sidebar-tile__sub">{spot.sub}</span>
+      </button>
+    )
+  }
+
   return (
-    <button
-      type="button"
+    <Link
+      href={spot.href}
       className="sidebar-tile"
       aria-current={active ? 'page' : undefined}
       style={{ animationDelay: `${index * 30}ms` }}
-      onClick={onClick}
     >
       <span className="sidebar-tile__label">{spot.label}</span>
       <span className="sidebar-tile__sub">{spot.sub}</span>
-    </button>
+    </Link>
   )
 }
 
@@ -85,7 +97,6 @@ export function RoomSidebar({
   initials?: string | null
   colour?: string
 }) {
-  const router = useRouter()
   const pathname = usePathname()
   const displayInitials = initials?.trim() || initialsOf(name)
 
@@ -120,16 +131,12 @@ export function RoomSidebar({
             <span className="sidebar-avatar__name">{name}</span>
           </div>
         ) : (
-          <button
-            type="button"
-            className="sidebar-avatar"
-            onClick={() => router.push('/leave')}
-          >
+          <Link href="/leave" className="sidebar-avatar">
             <div className="sidebar-avatar__circle" data-avatar-colour={colour}>
               <span className="sidebar-avatar__initials">{displayInitials}</span>
             </div>
             <span className="sidebar-avatar__name">{name}</span>
-          </button>
+          </Link>
         )}
 
         <div className="sidebar-divider" />
@@ -141,13 +148,7 @@ export function RoomSidebar({
             </div>
             <nav className="sidebar-nav" aria-label="Personal navigation">
               {PRIVATE_SPOTS.map((s, i) => (
-                <SidebarTile
-                  key={s.id}
-                  spot={s}
-                  active={pathname === s.href}
-                  index={i}
-                  onClick={() => { if (s.href) router.push(s.href) }}
-                />
+                <SidebarTile key={s.id} spot={s} active={pathname === s.href} index={i} />
               ))}
             </nav>
             <div className="sidebar-divider" />
@@ -159,13 +160,7 @@ export function RoomSidebar({
         </div>
         <nav className="sidebar-nav" aria-label={isHr ? 'Administration navigation' : 'Workplace navigation'}>
           {spots.map((s, i) => (
-            <SidebarTile
-              key={s.id}
-              spot={s}
-              active={pathname === s.href}
-              index={i}
-              onClick={() => { if (s.href) router.push(s.href) }}
-            />
+            <SidebarTile key={s.id} spot={s} active={pathname === s.href} index={i} />
           ))}
         </nav>
 
