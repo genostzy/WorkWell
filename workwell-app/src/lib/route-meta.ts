@@ -20,8 +20,9 @@ export const ROUTE_META: Record<string, { title: string; plane: Plane }> = {
   '/boundaries': { title: 'Boundary assistant', plane: 'private' },
   '/recognition': { title: 'Recognition & connection', plane: 'private' },
   '/workspace': { title: 'Adaptive workspace', plane: 'private' },
+  '/profile': { title: 'Profile settings', plane: 'private' },
 
-  '/leave': { title: 'Leave & profile', plane: 'work' },
+  '/leave': { title: 'Leave', plane: 'work' },
   '/holidays': { title: 'Holidays', plane: 'work' },
   '/attendance': { title: 'Attendance', plane: 'work' },
   '/payroll': { title: 'Payroll', plane: 'work' },

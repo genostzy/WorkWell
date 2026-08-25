@@ -101,6 +101,7 @@ export function Office({
   initials,
   colour = 'accent',
   greeting = 'warm',
+  avatarUrl = null,
 }: {
   /** Preferred name if one is set, otherwise the employment record's. */
   name: string
@@ -108,6 +109,8 @@ export function Office({
   initials?: string | null
   colour?: string
   greeting?: string
+  /** A signed URL for the figure's photo; null draws the colour dot instead. */
+  avatarUrl?: string | null
 }) {
   const router = useRouter()
   const roomRef = useRef<HTMLDivElement>(null)
@@ -174,8 +177,39 @@ export function Office({
 
     // The avatar shipped reading "?" because nothing ever filled it in.
     const mark = roomRef.current.querySelector('.room-avatar__initials')
-    if (mark) mark.textContent = initials?.trim() || initialsOf(name)
+    if (mark) mark.textContent = avatarUrl ? '' : initials?.trim() || initialsOf(name)
     roomRef.current.dataset.avatarColour = colour
+
+    // A photo, clipped into the same circle the colour dot already draws —
+    // sized a touch smaller than the dot so the avatar colour still shows
+    // through as a ring. innerHTML above rebuilds this group from scratch
+    // every call, so there is never a stale image node to clean up first.
+    const avatarGroup = roomRef.current.querySelector('.room-avatar')
+    if (avatarGroup && avatarUrl) {
+      const svgNS = 'http://www.w3.org/2000/svg'
+      const xlinkNS = 'http://www.w3.org/1999/xlink'
+
+      const clip = document.createElementNS(svgNS, 'clipPath')
+      clip.setAttribute('id', 'room-avatar-clip')
+      const clipCircle = document.createElementNS(svgNS, 'circle')
+      clipCircle.setAttribute('cx', '500')
+      clipCircle.setAttribute('cy', '672')
+      clipCircle.setAttribute('r', '14')
+      clip.appendChild(clipCircle)
+      avatarGroup.appendChild(clip)
+
+      const image = document.createElementNS(svgNS, 'image')
+      image.setAttribute('class', 'room-avatar__photo')
+      image.setAttribute('x', '486')
+      image.setAttribute('y', '658')
+      image.setAttribute('width', '28')
+      image.setAttribute('height', '28')
+      image.setAttribute('preserveAspectRatio', 'xMidYMid slice')
+      image.setAttribute('clip-path', 'url(#room-avatar-clip)')
+      image.setAttributeNS(xlinkNS, 'href', avatarUrl)
+      image.setAttribute('href', avatarUrl)
+      avatarGroup.appendChild(image)
+    }
 
     if (listRef.current) {
       listRef.current.innerHTML = WW.room.roomList('employee', false, caps)
@@ -184,7 +218,7 @@ export function Office({
     setPhase(WW.room.phaseAt(minutes))
     setClock(WW.room.formatTime(minutes))
     setLoaded(true)
-  }, [name, initials, colour])
+  }, [name, initials, colour, avatarUrl])
 
   useIsomorphicLayoutEffect(() => {
     const mq = window.matchMedia('(max-width: 860px)')
