@@ -165,8 +165,13 @@ export function SignInRoom({ notice }: { notice?: string }) {
 
   return (
     <>
-      {/* room before sky: sky.js reads WW.room for the current minute. */}
-      <Script src="/prototype/room.js" strategy="afterInteractive" />
+      {/* room before sky: sky.js reads WW.room for the current minute. Both
+          get onReady={build} — see office.tsx for why: afterInteractive
+          scripts can finish loading out of declaration order, and without
+          this a cold cache could have sky.js's onReady fire first, see
+          WW.room still undefined, and never retry (this screen has no
+          clock-tick timer to self-heal the way office.tsx does). */}
+      <Script src="/prototype/room.js" strategy="afterInteractive" onReady={build} />
       <Script src="/prototype/sky.js" strategy="afterInteractive" onReady={build} />
 
       <div
