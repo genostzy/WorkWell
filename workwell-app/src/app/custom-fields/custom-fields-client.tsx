@@ -9,6 +9,7 @@ type Field = { id: string; name: string; field_type: 'Text' | 'Number' | 'Date' 
 const TYPES = ['Text', 'Number', 'Date', 'Select'] as const
 
 export default function CustomFieldsClient() {
+  const [orgId, setOrgId] = useState<string | null>(null)
   const [fields, setFields] = useState<Field[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -22,12 +23,13 @@ export default function CustomFieldsClient() {
     let cancelled = false
     ;(async () => {
       const supabase = createClient()
-      const { data, error } = await supabase
-        .from('custom_fields')
-        .select('id, name, field_type')
-        .order('created_at')
+      const [{ data: me, error: meError }, { data, error }] = await Promise.all([
+        supabase.from('me').select('org_id').maybeSingle(),
+        supabase.from('custom_fields').select('id, name, field_type').order('created_at'),
+      ])
       if (cancelled) return
-      if (error) setLoadError(error.message)
+      if (meError ?? error) setLoadError((meError ?? error)!.message)
+      setOrgId(me?.org_id ?? null)
       setFields((data ?? []) as Field[])
       setLoading(false)
     })()
@@ -39,13 +41,14 @@ export default function CustomFieldsClient() {
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    if (!orgId) return setError('This account is not linked to an organisation yet.')
     if (!name.trim()) return setError('Give the field a name.')
 
     setSending(true)
     const supabase = createClient()
     const { data, error } = await supabase
       .from('custom_fields')
-      .insert({ name: name.trim(), field_type: type })
+      .insert({ org_id: orgId, name: name.trim(), field_type: type })
       .select('id, name, field_type')
       .single()
     setSending(false)
