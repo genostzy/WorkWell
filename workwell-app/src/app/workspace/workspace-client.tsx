@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { SaveState, Segmented, ToggleRow } from '@/components/controls'
 import { usePrefs } from '@/lib/use-prefs'
@@ -27,17 +28,26 @@ export default function WorkspaceClient() {
     DEFAULTS
   )
 
-  function applyTheme(theme: typeof DEFAULTS.theme) {
+  // Applies whichever of these was actually saved — on the first render
+  // once the fetch resolves, and again on every change after. Without this
+  // running on load too, a choice made last session only ever showed up in
+  // the segmented control here; the document itself stayed on whatever the
+  // OS/browser defaulted to, so "saved" looked like "did nothing" on the
+  // next visit.
+  useEffect(() => {
+    if (loading) return
     const root = document.documentElement
-    if (theme === 'system') root.removeAttribute('data-theme')
-    else root.setAttribute('data-theme', theme)
-    update({ theme })
-  }
 
-  function applyContrast(contrast: typeof DEFAULTS.contrast) {
-    document.documentElement.setAttribute('data-contrast', contrast)
-    update({ contrast })
-  }
+    if (value.theme === 'system') root.removeAttribute('data-theme')
+    else root.setAttribute('data-theme', value.theme)
+
+    root.setAttribute('data-contrast', value.contrast)
+
+    if (value.motion === 'system') root.removeAttribute('data-motion')
+    else root.setAttribute('data-motion', value.motion)
+
+    root.setAttribute('data-density', value.density)
+  }, [loading, value.theme, value.contrast, value.motion, value.density])
 
   return (
     <>
@@ -71,7 +81,7 @@ export default function WorkspaceClient() {
                 <Segmented
                   label="Colour theme"
                   value={value.theme}
-                  onChange={applyTheme}
+                  onChange={(theme) => update({ theme })}
                   options={[
                     { value: 'system', label: 'Match system' },
                     { value: 'light', label: 'Light' },
@@ -85,7 +95,7 @@ export default function WorkspaceClient() {
                 <Segmented
                   label="Contrast"
                   value={value.contrast}
-                  onChange={applyContrast}
+                  onChange={(contrast) => update({ contrast })}
                   options={[
                     { value: 'normal', label: 'Normal' },
                     { value: 'high', label: 'High contrast' },

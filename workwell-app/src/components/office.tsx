@@ -383,7 +383,7 @@ export function Office({
             data-view-panel="room"
             hidden={activeView !== 'room'}
           >
-            <p className="t-subtle" style={{ textAlign: 'center' }}>
+            <p className="t-subtle" style={{ textAlign: 'center', fontSize: 'var(--fs-xl)' }}>
               {clock
                 ? `${greeting === 'warm' ? `${name.split(' ')[0]} · ` : ''}${clock}${
                     phase === 'quiet' ? ' · quiet hours' : ''

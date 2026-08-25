@@ -266,12 +266,13 @@
   padding: var(--s-8) var(--s-7);
   background:
     radial-gradient(120% 90% at 12% 8%, var(--accent-quiet) 0%, transparent 60%),
-    var(--surface-2);
-  border: 1px solid var(--border);
+    var(--surface);
+  backdrop-filter: var(--glass-filter-4);
+  border: 1px solid var(--border-strong);
   border-radius: var(--r-lg);
   box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.06),
-    0 8px 24px rgba(0, 0, 0, 0.08);
+    0 1px 3px rgba(0, 0, 0, 0.10),
+    0 8px 24px rgba(0, 0, 0, 0.14);
   will-change: transform, opacity;
   contain: layout paint style;
   transition: transform 560ms var(--ease), opacity 560ms var(--ease);
