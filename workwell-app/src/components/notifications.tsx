@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 type Notification = {
@@ -25,6 +26,7 @@ function timeAgo(iso: string) {
 }
 
 export function Notifications() {
+  const router = useRouter()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -54,6 +56,14 @@ export function Notifications() {
     setNotifications((prev) => prev.filter((n) => n.id !== id))
   }
 
+  // Reading it and going where it points are the same click — a
+  // notification you can only dismiss, never follow, is half a feature.
+  function follow(n: Notification) {
+    setOpen(false)
+    markRead(n.id)
+    if (n.link) router.push(n.link)
+  }
+
   const count = notifications.length
 
   return (
@@ -76,8 +86,8 @@ export function Notifications() {
               position: 'absolute',
               top: -4,
               right: -4,
-              background: 'var(--accent, #e76f51)',
-              color: '#fff',
+              background: 'var(--accent)',
+              color: 'var(--text-on-accent)',
               borderRadius: '50%',
               width: 18,
               height: 18,
@@ -130,10 +140,10 @@ export function Notifications() {
                     borderTop: 'none',
                     borderLeft: 'none',
                     borderRight: 'none',
-                    borderBottom: '1px solid var(--border, #e5e5e5)',
+                    borderBottom: '1px solid var(--border)',
                     padding: 'var(--s-3) var(--s-4)',
                   }}
-                  onClick={() => markRead(n.id)}
+                  onClick={() => follow(n)}
                 >
                   <div style={{ fontWeight: 600 }}>{n.title}</div>
                   <div className="t-subtle" style={{ fontSize: 'var(--fs-sm)' }}>
