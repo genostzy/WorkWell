@@ -45,6 +45,9 @@ export default function RecognitionClient() {
     'private'
   )
   const [sent, setSent] = useState(false)
+  const [sentVisibility, setSentVisibility] = useState<
+    'private' | 'team' | 'everyone'
+  >('private')
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
 
@@ -165,6 +168,7 @@ export default function RecognitionClient() {
     if (error) setSendError(error.message)
     else {
       setSent(true)
+      setSentVisibility(visibility)
       setMessage('')
       load()
     }
@@ -276,7 +280,14 @@ export default function RecognitionClient() {
               {sent && (
                 <p className="confirmed mb-4" role="status">
                   <span aria-hidden="true">✓</span>
-                  <span>Sent. Only they will see it.</span>
+                  <span>
+                    Sent.{' '}
+                    {sentVisibility === 'everyone'
+                      ? 'Everyone can see it.'
+                      : sentVisibility === 'team'
+                        ? 'Only them and their team can see it.'
+                        : 'Only they will see it.'}
+                  </span>
                 </p>
               )}
 

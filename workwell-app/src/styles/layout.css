@@ -496,19 +496,27 @@
   outline-offset: 2px;
 }
 
-/* Active indicator — accent tint when on current page */
+/* Active indicator — accent tint when on current page.
+   Border/ring use --text rather than --accent-border/--accent-ring: in
+   dark mode --accent-text resolves to the same value as --text (both are
+   near-white), so a text-colour change alone is invisible there, and the
+   accent tokens' own low opacity (.22-.28) reads as barely-there against
+   an already-dark tile. --text is guaranteed high-contrast against the
+   tile background in every plane/theme (see tokens.css), so the border
+   and weight carry the "you are here" signal instead. */
 .sidebar-tile[aria-current="page"] {
   background:
     var(--glass-sheen),
     var(--noise),
-    var(--accent-quiet);
-  border-color: var(--accent-border);
+    var(--accent-quiet-2);
+  border-color: var(--text);
   box-shadow:
     var(--shadow-1),
-    inset 0 0 0 1px var(--accent-ring);
+    inset 0 0 0 1.5px var(--text);
 }
 .sidebar-tile[aria-current="page"] .sidebar-tile__label {
   color: var(--accent-text);
+  font-weight: var(--fw-heavy);
 }
 
 /* Locked state */

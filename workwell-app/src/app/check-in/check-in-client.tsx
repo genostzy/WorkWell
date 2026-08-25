@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
+import { usePrefs } from '@/lib/use-prefs'
 
 /**
  * The daily check-in, as the prototype draws it.
@@ -26,7 +27,18 @@ import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
  *
  * The note says it is stored on your private plane, not "on your device",
  * because here it genuinely is stored — and the plane is the promise.
+ *
+ * Format and pacing are Workspace's settings (F6), read here rather than
+ * chosen here: checkin_format picks the drawing/emoji/words below, and
+ * focus_one_question picks stepped-one-at-a-time vs. all four on one
+ * screen. Both used to be saved without either page ever reading them back
+ * — this is that wiring.
  */
+
+const PREFS_DEFAULTS = {
+  checkin_format: 'scale' as 'scale' | 'emoji' | 'words',
+  focus_one_question: false,
+}
 
 type Key = 'mood' | 'energy' | 'pressure' | 'workload'
 
@@ -129,11 +141,22 @@ const WORDS: Record<Key, string[]> = {
   workload: ['', 'Light', 'Manageable', 'About right', 'Heavy', 'Too much'],
 }
 
+/** One shared low-to-high face scale rather than a different set of icons
+ *  per question — the word beneath each button is still what actually
+ *  says what the position means; the face is a quicker glance at the same
+ *  five answers, not a second, looser scale of its own. */
+const EMOJI = ['', '😞', '😕', '😐', '🙂', '😄']
+
 type Answers = Record<Key, number | null>
 
 export default function CheckInClient() {
   const router = useRouter()
   const flowRef = useRef<HTMLDivElement>(null)
+
+  const { value: prefs, loading: prefsLoading } = usePrefs(
+    'workspace_prefs',
+    PREFS_DEFAULTS
+  )
 
   const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState<Answers>({
@@ -186,12 +209,15 @@ export default function CheckInClient() {
      They append their own children, so React must never render into those
      nodes. Mounted once, after today's values are known — dragscale reads
      data-value at init and never again — and kept mounted for the life of
-     the page, which is why the steps hide rather than unmount. */
+     the page, which is why the steps hide rather than unmount.
+
+     Only attempted when the format is actually 'scale': with 'emoji' or
+     'words' there are no [data-scale] nodes in the DOM at all by design,
+     and the old built-count check below would otherwise read that as the
+     scripts failing rather than as nothing to mount. */
 
   useEffect(() => {
-    // Nothing to mount into until today's values are known: dragscale reads
-    // data-value once, at init, and never looks again.
-    if (loading) return
+    if (loading || prefsLoading || prefs.checkin_format !== 'scale') return
 
     let cancelled = false
 
@@ -231,7 +257,7 @@ export default function CheckInClient() {
     return () => {
       cancelled = true
     }
-  }, [loading])
+  }, [loading, prefsLoading, prefs.checkin_format])
 
   // One listener for all four: the event bubbles and carries its own name.
   useEffect(() => {
@@ -275,9 +301,14 @@ export default function CheckInClient() {
     setStep((s) => s + 1)
   }
 
+  const pick = (key: Key, n: number) => {
+    setAnswers((a) => ({ ...a, [key]: n }))
+    setLabels((l) => ({ ...l, [key]: WORDS[key][n] }))
+  }
+
   /* ------------------------------------------------------------ Rendering */
 
-  if (loading) {
+  if (loading || prefsLoading) {
     return (
       <>
         <PageHead title="How’s today going?" />
@@ -299,12 +330,22 @@ export default function CheckInClient() {
   }
 
   const done = saved
+  const oneAtATime = prefs.focus_one_question
+  // 'scale' only actually draws once the scripts have loaded without
+  // failing; a chosen 'emoji'/'words' format never touches the scripts at
+  // all, so it is never at the mercy of that race.
+  const useWords = prefs.checkin_format === 'words' || (prefs.checkin_format === 'scale' && scalesFailed)
+  const useEmoji = prefs.checkin_format === 'emoji'
 
   return (
     <>
       <PageHead
         title="How’s today going?"
-        lead="Four taps, ten seconds. Skip anything."
+        lead={
+          oneAtATime
+            ? 'Four taps, ten seconds. Skip anything.'
+            : 'All four at once. Skip anything.'
+        }
       />
 
       <PlaneBadge plane="private" />
@@ -318,7 +359,7 @@ export default function CheckInClient() {
         </div>
       )}
 
-      {existing && !done && step === 0 && (
+      {existing && !done && (oneAtATime ? step === 0 : true) && (
         <div className="banner banner--info mb-5" role="status">
           <span aria-hidden="true">✓</span>
           <span>
@@ -329,7 +370,7 @@ export default function CheckInClient() {
       )}
 
       <div className="card" ref={flowRef} data-flow>
-        {!done && (
+        {!done && oneAtATime && (
           <>
             <div className="row row--between mb-5">
               <span className="stepper__label">
@@ -351,31 +392,54 @@ export default function CheckInClient() {
           </>
         )}
 
+        {!done && !oneAtATime && (
+          <div className="row row--between mb-5">
+            <span className="stepper__label">All four questions</span>
+            <Link className="btn btn--ghost btn--sm" href="/trends">
+              Skip today
+            </Link>
+          </div>
+        )}
+
         {/* Every step stays in the document: dragscale mounted into these
             nodes and re-mounting on each change would lose the drag state
             and the value with it. */}
         {STEPS.map((s, i) => (
-          <div key={s.key} hidden={done || i !== step}>
+          <div
+            key={s.key}
+            hidden={done || (oneAtATime && i !== step)}
+            className={!oneAtATime && i > 0 ? 'mt-6 pt-6' : undefined}
+            style={!oneAtATime && i > 0 ? { borderTop: '1px solid var(--border)' } : undefined}
+          >
             <h2 className="mb-2">{s.title}</h2>
             <p className="t-subtle mb-5">{s.lead}</p>
 
-            {scalesFailed ? (
-              // Same question, same words, no drawing.
-              <div
-                className="segmented"
-                role="group"
-                aria-label={s.label}
-                style={{ flexWrap: 'wrap' }}
-              >
+            {useEmoji ? (
+              <div className="segmented" role="group" aria-label={s.label} style={{ flexWrap: 'wrap' }}>
                 {[1, 2, 3, 4, 5].map((n) => (
                   <button
                     key={n}
                     type="button"
                     aria-pressed={answers[s.key] === n}
-                    onClick={() => {
-                      setAnswers((a) => ({ ...a, [s.key]: n }))
-                      setLabels((l) => ({ ...l, [s.key]: WORDS[s.key][n] }))
-                    }}
+                    aria-label={WORDS[s.key][n]}
+                    onClick={() => pick(s.key, n)}
+                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}
+                  >
+                    <span aria-hidden="true" style={{ fontSize: 'var(--fs-xl)', lineHeight: 1 }}>
+                      {EMOJI[n]}
+                    </span>
+                    <span style={{ fontSize: 'var(--fs-xs)' }}>{WORDS[s.key][n]}</span>
+                  </button>
+                ))}
+              </div>
+            ) : useWords ? (
+              <div className="segmented" role="group" aria-label={s.label} style={{ flexWrap: 'wrap' }}>
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    aria-pressed={answers[s.key] === n}
+                    onClick={() => pick(s.key, n)}
                   >
                     {WORDS[s.key][n]}
                   </button>
@@ -407,47 +471,62 @@ export default function CheckInClient() {
               </div>
             )}
 
-            <div className="row mt-6">
-              {i > 0 && (
-                <button
-                  className="btn btn--secondary"
-                  type="button"
-                  onClick={() => setStep(i - 1)}
-                >
-                  ‹ Back
-                </button>
-              )}
+            {oneAtATime && (
+              <div className="row mt-6">
+                {i > 0 && (
+                  <button
+                    className="btn btn--secondary"
+                    type="button"
+                    onClick={() => setStep(i - 1)}
+                  >
+                    ‹ Back
+                  </button>
+                )}
 
-              {i < STEPS.length - 1 ? (
-                <>
+                {i < STEPS.length - 1 ? (
+                  <>
+                    <button
+                      className="btn btn--primary"
+                      type="button"
+                      onClick={() => setStep(i + 1)}
+                    >
+                      Next ›
+                    </button>
+                    <button
+                      className="btn btn--ghost"
+                      type="button"
+                      onClick={() => skip(s.key)}
+                    >
+                      Skip this
+                    </button>
+                  </>
+                ) : (
                   <button
                     className="btn btn--primary"
                     type="button"
-                    onClick={() => setStep(i + 1)}
+                    disabled={saving}
+                    onClick={save}
                   >
-                    Next ›
+                    {saving ? 'Saving…' : '✓ Save check-in'}
                   </button>
-                  <button
-                    className="btn btn--ghost"
-                    type="button"
-                    onClick={() => skip(s.key)}
-                  >
-                    Skip this
-                  </button>
-                </>
-              ) : (
-                <button
-                  className="btn btn--primary"
-                  type="button"
-                  disabled={saving}
-                  onClick={save}
-                >
-                  {saving ? 'Saving…' : '✓ Save check-in'}
-                </button>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
         ))}
+
+        {!done && !oneAtATime && (
+          <div className="row mt-6">
+            <button
+              className="btn btn--primary"
+              type="button"
+              disabled={saving}
+              onClick={save}
+            >
+              {saving ? 'Saving…' : '✓ Save check-in'}
+            </button>
+          </div>
+        )}
 
         {done && (
           <div className="state state--info">

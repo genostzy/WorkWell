@@ -5,6 +5,7 @@ import { Brandmark } from '@/components/brandmark'
 import { RoomSidebar } from '@/components/room-sidebar'
 import { SidebarToggle } from '@/components/sidebar-toggle'
 import { Notifications } from '@/components/notifications'
+import { ApplyWorkspacePrefs } from '@/components/apply-workspace-prefs'
 import { createClient } from '@/lib/supabase/server'
 import { type Page, type Plane } from '@/components/chrome'
 
@@ -94,6 +95,7 @@ export function Shell({
 }) {
   return (
     <div className="app app--room" data-plane={plane}>
+      <ApplyWorkspacePrefs />
       <Suspense
         fallback={
           <aside className="room-sidebar" aria-hidden="true">
