@@ -51,6 +51,27 @@
   z-index: 2;
 }
 
+/* Floats over the room the same way .room-brand/.room-nav-toggle do,
+   rather than sitting in .room-views' flex column above .room — that flow
+   position made the room itself shrink to whatever height this line
+   didn't use, so a longer greeting or a larger font (both real, both
+   change from one visit to the next) quietly resized the room out from
+   under it. The sign-in room has no such line above it and was never
+   subject to that, which is what made the two look like different sizes
+   for the same drawing. */
+.room-clock {
+  position: fixed;
+  top: var(--s-4);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  margin: 0;
+  font-size: var(--fs-xl);
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 .room-stage {
   flex: 1;
   min-height: 0;                /* lets the stage shrink inside the shell */
@@ -394,11 +415,29 @@
 .room[data-open="false"] .spot .spot__tag { opacity: 0; }
 .room[data-open="false"] .rug { opacity: .25; }
 
+/* Covers the room while signed out. Used to be a flat tint filling .room's
+   own box exactly — since the drawn floor is letterboxed smaller than that
+   box (see globals.css's room-sizing note), the tint's own straight edges
+   and mismatched corner radius showed as a rectangle laid over a room
+   that's actually a different shape, instead of reading as one locked
+   space. Blurring what's underneath and fading the tint out via a mask
+   (rather than clipping it to a border-radius) removes the edge itself:
+   there's no boundary to draw a corner-radius on any more, just glass
+   that thins out toward the frame. inset is negative so that fade happens
+   in the empty margin around the floor, not across it. */
 .room__dim {
   position: absolute;
-  inset: 0;
-  border-radius: var(--r-lg);
-  background: color-mix(in srgb, var(--bg) 42%, transparent);
+  inset: -18%;
+  background: radial-gradient(
+    60% 60% at 50% 50%,
+    rgba(0, 0, 0, .5) 0%,
+    rgba(0, 0, 0, .28) 55%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  backdrop-filter: blur(11px);
+  -webkit-backdrop-filter: blur(11px);
+  mask-image: radial-gradient(60% 60% at 50% 50%, #000 55%, transparent 100%);
+  -webkit-mask-image: radial-gradient(60% 60% at 50% 50%, #000 55%, transparent 100%);
   pointer-events: none;
   will-change: opacity;
   /* 560ms, not --dur-slow (380ms): the only place this ever transitions is
