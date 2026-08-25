@@ -22,6 +22,8 @@ const DEFAULTS = {
   avatar_initials: null as string | null,
   avatar_colour: 'accent' as string,
   avatar_path: null as string | null,
+  avatar_offset_x: 50 as number,
+  avatar_offset_y: 50 as number,
   greeting: 'warm' as string,
 }
 
@@ -57,6 +59,7 @@ export function ProfileSettings({ legalName }: { legalName: string }) {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [photoError, setPhotoError] = useState<string | null>(null)
+  const [offsetDraft, setOffsetDraft] = useState<{ x: number; y: number } | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Signed rather than public — see the bucket's own RLS. The URL expires,
@@ -100,6 +103,16 @@ export function ProfileSettings({ legalName }: { legalName: string }) {
     router.refresh()
   }
 
+  // Live while dragging, written once the slider is let go — a network
+  // write per pixel of drag would be a write per pixel of drag.
+  const offsetX = offsetDraft?.x ?? value.avatar_offset_x
+  const offsetY = offsetDraft?.y ?? value.avatar_offset_y
+  function commitOffset() {
+    if (!offsetDraft) return
+    commit({ avatar_offset_x: offsetDraft.x, avatar_offset_y: offsetDraft.y })
+    setOffsetDraft(null)
+  }
+
   async function handleFile(file: File) {
     setPhotoError(null)
     if (!PHOTO_TYPES.includes(file.type)) {
@@ -135,7 +148,9 @@ export function ProfileSettings({ legalName }: { legalName: string }) {
       .createSignedUrl(path, 3600)
     setPhotoUrl(signed?.signedUrl ?? null)
     setUploading(false)
-    commit({ avatar_path: path })
+    // A new photo starts centred — an offset tuned for the last one is a
+    // coincidence, not a setting worth carrying over.
+    commit({ avatar_path: path, avatar_offset_x: 50, avatar_offset_y: 50 })
   }
 
   async function removePhoto() {
@@ -166,7 +181,12 @@ export function ProfileSettings({ legalName }: { legalName: string }) {
           aria-hidden="true"
         >
           {photoUrl ? (
-            <img src={photoUrl} alt="" className="avatar__photo" />
+            <img
+              src={photoUrl}
+              alt=""
+              className="avatar__photo"
+              style={{ objectPosition: `${offsetX}% ${offsetY}%` }}
+            />
           ) : (
             initials
           )}
@@ -270,6 +290,67 @@ export function ProfileSettings({ legalName }: { legalName: string }) {
           nowhere your employer can see.
         </span>
       </div>
+
+      {value.avatar_path && photoUrl && (
+        <div className="field mt-4">
+          <span className="field__label">Where the photo sits</span>
+          <div className="row" style={{ gap: 'var(--s-4)', alignItems: 'center', flexWrap: 'nowrap' }}>
+            <span
+              className="avatar"
+              data-avatar-colour={value.avatar_colour}
+              aria-hidden="true"
+              style={{ width: 88, height: 88, flex: 'none' }}
+            >
+              <img
+                src={photoUrl}
+                alt=""
+                className="avatar__photo"
+                style={{ objectPosition: `${offsetX}% ${offsetY}%` }}
+              />
+            </span>
+            <div className="stack stack--tight" style={{ flex: 1, minWidth: 0 }}>
+              <input
+                type="range"
+                className="range"
+                aria-label="Photo position, left to right"
+                min={0}
+                max={100}
+                value={offsetX}
+                style={{ '--fill': `${offsetX}%` } as React.CSSProperties}
+                onChange={(e) => setOffsetDraft({ x: Number(e.target.value), y: offsetY })}
+                onMouseUp={commitOffset}
+                onTouchEnd={commitOffset}
+                onKeyUp={commitOffset}
+              />
+              <div className="range-scale">
+                <span>Left</span>
+                <span>Right</span>
+              </div>
+              <input
+                type="range"
+                className="range mt-2"
+                aria-label="Photo position, top to bottom"
+                min={0}
+                max={100}
+                value={offsetY}
+                style={{ '--fill': `${offsetY}%` } as React.CSSProperties}
+                onChange={(e) => setOffsetDraft({ x: offsetX, y: Number(e.target.value) })}
+                onMouseUp={commitOffset}
+                onTouchEnd={commitOffset}
+                onKeyUp={commitOffset}
+              />
+              <div className="range-scale">
+                <span>Top</span>
+                <span>Bottom</span>
+              </div>
+            </div>
+          </div>
+          <span className="field__hint">
+            Drag either slider until the part of the photo you want shows
+            through the circle.
+          </span>
+        </div>
+      )}
 
       <div className="field mt-4">
         <span className="field__label">Your colour in the room</span>

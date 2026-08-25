@@ -100,7 +100,9 @@ export default async function Home() {
     supabase.from('person_roles').select('role'),
     supabase
       .from('profile')
-      .select('preferred_name, avatar_initials, avatar_colour, avatar_path, greeting')
+      .select(
+        'preferred_name, avatar_initials, avatar_colour, avatar_path, avatar_offset_x, avatar_offset_y, greeting'
+      )
       .maybeSingle(),
   ])
   const isHr = (roles ?? []).some((r) => r.role === 'hr')
@@ -130,6 +132,8 @@ export default async function Home() {
       colour={profile?.avatar_colour ?? 'accent'}
       greeting={profile?.greeting ?? 'warm'}
       avatarUrl={avatarUrl}
+      avatarOffsetX={profile?.avatar_offset_x ?? 50}
+      avatarOffsetY={profile?.avatar_offset_y ?? 50}
     />
   )
 }

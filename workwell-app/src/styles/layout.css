@@ -376,7 +376,15 @@
   user-select: none;
 }
 
+/* Positioned rather than width/height: 100% — a percentage height on a
+   replaced element inside a `display: grid` cell doesn't reliably resolve
+   against the cell's own size in every browser, and falls back to the
+   image's intrinsic aspect ratio instead. A tall photo then forced this
+   box to 48px wide by hundreds tall, blowing the circle apart. Absolute
+   positioning pins it to the circle's actual box regardless. */
 .sidebar-avatar__photo {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   border-radius: 50%;

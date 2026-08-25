@@ -50,7 +50,9 @@ async function RoomSidebarData() {
     supabase.from('person_roles').select('role'),
     supabase
       .from('profile')
-      .select('preferred_name, avatar_initials, avatar_colour, avatar_path')
+      .select(
+        'preferred_name, avatar_initials, avatar_colour, avatar_path, avatar_offset_x, avatar_offset_y'
+      )
       .maybeSingle(),
   ])
 
@@ -74,6 +76,8 @@ async function RoomSidebarData() {
       initials={profile?.avatar_initials ?? null}
       colour={profile?.avatar_colour ?? 'accent'}
       avatarUrl={avatarUrl}
+      avatarOffsetX={profile?.avatar_offset_x ?? 50}
+      avatarOffsetY={profile?.avatar_offset_y ?? 50}
     />
   )
 }
