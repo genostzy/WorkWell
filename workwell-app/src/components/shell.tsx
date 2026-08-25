@@ -4,6 +4,7 @@ import { SignOut } from '@/components/sign-out'
 import { Brandmark } from '@/components/brandmark'
 import { RoomSidebar } from '@/components/room-sidebar'
 import { SidebarToggle } from '@/components/sidebar-toggle'
+import { Notifications } from '@/components/notifications'
 import { createClient } from '@/lib/supabase/server'
 import { type Page, type Plane } from '@/components/chrome'
 
@@ -165,6 +166,7 @@ export function Shell({
           </span>
           <span className="topbar__spacer" />
           <div className="topbar__actions">
+            <Notifications />
             <SignOut compact />
           </div>
         </header>
