@@ -184,26 +184,30 @@ export function Office({
     // sized a touch smaller than the dot so the avatar colour still shows
     // through as a ring. innerHTML above rebuilds this group from scratch
     // every call, so there is never a stale image node to clean up first.
+    // Radius matches .room-avatar__dot's own CSS-set r (room.css) minus a
+    // few px for the ring — keep the two in step if that size changes.
     const avatarGroup = roomRef.current.querySelector('.room-avatar')
     if (avatarGroup && avatarUrl) {
       const svgNS = 'http://www.w3.org/2000/svg'
       const xlinkNS = 'http://www.w3.org/1999/xlink'
+      const photoRadius = 21
+      const photoSize = photoRadius * 2
 
       const clip = document.createElementNS(svgNS, 'clipPath')
       clip.setAttribute('id', 'room-avatar-clip')
       const clipCircle = document.createElementNS(svgNS, 'circle')
       clipCircle.setAttribute('cx', '500')
       clipCircle.setAttribute('cy', '672')
-      clipCircle.setAttribute('r', '14')
+      clipCircle.setAttribute('r', String(photoRadius))
       clip.appendChild(clipCircle)
       avatarGroup.appendChild(clip)
 
       const image = document.createElementNS(svgNS, 'image')
       image.setAttribute('class', 'room-avatar__photo')
-      image.setAttribute('x', '486')
-      image.setAttribute('y', '658')
-      image.setAttribute('width', '28')
-      image.setAttribute('height', '28')
+      image.setAttribute('x', String(500 - photoRadius))
+      image.setAttribute('y', String(672 - photoRadius))
+      image.setAttribute('width', String(photoSize))
+      image.setAttribute('height', String(photoSize))
       image.setAttribute('preserveAspectRatio', 'xMidYMid slice')
       image.setAttribute('clip-path', 'url(#room-avatar-clip)')
       image.setAttributeNS(xlinkNS, 'href', avatarUrl)

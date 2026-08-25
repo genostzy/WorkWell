@@ -399,10 +399,15 @@
   transform-origin: 500px 672px;
   transition: opacity var(--dur-med) var(--ease), transform 900ms var(--ease);
 }
-.room-avatar__dot { fill: var(--accent); }
+.room-avatar__dot { fill: var(--accent); r: 24px; }
 .room-avatar__initials {
   fill: var(--text-on-accent);
-  font-size: 14px; font-weight: 800; text-anchor: middle;
+  font-size: 20px; font-weight: 800; text-anchor: middle;
+  /* y is baked into the markup for the old, smaller dot; dominant-baseline
+     recentres the glyph on the dot's true middle regardless of font-size,
+     so a size change here never needs a matching y hand-tuned again. */
+  y: 672px;
+  dominant-baseline: central;
 }
 .room[data-open="true"] .room-avatar { opacity: 1; transform: translateY(-190px); }
 
