@@ -258,7 +258,7 @@ export default function AttendanceClient() {
       <div className="card mb-5">
         <div className="card__head">
           <div>
-            <div className="card__title">Today</div>
+            <h2 className="card__title">Today</h2>
             <div className="card__sub">{loading ? 'Loading…' : statusOf(todayLog)}</div>
           </div>
           {!loading && !todayLog.timeIn && (
@@ -296,7 +296,7 @@ export default function AttendanceClient() {
 
       <div className="card card--flush">
         <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-          <div className="card__title">This week</div>
+          <h2 className="card__title">This week</h2>
         </div>
         <div className="table-scroll">
           <table className="data-table">
@@ -332,7 +332,7 @@ export default function AttendanceClient() {
       </div>
 
       <div className="card mt-5">
-        <div className="card__title mb-1">Something wrong with a day?</div>
+        <h2 className="card__title mb-1">Something wrong with a day?</h2>
         <p className="card__sub mb-4">
           Say what happened. HR can only see and fix the one day you name, and only until your request is decided.
         </p>

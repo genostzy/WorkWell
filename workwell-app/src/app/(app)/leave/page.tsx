@@ -134,7 +134,7 @@ export default async function Leave() {
 
           <div className="card card--flush">
             <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-              <div className="card__title">Your requests</div>
+              <h2 className="card__title">Your requests</h2>
             </div>
             {rows.length === 0 ? (
               <p className="t-subtle" style={{ padding: '0 var(--s-5) var(--s-5)' }}>
@@ -197,7 +197,7 @@ export default async function Leave() {
               looking for it — this is the one place where the employer does
               see something, so it is where the line has to be drawn. */}
           <div className="card card--accent">
-            <div className="card__title mb-3">What your employer holds</div>
+            <h2 className="card__title mb-3">What your employer holds</h2>
             <ul className="stack stack--tight" style={{ fontSize: 'var(--fs-sm)' }}>
               {[
                 'Your job, team, manager and start date',
@@ -213,7 +213,7 @@ export default async function Leave() {
 
             <div className="hr" />
 
-            <div className="card__title mb-3">What it never holds</div>
+            <h2 className="card__title mb-3">What it never holds</h2>
             <ul className="stack stack--tight" style={{ fontSize: 'var(--fs-sm)' }}>
               {[
                 'Your check-ins, mood, energy or pressure',
@@ -230,7 +230,7 @@ export default async function Leave() {
           </div>
 
           <div className="card">
-            <div className="card__title mb-4">Balance</div>
+            <h2 className="card__title mb-4">Balance</h2>
             <div className="stat mb-4">
               <span className="stat__value t-num">{left}</span>
               <span className="stat__label">
@@ -254,7 +254,7 @@ export default async function Leave() {
           {employment && (
             <div className="card card--flush">
               <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-                <div className="card__title">Employment record</div>
+                <h2 className="card__title">Employment record</h2>
                 <div className="card__sub">
                   Held by HR. Ask them to correct anything wrong.
                 </div>

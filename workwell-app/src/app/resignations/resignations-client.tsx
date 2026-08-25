@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { PageHead, PlaneBadge } from '@/components/chrome'
+import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { ConfirmButton } from '@/components/controls'
 import { fmtDate } from '@/lib/format-date'
 
@@ -25,7 +25,7 @@ export default function ResignationsClient() {
         <PlaneBadge plane="work" />
 
         <div className="card">
-          <div className="card__title mb-3">Notice submitted</div>
+          <h2 className="card__title mb-3">Notice submitted</h2>
           <div className="table-scroll">
             <table className="data-table">
               <caption className="sr-only">Resignation status</caption>
@@ -55,6 +55,13 @@ export default function ResignationsClient() {
             onConfirm={() => setSent(null)}
           />
         </div>
+
+        <PrivacyNote
+          plane="work"
+          detail="Notice goes to your manager and HR together the moment you submit it — there's no draft or private stage. The reason field is optional and stays off the record if you leave it blank; nothing here touches the private plane."
+        >
+          <b>Sent to your manager and HR immediately.</b>{' '}
+        </PrivacyNote>
       </>
     )
   }
@@ -65,7 +72,7 @@ export default function ResignationsClient() {
       <PlaneBadge plane="work" />
 
       <form className="card" onSubmit={submit}>
-        <div className="card__title">Give notice</div>
+        <h2 className="card__title">Give notice</h2>
         <p className="card__sub">Sent to your manager and HR together.</p>
 
         {error && <div className="banner banner--error" role="alert">{error}</div>}
@@ -90,6 +97,13 @@ export default function ResignationsClient() {
           <button className="btn btn--primary" type="submit">Submit notice</button>
         </div>
       </form>
+
+      <PrivacyNote
+        plane="work"
+        detail="Notice goes to your manager and HR together the moment you submit it — there's no draft or private stage. The reason field is optional and stays off the record if you leave it blank; nothing here touches the private plane."
+      >
+        <b>Sent to your manager and HR immediately.</b>{' '}
+      </PrivacyNote>
     </>
   )
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { PageHead, PlaneBadge } from '@/components/chrome'
+import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { ToggleRow } from '@/components/controls'
 import { fmtDate } from '@/lib/format-date'
 
@@ -51,6 +51,13 @@ export default function CompanyPoliciesClient() {
           </div>
         ))}
       </div>
+
+      <PrivacyNote
+        plane="work"
+        detail="Acknowledging a policy records that you've read it — HR can see who has and hasn't, the same as any other work-plane record. It says nothing about how you feel about the policy, and nothing here touches the private plane."
+      >
+        <b>Your acknowledgment is visible to HR.</b>{' '}
+      </PrivacyNote>
     </>
   )
 }

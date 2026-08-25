@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { PageHead, PlaneBadge } from '@/components/chrome'
+import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { fmtDate } from '@/lib/format-date'
 
 type Asset = {
@@ -40,7 +40,7 @@ export default function AssetsClient() {
 
       <div className="card card--flush">
         <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-          <div className="card__title">Issued to you</div>
+          <h2 className="card__title">Issued to you</h2>
         </div>
         <div className="table-scroll">
           <table className="data-table">
@@ -93,6 +93,13 @@ export default function AssetsClient() {
           </table>
         </div>
       </div>
+
+      <PrivacyNote
+        plane="work"
+        detail="Equipment records are tied to your employment, not your private plane — HR who manage inventory can see what's issued to you and any issue you report, the same as leave or expense records. Nothing here touches check-ins, mood, or anything else you track privately."
+      >
+        <b>Seen by HR who manage inventory.</b>{' '}
+      </PrivacyNote>
     </>
   )
 }

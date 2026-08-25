@@ -58,7 +58,7 @@ export default function WorkspaceClient() {
           <div className="card">
             <div className="card__head">
               <div>
-                <div className="card__title">Display &amp; accessibility</div>
+                <h2 className="card__title">Display &amp; accessibility</h2>
                 <div className="card__sub">
                   Theme and contrast apply the moment you choose them
                 </div>
@@ -130,7 +130,7 @@ export default function WorkspaceClient() {
 
           <div className="grid grid--2">
             <div className="card">
-              <div className="card__title mb-2">Focus mode</div>
+              <h2 className="card__title mb-2">Focus mode</h2>
               <p className="card__sub mb-4">
                 Strips the interface back to one thing at a time
               </p>
@@ -159,7 +159,7 @@ export default function WorkspaceClient() {
             </div>
 
             <div className="card">
-              <div className="card__title mb-2">Check-in format</div>
+              <h2 className="card__title mb-2">Check-in format</h2>
               <p className="card__sub mb-4">
                 Alternative input formats for the daily check-in
               </p>

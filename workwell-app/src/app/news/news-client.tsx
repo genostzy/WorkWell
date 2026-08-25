@@ -48,7 +48,7 @@ export default function NewsClient() {
                 onClick={() => setOpen(expanded ? null : p.id)}
               >
                 <div>
-                  <div className="card__title">{p.title}</div>
+                  <h2 className="card__title">{p.title}</h2>
                   <div className="card__sub">{fmtDate(p.date, { day: 'numeric', month: 'long', year: 'numeric' })}</div>
                 </div>
                 <span aria-hidden="true">{expanded ? '−' : '+'}</span>

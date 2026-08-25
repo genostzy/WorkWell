@@ -62,7 +62,7 @@ export default function BoundariesClient() {
           <div className="card">
             <div className="card__head">
               <div>
-                <div className="card__title">Quiet hours</div>
+                <h2 className="card__title">Quiet hours</h2>
                 <div className="card__sub">
                   When you&rsquo;d rather not be pulled back into work
                 </div>
@@ -121,7 +121,7 @@ export default function BoundariesClient() {
           </div>
 
           <div className="card">
-            <div className="card__title mb-2">Delayed sending</div>
+            <h2 className="card__title mb-2">Delayed sending</h2>
             <p className="card__sub mb-4">
               Write when it suits you, deliver when it suits them
             </p>
@@ -136,7 +136,7 @@ export default function BoundariesClient() {
           </div>
 
           <div className="card">
-            <div className="card__title mb-2">Focus protection</div>
+            <h2 className="card__title mb-2">Focus protection</h2>
             <p className="card__sub mb-4">
               Holds blocks in your calendar so meetings can&rsquo;t fill
               everything

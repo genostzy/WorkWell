@@ -260,7 +260,7 @@ export default function RecognitionClient() {
                 click that can only fail. Say why instead. */}
             {people.length === 0 ? (
               <div className="card">
-                <div className="card__title mb-2">Appreciate someone</div>
+                <h2 className="card__title mb-2">Appreciate someone</h2>
                 <p className="t-subtle">
                   There is nobody else here yet. As colleagues are given
                   accounts they appear in this list.
@@ -268,7 +268,7 @@ export default function RecognitionClient() {
               </div>
             ) : (
             <form className="card" onSubmit={sendAppreciation}>
-              <div className="card__title mb-2">Appreciate someone</div>
+              <h2 className="card__title mb-2">Appreciate someone</h2>
               <p className="card__sub mb-4">
                 Private unless you both choose otherwise
               </p>
@@ -359,7 +359,7 @@ export default function RecognitionClient() {
 
             <div className="card card--flush">
               <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-                <div className="card__title">For you</div>
+                <h2 className="card__title">For you</h2>
                 <div className="card__sub">
                   {received.length === 0
                     ? 'Nothing yet'
@@ -394,7 +394,7 @@ export default function RecognitionClient() {
 
           <div className="stack">
             <form className="card card--accent" onSubmit={sendSupport}>
-              <div className="card__title mb-2">Ask for support</div>
+              <h2 className="card__title mb-2">Ask for support</h2>
               <p className="card__sub mb-4">
                 A private route to HR or an external service
               </p>
@@ -462,7 +462,7 @@ export default function RecognitionClient() {
 
             {open.length > 0 && (
               <div className="card">
-                <div className="card__title mb-3">Your open requests</div>
+                <h2 className="card__title mb-3">Your open requests</h2>
                 <div className="stack stack--tight">
                   {open.map((r) => (
                     <div key={r.id}>
@@ -490,7 +490,7 @@ export default function RecognitionClient() {
             )}
 
             <div className="card">
-              <div className="card__title mb-1">Something off with your team?</div>
+              <h2 className="card__title mb-1">Something off with your team?</h2>
               <p className="card__sub mb-4">
                 No name, no detail — this isn&rsquo;t about any one person. HR
                 only ever sees it as a share of a group of eight or more,

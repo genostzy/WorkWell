@@ -114,7 +114,7 @@ export default function PayrollClient() {
         <div className="stack">
           <div className="card card--flush">
             <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-              <div className="card__title">Payslip history</div>
+              <h2 className="card__title">Payslip history</h2>
             </div>
             {loadError && (
               <div className="banner banner--error" style={{ margin: '0 var(--s-5) var(--s-5)' }} role="alert">
@@ -163,7 +163,7 @@ export default function PayrollClient() {
           {requests.length > 0 && (
             <div className="card card--flush">
               <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-                <div className="card__title">Your requests</div>
+                <h2 className="card__title">Your requests</h2>
               </div>
               <div className="table-scroll">
                 <table className="data-table">
@@ -185,7 +185,7 @@ export default function PayrollClient() {
 
         <div className="stack">
           <form className="card" onSubmit={submit}>
-            <div className="card__title">Request something</div>
+            <h2 className="card__title">Request something</h2>
             <p className="card__sub">Goes to HR — there&rsquo;s no separate payroll-only role yet.</p>
 
             {error && (

@@ -40,7 +40,7 @@ export default function CustomFieldsClient() {
         <div className="stack">
           <div className="card card--flush">
             <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-              <div className="card__title">Defined fields</div>
+              <h2 className="card__title">Defined fields</h2>
               <div className="card__sub">Shown on every record, on People</div>
             </div>
             <div className="table-scroll">
@@ -67,7 +67,7 @@ export default function CustomFieldsClient() {
 
         <div className="stack">
           <form className="card" onSubmit={submit}>
-            <div className="card__title">Add a field</div>
+            <h2 className="card__title">Add a field</h2>
 
             {error && <div className="banner banner--error" role="alert">{error}</div>}
 

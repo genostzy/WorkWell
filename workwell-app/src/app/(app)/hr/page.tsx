@@ -102,7 +102,7 @@ export default async function Hr() {
       <div className="card">
         <div className="card__head">
           <div>
-            <div className="card__title">Accounts &amp; access</div>
+            <h2 className="card__title">Accounts &amp; access</h2>
             <div className="card__sub">
               Create accounts, and choose what each one can open
             </div>
@@ -135,7 +135,7 @@ export default async function Hr() {
       <div className="card">
         <div className="card__head">
           <div>
-            <div className="card__title">Leave to approve</div>
+            <h2 className="card__title">Leave to approve</h2>
             <div className="card__sub">Awaiting a decision from you</div>
           </div>
         </div>
@@ -163,7 +163,7 @@ export default async function Hr() {
       <div className="card">
         <div className="card__head">
           <div>
-            <div className="card__title">Attendance resets to review</div>
+            <h2 className="card__title">Attendance resets to review</h2>
             <div className="card__sub">Requested with a reason, awaiting your decision</div>
           </div>
         </div>
@@ -200,7 +200,7 @@ export default async function Hr() {
       <div className="card">
         <div className="card__head">
           <div>
-            <div className="card__title">Expenses to review</div>
+            <h2 className="card__title">Expenses to review</h2>
             <div className="card__sub">Submitted claims, and approved ones waiting to be marked paid</div>
           </div>
         </div>
@@ -228,7 +228,7 @@ export default async function Hr() {
       <div className="card">
         <div className="card__head">
           <div>
-            <div className="card__title">Payroll requests to review</div>
+            <h2 className="card__title">Payroll requests to review</h2>
             <div className="card__sub">Awaiting a decision from you</div>
           </div>
         </div>
@@ -252,7 +252,7 @@ export default async function Hr() {
 
       <div className="card card--flush mt-5">
         <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-          <div className="card__title">Directory</div>
+          <h2 className="card__title">Directory</h2>
           <div className="card__sub">
             {(people ?? []).length === 1
               ? '1 person'

@@ -106,7 +106,7 @@ export default function ExpensesClient() {
         <div className="stack">
           <div className="card card--flush">
             <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-              <div className="card__title">Your claims</div>
+              <h2 className="card__title">Your claims</h2>
             </div>
             {loadError && (
               <div className="banner banner--error" style={{ margin: '0 var(--s-5) var(--s-5)' }} role="alert">
@@ -155,7 +155,7 @@ export default function ExpensesClient() {
 
         <div className="stack">
           <form className="card" onSubmit={submit}>
-            <div className="card__title">Submit a claim</div>
+            <h2 className="card__title">Submit a claim</h2>
             <p className="card__sub">Goes to HR for approval.</p>
 
             {error && (

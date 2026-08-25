@@ -185,9 +185,9 @@ function Results({ results, onDone }: { results: Result[]; onDone: () => void })
 
   return (
     <div className="card card--accent">
-      <div className="card__title mb-2">
+      <h2 className="card__title mb-2">
         {made.length} account{made.length === 1 ? '' : 's'} created
-      </div>
+      </h2>
 
       {made.length > 0 && (
         <>
@@ -328,7 +328,7 @@ export function CreateAccount({ departments = [] }: { departments?: string[] }) 
       <div className="card">
         <div className="card__head">
           <div>
-            <div className="card__title">Add someone</div>
+            <h2 className="card__title">Add someone</h2>
             <div className="card__sub">
               You create the account. Nobody can sign themselves up.
             </div>
@@ -347,7 +347,7 @@ export function CreateAccount({ departments = [] }: { departments?: string[] }) 
 
   return (
     <form className="card" onSubmit={submit}>
-      <div className="card__title mb-2">Create account{rows.length > 1 ? 's' : ''}</div>
+      <h2 className="card__title mb-2">Create account{rows.length > 1 ? 's' : ''}</h2>
       <p className="card__sub mb-4">
         Each gets a one-time password and must choose their own on first sign-in.
       </p>

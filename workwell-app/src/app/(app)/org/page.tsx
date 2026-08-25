@@ -102,7 +102,7 @@ export default async function Org() {
         <div className="card" key={c.cohort}>
           <div className="card__head">
             <div>
-              <div className="card__title">{c.cohort}</div>
+              <h2 className="card__title">{c.cohort}</h2>
               <div className="card__sub">{c.headcount} people contributing</div>
             </div>
             <span className="chip chip--accent">Reporting</span>
@@ -148,7 +148,7 @@ export default async function Org() {
 
       {hidden.length > 0 && (
         <div className="card card--quiet">
-          <div className="card__title mb-2">Hidden: too few people</div>
+          <h2 className="card__title mb-2">Hidden: too few people</h2>
           <p className="t-subtle mb-4">
             Named so that a gap is never mistaken for a signal. No figures exist
             for these groups.

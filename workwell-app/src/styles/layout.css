@@ -396,7 +396,7 @@
 }
 
 .sidebar-section__label {
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: var(--fw-bold);
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -534,7 +534,7 @@
   max-width: 100%;
 }
 .sidebar-tile__sub {
-  font-size: 10.5px;
+  font-size: var(--fs-xs);
   font-weight: var(--fw-normal);
   color: var(--text-subtle);
   overflow: hidden;
@@ -559,7 +559,7 @@
   flex-shrink: 0;
 }
 .sidebar-foot__text {
-  font-size: 10px;
+  font-size: var(--fs-xs);
   color: var(--text-subtle);
   line-height: 1.4;
 }
@@ -747,7 +747,7 @@
     min-height: 48px;
     text-decoration: none;
     color: var(--text-subtle);
-    font-size: 10.5px;
+    font-size: var(--fs-xs);
     font-weight: var(--fw-bold);
   }
   .tabbar a svg { width: 21px; height: 21px; }
