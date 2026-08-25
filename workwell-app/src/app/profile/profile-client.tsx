@@ -54,16 +54,10 @@ export function ProfileSettings({ legalName }: { legalName: string }) {
   const [nameDraft, setNameDraft] = useState<string | null>(null)
   const [initialsDraft, setInitialsDraft] = useState<string | null>(null)
 
-  const [uid, setUid] = useState<string | null>(null)
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [photoError, setPhotoError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    const supabase = createClient()
-    supabase.auth.getUser().then(({ data }) => setUid(data.user?.id ?? null))
-  }, [])
 
   // Signed rather than public — see the bucket's own RLS. The URL expires,
   // so it is re-requested whenever the stored path changes rather than
@@ -116,14 +110,16 @@ export function ProfileSettings({ legalName }: { legalName: string }) {
       setPhotoError('Keep it under 2MB.')
       return
     }
-    if (!uid) {
-      setPhotoError('Still finding your account — try again in a moment.')
+    setUploading(true)
+    const supabase = createClient()
+    const { data: userData, error: userError } = await supabase.auth.getUser()
+    if (userError || !userData.user) {
+      setUploading(false)
+      setPhotoError('Could not verify your account — try again in a moment.')
       return
     }
 
-    setUploading(true)
-    const supabase = createClient()
-    const path = `${uid}/avatar`
+    const path = `${userData.user.id}/avatar`
     const { error: uploadError } = await supabase.storage
       .from('avatars')
       .upload(path, file, { upsert: true, contentType: file.type })
@@ -143,10 +139,14 @@ export function ProfileSettings({ legalName }: { legalName: string }) {
   }
 
   async function removePhoto() {
-    if (!uid) return
     setPhotoError(null)
     const supabase = createClient()
-    await supabase.storage.from('avatars').remove([`${uid}/avatar`])
+    const { data: userData, error: userError } = await supabase.auth.getUser()
+    if (userError || !userData.user) {
+      setPhotoError('Could not verify your account — try again in a moment.')
+      return
+    }
+    await supabase.storage.from('avatars').remove([`${userData.user.id}/avatar`])
     setPhotoUrl(null)
     commit({ avatar_path: null })
   }
