@@ -6,9 +6,12 @@ import { ConfirmButton } from '@/components/controls'
 import { createClient } from '@/lib/supabase/client'
 import { fmtDate } from '@/lib/format-date'
 import {
+  EARLY_GRACE_MIN,
   inWindow,
   labelTime,
   minutesSinceMidnight,
+  toHHMM,
+  timeInWindow,
   toMinutes,
   type Shift,
 } from '@/lib/shift'
@@ -87,6 +90,9 @@ export default function AttendanceClient() {
   const today = week.find((d) => d.isToday)
   const [logs, setLogs] = useState<Record<string, DayLog>>({})
   const [shift, setShift] = useState<Shift | null>(null)
+  // Ticks so the Time in button opens on its own when the window arrives,
+  // rather than only on the next reload.
+  const [now, setNow] = useState(() => new Date())
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -172,6 +178,21 @@ export default function AttendanceClient() {
   }, [])
 
   const todayLog = today ? logs[today.iso] ?? EMPTY_LOG : EMPTY_LOG
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 30000)
+    return () => window.clearInterval(id)
+  }, [])
+
+  // Half an hour before the rostered start, through to the rostered end.
+  // Enforced here rather than in attendance_time_in(): a shift is a
+  // wall-clock pattern and there is still no timezone on a person or an org
+  // (0018_scheduler.sql calls out the same gap), so the server would have to
+  // compare in UTC and would disagree with the clock the person is reading
+  // by however far their offset is. This gate matches the clock they can
+  // see. It is a roster nudge, not a security boundary — attendance is
+  // self-only data that only the person themselves can write.
+  const window_ = timeInWindow(shift, now)
 
   // The auto-pause: nothing to click, nothing to forget. While timed in and
   // not yet out, the tick checks the wall clock against the lunch window
@@ -281,9 +302,15 @@ export default function AttendanceClient() {
             <div className="card__sub">{loading ? 'Loading…' : statusOf(todayLog)}</div>
           </div>
           {!loading && !todayLog.timeIn && (
-            <button className="btn btn--primary btn--sm" type="button" onClick={timeIn}>
-              Time in
-            </button>
+            window_.open ? (
+              <button className="btn btn--primary btn--sm" type="button" onClick={timeIn}>
+                Time in
+              </button>
+            ) : (
+              <span className="t-subtle">
+                Opens {labelTime(toHHMM(window_.opensAt ?? 0))}
+              </span>
+            )
           )}
           {!loading && todayLog.timeIn && !todayLog.timeOut && (
             <ConfirmButton label="Time out" confirmLabel="Time out" onConfirm={timeOut} />
@@ -316,6 +343,12 @@ export default function AttendanceClient() {
               You&rsquo;re on <b>{shift.name}</b> — {labelTime(shift.time_in)} to{' '}
               {labelTime(shift.time_out)}, mealtime pauses {labelTime(shift.meal_start)}–
               {labelTime(shift.meal_end)}.
+              {!todayLog.timeIn && !window_.open && (
+                <>
+                  {' '}Timing in opens {EARLY_GRACE_MIN} minutes before that, at{' '}
+                  <b>{labelTime(toHHMM(window_.opensAt ?? 0))}</b>.
+                </>
+              )}
             </>
           ) : (
             ' No shift is set for you, so mealtime pauses at midday by default.'

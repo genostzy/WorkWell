@@ -85,6 +85,38 @@ export function mealFraction(shift: Shift) {
   return Math.min(1, Math.max(0, toMeal / workingMinutes(shift)))
 }
 
+/** Minutes forward from a to b around the clock, 0–1439. Unlike
+ *  spanMinutes, a == b is nought minutes apart rather than a full day. */
+export function forwardMinutes(a: number, b: number) {
+  return (((b - a) % 1440) + 1440) % 1440
+}
+
+/** How early someone may time in. Turning up a little before your shift is
+ *  normal; turning up hours before it is padding the day. */
+export const EARLY_GRACE_MIN = 30
+
+/**
+ * Whether timing in is open yet, and when it opens if not.
+ *
+ * Open from half an hour before the rostered start through to the rostered
+ * end — early enough to cover arriving a bit before, late enough that being
+ * late never locks you out of recording the day at all. An account with no
+ * roster has nothing to be early for, so it stays open all day.
+ *
+ * Wall-clock throughout, so it wraps: the graveyard shift's window opens at
+ * 16:30 and runs past midnight to 02:00.
+ */
+export function timeInWindow(shift: Shift | null, now: Date) {
+  if (!shift) return { open: true, opensAt: null as number | null }
+  const start = toMinutes(shift.time_in)
+  const opensAt = (start - EARLY_GRACE_MIN + 1440) % 1440
+  const length = EARLY_GRACE_MIN + spanMinutes(start, toMinutes(shift.time_out))
+  return {
+    open: forwardMinutes(opensAt, minutesSinceMidnight(now)) <= length,
+    opensAt,
+  }
+}
+
 export type RingState = {
   /** 0–1 around the room's border. */
   progress: number
