@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { readIsHr } from '@/lib/role'
-import { LoadError, PageHead, RoleLocked } from '@/components/chrome'
+import { LoadError, PageHead } from '@/components/chrome'
 import CompanyPoliciesClient from '../../company-policies/company-policies-client'
+import { PoliciesManageClient } from '../../company-policies/policies-manage-client'
 
 export default async function CompanyPolicies() {
   const supabase = await createClient()
@@ -16,14 +17,5 @@ export default async function CompanyPolicies() {
     )
   }
 
-  if (isHr) {
-    return (
-      <>
-        <PageHead title="Not available on this account" />
-        <RoleLocked audience="employee" />
-      </>
-    )
-  }
-
-  return <CompanyPoliciesClient />
+  return isHr ? <PoliciesManageClient /> : <CompanyPoliciesClient />
 }

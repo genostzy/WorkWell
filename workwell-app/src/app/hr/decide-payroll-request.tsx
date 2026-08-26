@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
-export function DecidePayrollRequest({ id }: { id: string }) {
+export function DecidePayrollRequest({ id, personId }: { id: string; personId: string }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState<'Resolved' | 'Declined' | null>(null)
@@ -25,12 +25,23 @@ export function DecidePayrollRequest({ id }: { id: string }) {
       })
       .eq('id', id)
 
-    setBusy(false)
-    if (error) setError(error.message)
-    else {
-      setDone(status)
-      router.refresh()
+    if (error) {
+      setBusy(false)
+      setError(error.message)
+      return
     }
+
+    await supabase.from('notifications').insert({
+      person_id: personId,
+      kind: 'salary_decided',
+      title: 'Payroll request ' + status.toLowerCase(),
+      body: 'HR has ' + status.toLowerCase() + ' your payroll request.',
+      link: '/payroll',
+    })
+
+    setBusy(false)
+    setDone(status)
+    router.refresh()
   }
 
   if (done) {

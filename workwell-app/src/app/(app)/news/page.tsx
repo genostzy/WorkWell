@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { readIsHr } from '@/lib/role'
-import { LoadError, PageHead, RoleLocked } from '@/components/chrome'
+import { LoadError, PageHead } from '@/components/chrome'
 import NewsClient from '../../news/news-client'
+import { NewsManageClient } from '../../news/news-manage-client'
 
 export default async function News() {
   const supabase = await createClient()
@@ -16,14 +17,5 @@ export default async function News() {
     )
   }
 
-  if (isHr) {
-    return (
-      <>
-        <PageHead title="Not available on this account" />
-        <RoleLocked audience="employee" />
-      </>
-    )
-  }
-
-  return <NewsClient />
+  return isHr ? <NewsManageClient /> : <NewsClient />
 }

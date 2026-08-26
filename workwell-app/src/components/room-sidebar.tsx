@@ -46,6 +46,8 @@ const ADMIN_SPOTS: Spot[] = [
   { id: 'decisions', href: '/hr/decisions', label: 'Decisions', sub: 'Audit trail' },
   { id: 'letter-heads', href: '/letter-heads', label: 'Letter heads', sub: 'Templates' },
   { id: 'custom-fields', href: '/custom-fields', label: 'Data fields', sub: 'Extra fields' },
+  { id: 'news', href: '/news', label: 'News', sub: 'Post & manage' },
+  { id: 'company-policies', href: '/company-policies', label: 'Policies', sub: 'Add & manage' },
   { id: 'offboarding', href: '/offboarding', label: 'Offboarding', sub: 'Checklist' },
   { id: 'warnings', href: '/warnings', label: 'Warnings', sub: 'Records' },
 ]

@@ -6,9 +6,11 @@ import { createClient } from '@/lib/supabase/client'
 
 export function DecideExpense({
   id,
+  personId,
   status,
 }: {
   id: string
+  personId: string
   status: 'Submitted' | 'Approved' | 'Reimbursed' | 'Declined'
 }) {
   const router = useRouter()
@@ -31,12 +33,23 @@ export function DecideExpense({
       })
       .eq('id', id)
 
-    setBusy(false)
-    if (error) setError(error.message)
-    else {
-      setDone(next)
-      router.refresh()
+    if (error) {
+      setBusy(false)
+      setError(error.message)
+      return
     }
+
+    await supabase.from('notifications').insert({
+      person_id: personId,
+      kind: 'expense_decided',
+      title: 'Expense claim ' + next.toLowerCase(),
+      body: 'Your expense claim has been ' + next.toLowerCase() + '.',
+      link: '/expenses',
+    })
+
+    setBusy(false)
+    setDone(next)
+    router.refresh()
   }
 
   if (done) {

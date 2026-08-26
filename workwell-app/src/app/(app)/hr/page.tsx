@@ -234,7 +234,7 @@ export default async function Hr() {
                   {fmt(e.spent_on)} · ₱{Number(e.amount).toLocaleString('en-PH')}
                 </p>
                 {e.note && <p className="t-subtle">{e.note}</p>}
-                <DecideExpense id={e.id} status={e.status} />
+                <DecideExpense id={e.id} personId={e.person_id} status={e.status} />
               </div>
             ))}
           </div>
@@ -259,7 +259,7 @@ export default async function Hr() {
                   <span className="chip">{r.kind}</span>
                 </div>
                 <p className="t-subtle mt-2">{r.note}</p>
-                <DecidePayrollRequest id={r.id} />
+                <DecidePayrollRequest id={r.id} personId={r.person_id} />
               </div>
             ))}
           </div>
