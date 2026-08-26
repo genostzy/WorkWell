@@ -205,6 +205,7 @@ export default async function Hr() {
                   <p className="t-subtle mt-2">{r.reason}</p>
                   <DecideAttendanceReset
                     requestId={r.id}
+                    personId={r.person_id}
                     day={r.day}
                     initial={{
                       timeIn: att?.time_in ?? null,

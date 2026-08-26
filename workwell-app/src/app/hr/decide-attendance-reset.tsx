@@ -30,10 +30,12 @@ function fromInput(day: string, hhmm: string) {
 
 export function DecideAttendanceReset({
   requestId,
+  personId,
   day,
   initial,
 }: {
   requestId: string
+  personId: string
   day: string
   initial: Initial
 }) {
@@ -61,12 +63,25 @@ export function DecideAttendanceReset({
       p_lunch_end: approve ? fromInput(day, lunchEnd) : null,
       p_time_out: approve ? fromInput(day, timeOut) : null,
     })
-    setBusy(false)
-    if (error) setError(error.message)
-    else {
-      setDone(approve ? 'approved' : 'declined')
-      router.refresh()
+    if (error) {
+      setBusy(false)
+      setError(error.message)
+      return
     }
+
+    await supabase.from('notifications').insert({
+      person_id: personId,
+      kind: 'attendance_reset_decided',
+      title: approve ? 'Your attendance reset was approved' : 'Your attendance reset was declined',
+      body: approve
+        ? 'HR has corrected your attendance record for that day.'
+        : 'HR has declined your attendance reset request.',
+      link: '/attendance',
+    })
+
+    setBusy(false)
+    setDone(approve ? 'approved' : 'declined')
+    router.refresh()
   }
 
   if (done) {
