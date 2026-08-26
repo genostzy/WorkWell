@@ -446,20 +446,18 @@ export function Office({
                   }`
                 : ' '}
             </p>
-            {/* The room div's contents are written with innerHTML by
-                build(), so the ring cannot live inside it — it sits over it
-                as a sibling, sharing the same box. */}
-            <div className="room-frame">
-              <div
-                className="room"
-                data-room
-                data-open="true"
-                ref={roomRef}
-                onClick={navigate}
-                onKeyDown={onKey}
-              />
-              <ShiftRing />
-            </div>
+            <div
+              className="room"
+              data-room
+              data-open="true"
+              ref={roomRef}
+              onClick={navigate}
+              onKeyDown={onKey}
+            />
+            {/* Draws into the room's own SVG rather than over it — see the
+                note in shift-ring.tsx for why an overlay could not be made
+                to land on the wall reliably. */}
+            <ShiftRing roomRef={roomRef} />
             {!loaded && (
               <p className="t-subtle" style={{ textAlign: 'center' }}>
                 Opening your space…
