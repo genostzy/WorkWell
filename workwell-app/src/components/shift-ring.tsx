@@ -2,7 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { labelTime, mealFraction, ringState, type DayLog, type Shift } from '@/lib/shift'
+import {
+  labelTime,
+  mealFraction,
+  ringState,
+  workingMinutes,
+  type DayLog,
+  type Shift,
+} from '@/lib/shift'
 
 /**
  * The working day, drawn on the room's own wall.
@@ -53,9 +60,11 @@ function skeleton(shift: Shift) {
     <g mask="url(#shift-ring-filled)">
       <path class="shift-ring__shimmer" d="${RING_PATH}" pathLength="1"/>
     </g>
+    <g class="shift-ring__hours"></g>
     <g class="shift-ring__meal" hidden>
       <circle class="shift-ring__meal-dot" r="7"/>
       <text class="shift-ring__meal-label">meal ${labelTime(shift.meal_start)}</text>
+      <text class="shift-ring__meal-hour"></text>
     </g>
     <g class="shift-ring__tip" hidden>
       <circle class="shift-ring__tip-halo" r="12"/>
@@ -69,40 +78,93 @@ function skeleton(shift: Shift) {
     </g>`
 }
 
+const SVG_NS = 'http://www.w3.org/2000/svg'
+
 /**
- * Puts the meal mark on the wall, with its label leaning into the room.
+ * Where a label should sit so it leans into the room rather than out of it.
  *
- * Which way "into the room" is depends on the wall it lands on, so the
- * offset is chosen from the point's own coordinates rather than assumed — a
- * label hung below a mark on the *bottom* wall would sit outside the room
- * entirely, which is exactly the mistake the ring itself started out making.
- * Done once at injection: the mark is fixed by the roster and never moves.
+ * Which way "in" is depends on the wall the mark landed on, so it is read
+ * off the point's own coordinates rather than assumed — a label hung below
+ * a mark on the *bottom* wall would sit outside the room entirely, which is
+ * exactly the mistake the ring itself started out making. Bounds are
+ * room.js's floor rect: x 24–976, y 24–696.
  */
-function placeMeal(ring: SVGGElement, shift: Shift) {
+function lean(pt: { x: number; y: number }) {
+  if (pt.y <= 26) return { label: [0, 26], hour: [0, 43], anchor: 'middle' }
+  if (pt.y >= 694) return { label: [0, -37], hour: [0, -20], anchor: 'middle' }
+  if (pt.x <= 26) return { label: [19, -4], hour: [19, 13], anchor: 'start' }
+  if (pt.x >= 974) return { label: [-19, -4], hour: [-19, 13], anchor: 'end' }
+  // A corner arc — "inward" is diagonal and ambiguous, so drop below.
+  return { label: [0, 26], hour: [0, 43], anchor: 'middle' }
+}
+
+/** The path's normal at a distance along it, for drawing a tick across it. */
+function normalAt(path: SVGPathElement, dist: number, total: number) {
+  const e = 0.75
+  const a = path.getPointAtLength(Math.max(0, dist - e))
+  const b = path.getPointAtLength(Math.min(total, dist + e))
+  const len = Math.hypot(b.x - a.x, b.y - a.y) || 1
+  return { nx: -(b.y - a.y) / len, ny: (b.x - a.x) / len }
+}
+
+/**
+ * Draws the fixed marks: an hour tick for every worked hour, and the meal.
+ *
+ * The ring's whole length is the shift's *working* minutes, so an hour of
+ * work is the same arc wherever it falls — the ticks are evenly spaced by
+ * construction, and the meal always lands on one of them for any roster
+ * whose break starts on the hour (all three of ours do). Run once, since
+ * the roster fixes all of it; nothing here moves as the day passes.
+ */
+function placeMarks(ring: SVGGElement, shift: Shift) {
   const fill = ring.querySelector<SVGPathElement>('.shift-ring__fill')
+  const hours = ring.querySelector<SVGGElement>('.shift-ring__hours')
   const meal = ring.querySelector<SVGGElement>('.shift-ring__meal')
   const label = ring.querySelector<SVGTextElement>('.shift-ring__meal-label')
-  if (!fill || !meal || !label) return
+  const hourText = ring.querySelector<SVGTextElement>('.shift-ring__meal-hour')
+  if (!fill || !hours || !meal || !label || !hourText) return
 
-  let pt: DOMPoint
+  const worked = workingMinutes(shift)
+  const mealF = mealFraction(shift)
+  const mealHour = Math.round((mealF * worked) / 60)
+
+  let total: number
   try {
-    pt = fill.getPointAtLength(fill.getTotalLength() * mealFraction(shift))
+    total = fill.getTotalLength()
+    if (!total) return
   } catch {
     return
   }
 
-  // The wall's own bounds, from room.js's floor rect.
-  const [dx, dy, anchor] =
-    pt.y <= 26 ? [0, 26, 'middle']
-    : pt.y >= 694 ? [0, -22, 'middle']
-    : pt.x <= 26 ? [18, 5, 'start']
-    : pt.x >= 974 ? [-18, 5, 'end']
-    : [0, 26, 'middle'] // a corner arc — inward is ambiguous, so drop below
+  // Interior ticks only: hour 0 and the final hour are the two ends of the
+  // day, which already carry their own markers on either side of the gap.
+  hours.replaceChildren()
+  for (let h = 1; h * 60 < worked; h++) {
+    const f = (h * 60) / worked
+    const d = total * f
+    const p = fill.getPointAtLength(d)
+    const { nx, ny } = normalAt(fill, d, total)
+    // The hour the meal falls on is the one worth finding at a glance.
+    const half = Math.abs(f - mealF) < 1e-6 ? 13 : 9
+    const tick = document.createElementNS(SVG_NS, 'line')
+    tick.setAttribute('class', 'shift-ring__hour-tick')
+    tick.setAttribute('x1', String(p.x - nx * half))
+    tick.setAttribute('y1', String(p.y - ny * half))
+    tick.setAttribute('x2', String(p.x + nx * half))
+    tick.setAttribute('y2', String(p.y + ny * half))
+    hours.appendChild(tick)
+  }
 
+  const pt = fill.getPointAtLength(total * mealF)
+  const put = lean(pt)
   meal.setAttribute('transform', `translate(${pt.x} ${pt.y})`)
-  label.setAttribute('x', String(dx))
-  label.setAttribute('y', String(dy))
-  label.setAttribute('text-anchor', anchor)
+  label.setAttribute('x', String(put.label[0]))
+  label.setAttribute('y', String(put.label[1]))
+  label.setAttribute('text-anchor', put.anchor)
+  hourText.setAttribute('x', String(put.hour[0]))
+  hourText.setAttribute('y', String(put.hour[1]))
+  hourText.setAttribute('text-anchor', put.anchor)
+  hourText.textContent = `${mealHour}h in, ${worked / 60 - mealHour}h to go`
   meal.removeAttribute('hidden')
 }
 
@@ -194,7 +256,7 @@ export function ShiftRing({ roomRef }: { roomRef: React.RefObject<HTMLDivElement
       // unplaced costs one attribute read a second and means switching back
       // to the room finds the mark there.
       if (ring.querySelector('.shift-ring__meal')?.hasAttribute('hidden')) {
-        placeMeal(ring, shift)
+        placeMarks(ring, shift)
       }
 
       const s = ringState(shift, log, new Date())

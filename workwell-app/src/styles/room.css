@@ -778,6 +778,17 @@ a.roomlist__item:hover { border-color: var(--accent); background: var(--accent-q
   stroke-width: 2.5;
 }
 
+/* One tick per worked hour. Drawn after the fill rather than under it, so
+   the hours stay countable on the stretch already behind you as well as the
+   stretch still ahead — under the fill they would vanish as the day went on,
+   which is the half you most want to measure against. */
+.shift-ring__hour-tick {
+  stroke: var(--room-ink-strong);
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: .45;
+}
+
 /* The meal break, as a bead on the wall. Filled with the room's own ground
    rather than left hollow, so the ring's stroke reads as passing behind it
    instead of through it. */
@@ -799,6 +810,20 @@ a.roomlist__item:hover { border-color: var(--accent); background: var(--accent-q
   opacity: .85;
 }
 
+/* Which hour of the shift the break falls on — the ticks say where the
+   hours are, this says which one of them this is. */
+.shift-ring__meal-hour {
+  fill: var(--room-ink-strong);
+  stroke: var(--room-halo);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  paint-order: stroke fill;
+  font-size: 12px;
+  font-weight: 600;
+  dominant-baseline: central;
+  opacity: .68;
+}
+
 /* Once the day has gone past it, it stops being a thing still to come. */
 .shift-ring__meal[data-passed="true"] .shift-ring__meal-dot {
   stroke: #4ade80;
@@ -810,7 +835,8 @@ a.roomlist__item:hover { border-color: var(--accent); background: var(--accent-q
   stroke: #fde68a;
   animation: shift-ring-pulse 2.2s ease-in-out infinite;
 }
-.shift-ring[data-mode="paused"] .shift-ring__meal-label { opacity: 1; }
+.shift-ring[data-mode="paused"] .shift-ring__meal-label,
+.shift-ring[data-mode="paused"] .shift-ring__meal-hour { opacity: 1; }
 
 /* paint-order puts the halo stroke down first and the glyph on top, so the
    outline sits behind the letters instead of eating into them. No opacity
