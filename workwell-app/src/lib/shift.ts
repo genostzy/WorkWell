@@ -71,6 +71,20 @@ export function workingMinutes(shift: Shift) {
   return Math.max(1, span - meal)
 }
 
+/**
+ * Where the meal break falls on the ring, 0–1.
+ *
+ * A point, not a span. The ring measures *worked* minutes and the meal is
+ * subtracted from them, so the break takes up no length of its own — work
+ * stops at this mark and resumes at the same mark. On an eight-hour shift
+ * with the break at its midpoint (both the night and graveyard shifts here)
+ * that lands dead opposite the gap, which is a fair picture of the day.
+ */
+export function mealFraction(shift: Shift) {
+  const toMeal = spanMinutes(toMinutes(shift.time_in), toMinutes(shift.meal_start))
+  return Math.min(1, Math.max(0, toMeal / workingMinutes(shift)))
+}
+
 export type RingState = {
   /** 0–1 around the room's border. */
   progress: number

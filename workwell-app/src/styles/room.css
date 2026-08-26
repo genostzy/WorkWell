@@ -748,13 +748,16 @@ a.roomlist__item:hover { border-color: var(--accent); background: var(--accent-q
   animation: shift-ring-breathe-mid 4.5s ease-in-out infinite;
 }
 
+/* The pulse that runs the ring in to out. Opacity starts at 0 and is owned
+   entirely by the keyframe, so killing the animation for reduced motion
+   leaves it invisible rather than parked as a bright stripe. */
 .shift-ring__shimmer {
-  stroke: rgba(255, 255, 255, .85);
+  stroke: rgba(255, 255, 255, .9);
   stroke-width: 7;
   stroke-linecap: round;
-  stroke-dasharray: .05 .95;
-  opacity: .5;
-  animation: shift-ring-drift 4.2s linear infinite;
+  stroke-dasharray: .06 .94;
+  opacity: 0;
+  animation: shift-ring-sweep 5s linear infinite;
 }
 
 /* The head of the fill — where the water is arriving now. */
@@ -774,6 +777,40 @@ a.roomlist__item:hover { border-color: var(--accent); background: var(--accent-q
   stroke: color-mix(in srgb, var(--room-ink) 62%, transparent);
   stroke-width: 2.5;
 }
+
+/* The meal break, as a bead on the wall. Filled with the room's own ground
+   rather than left hollow, so the ring's stroke reads as passing behind it
+   instead of through it. */
+.shift-ring__meal-dot {
+  fill: var(--bg);
+  stroke: color-mix(in srgb, var(--room-ink) 62%, transparent);
+  stroke-width: 2.5;
+}
+
+.shift-ring__meal-label {
+  fill: var(--room-ink-strong);
+  stroke: var(--room-halo);
+  stroke-width: 3;
+  stroke-linejoin: round;
+  paint-order: stroke fill;
+  font-size: 14px;
+  font-weight: 700;
+  dominant-baseline: central;
+  opacity: .85;
+}
+
+/* Once the day has gone past it, it stops being a thing still to come. */
+.shift-ring__meal[data-passed="true"] .shift-ring__meal-dot {
+  stroke: #4ade80;
+}
+
+/* Sitting in it right now: the one mark on the wall that should be loud. */
+.shift-ring[data-mode="paused"] .shift-ring__meal-dot {
+  fill: #fbbf24;
+  stroke: #fde68a;
+  animation: shift-ring-pulse 2.2s ease-in-out infinite;
+}
+.shift-ring[data-mode="paused"] .shift-ring__meal-label { opacity: 1; }
 
 /* paint-order puts the halo stroke down first and the glyph on top, so the
    outline sits behind the letters instead of eating into them. No opacity
@@ -853,9 +890,16 @@ a.roomlist__item:hover { border-color: var(--accent); background: var(--accent-q
   50%      { opacity: 1; }
 }
 
-@keyframes shift-ring-drift {
-  from { stroke-dashoffset: 1; }
-  to   { stroke-dashoffset: 0; }
+/* Runs the way the day runs: from the time-in end round to time-out.
+   Increasing stroke-dashoffset walks the dash forward along the path — the
+   previous keyframe decreased it, so the highlight was in fact travelling
+   backwards, out to in. Fading in and out at the ends is what makes it read
+   as a pulse passing through rather than a bead endlessly circling. */
+@keyframes shift-ring-sweep {
+  0%   { stroke-dashoffset: 0; opacity: 0; }
+  12%  { opacity: .62; }
+  84%  { opacity: .62; }
+  100% { stroke-dashoffset: 1; opacity: 0; }
 }
 
 @keyframes shift-ring-ripple {
@@ -869,6 +913,7 @@ a.roomlist__item:hover { border-color: var(--accent); background: var(--accent-q
 :root[data-motion="reduced"] .shift-ring__glow,
 :root[data-motion="reduced"] .shift-ring__shimmer,
 :root[data-motion="reduced"] .shift-ring__tip-halo,
+:root[data-motion="reduced"] .shift-ring__meal-dot,
 :root[data-motion="reduced"] .shift-ring__end {
   animation: none;
 }
@@ -880,6 +925,7 @@ a.roomlist__item:hover { border-color: var(--accent); background: var(--accent-q
   :root:where(:not([data-motion="full"])) .shift-ring__glow,
   :root:where(:not([data-motion="full"])) .shift-ring__shimmer,
   :root:where(:not([data-motion="full"])) .shift-ring__tip-halo,
+  :root:where(:not([data-motion="full"])) .shift-ring__meal-dot,
   :root:where(:not([data-motion="full"])) .shift-ring__end {
     animation: none;
   }
