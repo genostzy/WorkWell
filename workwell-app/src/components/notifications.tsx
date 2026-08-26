@@ -128,31 +128,51 @@ export function Notifications() {
           ) : (
             <div className="stack stack--tight">
               {notifications.map((n) => (
-                <button
+                <div
                   key={n.id}
-                  type="button"
-                  className="btn btn--secondary btn--sm"
                   style={{
-                    display: 'block',
-                    width: '100%',
-                    textAlign: 'left',
-                    borderRadius: 0,
-                    borderTop: 'none',
-                    borderLeft: 'none',
-                    borderRight: 'none',
                     borderBottom: '1px solid var(--border)',
                     padding: 'var(--s-3) var(--s-4)',
                   }}
-                  onClick={() => follow(n)}
                 >
-                  <div style={{ fontWeight: 600 }}>{n.title}</div>
-                  <div className="t-subtle" style={{ fontSize: 'var(--fs-sm)' }}>
-                    {n.body}
+                  {/* The title/body is its own control (not a parent button
+                      around everything) because "Mark as read" below has to
+                      sit beside it, not nested inside it — a button inside a
+                      button isn't valid HTML. */}
+                  <button
+                    type="button"
+                    onClick={() => follow(n)}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      textAlign: 'left',
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      font: 'inherit',
+                      color: 'inherit',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ fontWeight: 600 }}>{n.title}</div>
+                    <div className="t-subtle" style={{ fontSize: 'var(--fs-sm)' }}>
+                      {n.body}
+                    </div>
+                  </button>
+                  <div className="row row--between" style={{ marginTop: 4 }}>
+                    <span className="t-subtle" style={{ fontSize: 'var(--fs-xs)' }}>
+                      {timeAgo(n.created_at)}
+                    </span>
+                    <button
+                      type="button"
+                      className="linkish"
+                      style={{ padding: 0 }}
+                      onClick={() => markRead(n.id)}
+                    >
+                      Mark as read
+                    </button>
                   </div>
-                  <div className="t-subtle" style={{ fontSize: 'var(--fs-xs)', marginTop: 4 }}>
-                    {timeAgo(n.created_at)}
-                  </div>
-                </button>
+                </div>
               ))}
             </div>
           )}
