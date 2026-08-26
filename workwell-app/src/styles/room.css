@@ -98,6 +98,20 @@
   min-height: 0;
 }
 
+/* Wraps the plan and the working-day ring in one box so the ring can be
+   pinned to exactly the plan's bounds. The room div's own contents are
+   written with innerHTML on every clock tick, so the ring has to be a
+   sibling rather than a child — this is what gives the two a shared frame.
+   It shrink-wraps the plan's height, so inset:0 on the ring lands on the
+   same box the room's SVG occupies. */
+.room-frame {
+  position: relative;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  min-height: 0;
+}
+
 .room {
   position: relative;
   width: 100%;
@@ -662,4 +676,206 @@ a.roomlist__item:hover { border-color: var(--accent); background: var(--accent-q
   .screen, .doorleaf, .plant, .plant-2, .accent-soft, .room-avatar__dot { fill: Highlight; }
   .spot__tagbg { fill: Canvas; stroke: CanvasText; }
   .spot__tagtext, .spot__tagsub { fill: CanvasText; }
+}
+
+/* ------------------------------------------------- The working-day ring
+
+   The day drawn on the room's own outer wall: it starts at the gap in the
+   bottom centre, runs clockwise (which from the bottom of a loop means
+   leaving to the left, the way a clock's hand leaves six), and meets the
+   other side of that gap when the shift is done.
+
+   Pinned to exactly .room's box and carrying the same viewBox as the room's
+   own SVG, so both letterbox identically and the stroke sits on the wall at
+   every size. Never interactive — it is a readout, and the spots underneath
+   it still have to be clickable. */
+
+.shift-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.shift-ring path { fill: none; }
+
+.shift-ring__track {
+  stroke: color-mix(in srgb, var(--room-ink) 22%, transparent);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+/* Both filled strokes are dashed to a single dash the length of the whole
+   path, so stroke-dashoffset alone says how far round the day has got. The
+   transition is what makes it creep rather than jump when the tick lands. */
+.shift-ring__fill,
+.shift-ring__glow,
+.shift-ring #shift-ring-filled path {
+  stroke-dasharray: 1;
+  transition: stroke-dashoffset 900ms cubic-bezier(.33, .68, .35, 1);
+}
+
+.shift-ring__fill {
+  stroke: url(#shift-ring-fill);
+  stroke-width: 5;
+  stroke-linecap: round;
+}
+
+/* The light coming off the water rather than the water itself — two
+   translucent widths of the same green, breathing slowly in and out.
+   Deliberately not a blur filter: on a path that traces the whole room the
+   filter region is enormous, it re-runs every frame of an animation that
+   never stops, and it left a faint rectangular seam where the region
+   ended. Stacked strokes fall off just as softly and cost nothing. */
+.shift-ring__glow {
+  stroke: #4ade80;
+  stroke-linecap: round;
+}
+
+/* Each layer breathes across its own range — one shared keyframe would
+   flatten the two to the same opacity and lose the falloff. */
+.shift-ring__glow--wide {
+  stroke-width: 15;
+  opacity: .1;
+  animation: shift-ring-breathe-wide 4.5s ease-in-out infinite;
+}
+.shift-ring__glow--mid {
+  stroke-width: 9;
+  opacity: .2;
+  animation: shift-ring-breathe-mid 4.5s ease-in-out infinite;
+}
+
+.shift-ring__shimmer {
+  stroke: rgba(255, 255, 255, .85);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: .05 .95;
+  opacity: .5;
+  animation: shift-ring-drift 4.2s linear infinite;
+}
+
+/* The head of the fill — where the water is arriving now. */
+.shift-ring__tip-dot {
+  fill: #bbf7d0;
+  filter: drop-shadow(0 0 5px rgba(74, 222, 128, .95));
+}
+
+.shift-ring__tip-halo {
+  fill: rgba(74, 222, 128, .3);
+  animation: shift-ring-ripple 2.4s ease-out infinite;
+  transform-origin: center;
+}
+
+.shift-ring__end {
+  fill: none;
+  stroke: color-mix(in srgb, var(--room-ink) 42%, transparent);
+  stroke-width: 2;
+}
+
+.shift-ring__label {
+  fill: var(--room-ink);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .01em;
+  dominant-baseline: central;
+  opacity: .62;
+}
+
+.shift-ring__label.is-start  { text-anchor: end; }
+.shift-ring__label.is-finish { text-anchor: start; }
+
+/* Timed in: the start marker is behind the water now, so it reads as passed. */
+.shift-ring[data-mode="running"] .shift-ring__end.is-start,
+.shift-ring[data-mode="paused"] .shift-ring__end.is-start,
+.shift-ring[data-mode="done"] .shift-ring__end.is-start {
+  fill: #4ade80;
+  stroke: #4ade80;
+}
+
+/* Not timed in yet: nothing is moving, so the one thing that can happen
+   next is the thing that pulses. */
+.shift-ring[data-mode="waiting"] .shift-ring__end.is-start {
+  stroke: #4ade80;
+  animation: shift-ring-pulse 2.6s ease-in-out infinite;
+}
+
+/* On the meal break. The ring holds exactly where it was — the pause is
+   shown by the water going still and cooling to amber, not by it draining
+   away or by a badge somewhere else on the screen. */
+.shift-ring[data-mode="paused"] .shift-ring__fill { stroke: #fbbf24; }
+.shift-ring[data-mode="paused"] .shift-ring__glow {
+  stroke: #fbbf24;
+  animation-duration: 7s;
+}
+.shift-ring[data-mode="paused"] .shift-ring__shimmer { animation: none; opacity: 0; }
+.shift-ring[data-mode="paused"] .shift-ring__tip-dot {
+  fill: #fde68a;
+  filter: drop-shadow(0 0 5px rgba(251, 191, 36, .9));
+}
+.shift-ring[data-mode="paused"] .shift-ring__tip-halo {
+  fill: rgba(251, 191, 36, .28);
+  animation-duration: 4.5s;
+}
+
+/* Done: the wall is full, and it stops asking for attention. */
+.shift-ring[data-mode="done"] .shift-ring__glow--wide { animation: none; opacity: .14; }
+.shift-ring[data-mode="done"] .shift-ring__glow--mid { animation: none; opacity: .26; }
+.shift-ring[data-mode="done"] .shift-ring__shimmer { animation: none; opacity: 0; }
+.shift-ring[data-mode="done"] .shift-ring__tip-halo { animation: none; }
+.shift-ring[data-mode="done"] .shift-ring__end.is-finish {
+  fill: #4ade80;
+  stroke: #4ade80;
+}
+
+@keyframes shift-ring-breathe-wide {
+  0%, 100% { opacity: .08; }
+  50%      { opacity: .17; }
+}
+
+@keyframes shift-ring-breathe-mid {
+  0%, 100% { opacity: .16; }
+  50%      { opacity: .3; }
+}
+
+/* The one thing that can happen next, when nothing else is moving. */
+@keyframes shift-ring-pulse {
+  0%, 100% { opacity: .45; }
+  50%      { opacity: 1; }
+}
+
+@keyframes shift-ring-drift {
+  from { stroke-dashoffset: 1; }
+  to   { stroke-dashoffset: 0; }
+}
+
+@keyframes shift-ring-ripple {
+  0%   { transform: scale(.7); opacity: .55; }
+  70%  { transform: scale(1.9); opacity: 0; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+
+/* Asked for less motion: the ring still says exactly the same thing, it
+   just stops moving to say it. The fill still steps to where the day is. */
+:root[data-motion="reduced"] .shift-ring__glow,
+:root[data-motion="reduced"] .shift-ring__shimmer,
+:root[data-motion="reduced"] .shift-ring__tip-halo,
+:root[data-motion="reduced"] .shift-ring__end {
+  animation: none;
+}
+:root[data-motion="reduced"] .shift-ring__shimmer { opacity: 0; }
+:root[data-motion="reduced"] .shift-ring__fill,
+:root[data-motion="reduced"] .shift-ring__glow { transition: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  :root:where(:not([data-motion="full"])) .shift-ring__glow,
+  :root:where(:not([data-motion="full"])) .shift-ring__shimmer,
+  :root:where(:not([data-motion="full"])) .shift-ring__tip-halo,
+  :root:where(:not([data-motion="full"])) .shift-ring__end {
+    animation: none;
+  }
+  :root:where(:not([data-motion="full"])) .shift-ring__shimmer { opacity: 0; }
+  :root:where(:not([data-motion="full"])) .shift-ring__fill,
+  :root:where(:not([data-motion="full"])) .shift-ring__glow { transition: none; }
 }

@@ -50,6 +50,7 @@ const ADMIN_SPOTS: Spot[] = [
   { id: 'news', href: '/news', label: 'News', sub: 'Post & manage' },
   { id: 'company-policies', href: '/company-policies', label: 'Policies', sub: 'Add & manage' },
   { id: 'payroll', href: '/payroll', label: 'Payroll', sub: 'Issue payslips' },
+  { id: 'shifts', href: '/shifts', label: 'Working hours', sub: 'Shifts & who’s on' },
   { id: 'holidays', href: '/holidays', label: 'Holidays', sub: 'Add & manage' },
   { id: 'assets', href: '/assets', label: 'Assets', sub: 'Issue & resolve' },
   { id: 'offboarding', href: '/offboarding', label: 'Offboarding', sub: 'Checklist' },

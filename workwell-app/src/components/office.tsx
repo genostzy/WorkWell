@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { signOutEverywhere } from '@/components/sign-out'
 import { hideSky, showSky } from '@/lib/sky'
 import { Wordmark } from '@/components/brandmark'
+import { ShiftRing } from '@/components/shift-ring'
 import { usePrefs } from '@/lib/use-prefs'
 
 /** The prototype's room is vendored unmodified from workwell-prototype, so
@@ -445,14 +446,20 @@ export function Office({
                   }`
                 : ' '}
             </p>
-            <div
-              className="room"
-              data-room
-              data-open="true"
-              ref={roomRef}
-              onClick={navigate}
-              onKeyDown={onKey}
-            />
+            {/* The room div's contents are written with innerHTML by
+                build(), so the ring cannot live inside it — it sits over it
+                as a sibling, sharing the same box. */}
+            <div className="room-frame">
+              <div
+                className="room"
+                data-room
+                data-open="true"
+                ref={roomRef}
+                onClick={navigate}
+                onKeyDown={onKey}
+              />
+              <ShiftRing />
+            </div>
             {!loaded && (
               <p className="t-subtle" style={{ textAlign: 'center' }}>
                 Opening your space…
