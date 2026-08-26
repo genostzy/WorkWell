@@ -7,6 +7,7 @@ import { DecideExpense } from '../../hr/decide-expense'
 import { DecidePayrollRequest } from '../../hr/decide-payroll-request'
 import { DecideComplaint } from '../../hr/decide-complaint'
 import { DecideResignation } from '../../hr/decide-resignation'
+import { DecideSupportRequest } from '../../hr/decide-support-request'
 
 function fmt(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', {
@@ -40,6 +41,7 @@ export default async function Hr() {
     { data: payrollRequests, error: payrollRequestsError },
     { data: complaints, error: complaintsError },
     { data: resignations, error: resignationsError },
+    { data: supportRequests, error: supportRequestsError },
   ] = await Promise.all([
     supabase.from('people').select('id, full_name, status').order('full_name'),
     supabase.from('employment').select('person_id, job_title, department'),
@@ -68,13 +70,18 @@ export default async function Hr() {
       .from('resignations')
       .select('id, person_id, last_day, reason, status')
       .order('created_at', { ascending: false }),
+    supabase
+      .from('support_requests')
+      .select('id, person_id, body, status, created_at')
+      .eq('status', 'open')
+      .order('created_at', { ascending: false }),
   ])
 
   // An empty directory and a directory that would not load look identical
   // once the rows are gone, and only one of them means "add someone".
   const readError =
     peopleError ?? leaveError ?? resetsError ?? expensesError ?? payrollRequestsError
-    ?? complaintsError ?? resignationsError
+    ?? complaintsError ?? resignationsError ?? supportRequestsError
   if (readError) {
     return (
       <>
@@ -310,6 +317,28 @@ export default async function Hr() {
                 </div>
                 {r.reason && <p className="t-subtle mt-2">{r.reason}</p>}
                 <DecideResignation id={r.id} personId={r.person_id} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="card">
+        <div className="card__head">
+          <div>
+            <h2 className="card__title">Support requests</h2>
+            <div className="card__sub">Routed to you from Recognition &amp; connection, still open</div>
+          </div>
+        </div>
+        {(supportRequests ?? []).length === 0 ? (
+          <p className="t-subtle">Nothing waiting on you.</p>
+        ) : (
+          <div className="stack">
+            {(supportRequests ?? []).map((r) => (
+              <div className="card card--quiet" key={r.id} style={{ margin: 0 }}>
+                <b>{names.get(r.person_id) ?? 'Someone'}</b>
+                <p className="t-subtle mt-2">{r.body}</p>
+                <DecideSupportRequest id={r.id} />
               </div>
             ))}
           </div>
