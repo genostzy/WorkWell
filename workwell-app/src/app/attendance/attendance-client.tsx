@@ -9,7 +9,7 @@ import {
   EARLY_GRACE_MIN,
   inWindow,
   labelTime,
-  minutesSinceMidnight,
+  minutesInZone,
   toHHMM,
   timeInWindow,
   toMinutes,
@@ -90,6 +90,7 @@ export default function AttendanceClient() {
   const today = week.find((d) => d.isToday)
   const [logs, setLogs] = useState<Record<string, DayLog>>({})
   const [shift, setShift] = useState<Shift | null>(null)
+  const [timeZone, setTimeZone] = useState<string | null>(null)
   // Ticks so the Time in button opens on its own when the window arrives,
   // rather than only on the next reload.
   const [now, setNow] = useState(() => new Date())
@@ -139,8 +140,12 @@ export default function AttendanceClient() {
 
     ;(async () => {
       const supabase = createClient()
-      const [{ data, error }, { data: resets, error: resetsError }, { data: assignment }] =
-        await Promise.all([
+      const [
+        { data, error },
+        { data: resets, error: resetsError },
+        { data: assignment },
+        { data: org },
+      ] = await Promise.all([
           supabase
             .from('attendance')
             .select('day, time_in, lunch_start, lunch_end, time_out')
@@ -154,10 +159,12 @@ export default function AttendanceClient() {
             .from('shift_assignments')
             .select('shifts(id, name, time_in, meal_start, meal_end, time_out)')
             .maybeSingle(),
+          supabase.from('org').select('timezone').maybeSingle(),
         ])
 
       if (cancelled) return
       setShift((assignment as { shifts?: Shift } | null)?.shifts ?? null)
+      setTimeZone(org?.timezone ?? null)
       if (error) {
         setLoadError(error.message)
         setLoading(false)
@@ -192,7 +199,7 @@ export default function AttendanceClient() {
   // by however far their offset is. This gate matches the clock they can
   // see. It is a roster nudge, not a security boundary — attendance is
   // self-only data that only the person themselves can write.
-  const window_ = timeInWindow(shift, now)
+  const window_ = timeInWindow(shift, now, timeZone)
 
   // The auto-pause: nothing to click, nothing to forget. While timed in and
   // not yet out, the tick checks the wall clock against the lunch window
@@ -207,7 +214,7 @@ export default function AttendanceClient() {
     const tick = async () => {
       const log = logs[today.iso]
       if (!log?.timeIn || log.timeOut) return
-      const mins = minutesSinceMidnight(new Date())
+      const mins = minutesInZone(new Date(), timeZone)
       const supabase = createClient()
       const onMeal = inWindow(mins, mealStart, mealEnd)
 
@@ -229,7 +236,7 @@ export default function AttendanceClient() {
     tick()
     const id = window.setInterval(tick, 30000)
     return () => window.clearInterval(id)
-  }, [today, logs, reloadToday, shift])
+  }, [today, logs, reloadToday, shift, timeZone])
 
   async function timeIn() {
     setActionError(null)

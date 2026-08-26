@@ -7,6 +7,18 @@ import { ConfirmButton } from '@/components/controls'
 import { labelTime, spanMinutes, toHHMM, toMinutes, workingMinutes, type Shift } from '@/lib/shift'
 
 type Person = { id: string; full_name: string }
+
+/** Every zone the browser knows, so nothing has to be kept in step with a
+ *  hardcoded list. Older engines without supportedValuesOf get the one that
+ *  matters plus their own, which is enough to not be stuck. */
+function zoneOptions(current: string | null) {
+  const withIntl = Intl as typeof Intl & { supportedValuesOf?: (k: string) => string[] }
+  const all = withIntl.supportedValuesOf?.('timeZone') ?? [
+    'Asia/Manila',
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+  ]
+  return [...new Set([current, ...all].filter(Boolean) as string[])].sort()
+}
 type Assignment = { person_id: string; shift_id: string }
 
 const EMPTY_DRAFT = {
@@ -42,6 +54,8 @@ export default function ShiftsManageClient() {
   const [orgId, setOrgId] = useState<string | null>(null)
   const [me, setMe] = useState<string | null>(null)
   const [shifts, setShifts] = useState<Shift[]>([])
+  const [timeZone, setTimeZone] = useState<string | null>(null)
+  const [savingZone, setSavingZone] = useState(false)
   const [people, setPeople] = useState<Person[]>([])
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [loading, setLoading] = useState(true)
@@ -57,7 +71,7 @@ export default function ShiftsManageClient() {
     let cancelled = false
     ;(async () => {
       const supabase = createClient()
-      const [{ data: mine }, { data: sh, error: shError }, { data: ppl, error: pplError }, { data: asg, error: asgError }] =
+      const [{ data: mine }, { data: sh, error: shError }, { data: ppl, error: pplError }, { data: asg, error: asgError }, { data: org }] =
         await Promise.all([
           supabase.from('me').select('id, org_id').maybeSingle(),
           supabase
@@ -66,6 +80,7 @@ export default function ShiftsManageClient() {
             .order('time_in'),
           supabase.from('people').select('id, full_name').order('full_name'),
           supabase.from('shift_assignments').select('person_id, shift_id'),
+          supabase.from('org').select('timezone').maybeSingle(),
         ])
       if (cancelled) return
       const err = shError ?? pplError ?? asgError
@@ -75,6 +90,7 @@ export default function ShiftsManageClient() {
       setShifts((sh ?? []) as Shift[])
       setPeople((ppl ?? []) as Person[])
       setAssignments((asg ?? []) as Assignment[])
+      setTimeZone(org?.timezone ?? null)
       setLoading(false)
     })()
     return () => {
@@ -163,6 +179,20 @@ export default function ShiftsManageClient() {
     // than leaving the table showing hours nobody is on any more.
     setAssignments((prev) => prev.filter((a) => a.shift_id !== id))
     if (editingId === id) setEditingId(null)
+  }
+
+  async function saveZone(next: string) {
+    const previous = timeZone
+    setTimeZone(next)          // optimistic: the select should not lag the click
+    setSavingZone(true)
+    setLoadError(null)
+    const supabase = createClient()
+    const { error } = await supabase.rpc('set_org_timezone', { p_timezone: next })
+    setSavingZone(false)
+    if (error) {
+      setTimeZone(previous)
+      setLoadError(error.message)
+    }
   }
 
   async function assign(personId: string, shiftId: string) {
@@ -314,6 +344,40 @@ export default function ShiftsManageClient() {
         </div>
 
         <div className="stack">
+          <div className="card">
+            <h2 className="card__title mb-1">Office timezone</h2>
+            <p className="card__sub mb-3">
+              The wall these hours are read off. Every shift time, meal pause and
+              time-in window is measured here, not on anyone&rsquo;s laptop.
+            </p>
+            <select
+              className="select"
+              aria-label="Office timezone"
+              value={timeZone ?? ''}
+              disabled={loading || savingZone || !timeZone}
+              onChange={(e) => saveZone(e.target.value)}
+            >
+              {zoneOptions(timeZone).map((z) => (
+                <option key={z} value={z}>
+                  {z.replace(/_/g, ' ')}
+                </option>
+              ))}
+            </select>
+            {timeZone && (
+              <p className="field__hint mt-2">
+                It is currently{' '}
+                <b>
+                  {new Date().toLocaleTimeString('en-PH', {
+                    timeZone,
+                    hour: 'numeric',
+                    minute: '2-digit',
+                  })}
+                </b>{' '}
+                there.
+              </p>
+            )}
+          </div>
+
           <div className="card">
             <h2 className="card__title mb-3">Add a shift</h2>
             {editingId === 'new' ? (
