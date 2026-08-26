@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { readIsHr } from '@/lib/role'
-import { LoadError, PageHead, RoleLocked } from '@/components/chrome'
+import { LoadError, PageHead } from '@/components/chrome'
 import PayrollClient from '../../payroll/payroll-client'
+import { PayrollManageClient } from '../../payroll/payroll-manage-client'
 
 export default async function Payroll() {
   const supabase = await createClient()
@@ -16,14 +17,5 @@ export default async function Payroll() {
     )
   }
 
-  if (isHr) {
-    return (
-      <>
-        <PageHead title="Not available on this account" />
-        <RoleLocked audience="employee" />
-      </>
-    )
-  }
-
-  return <PayrollClient />
+  return isHr ? <PayrollManageClient /> : <PayrollClient />
 }
