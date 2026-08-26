@@ -64,6 +64,37 @@ export function minutesSinceMidnight(d: Date) {
   return d.getHours() * 60 + d.getMinutes()
 }
 
+/**
+ * Minutes since midnight in the organisation's own zone.
+ *
+ * A roster is written in the workplace's hours, not the reader's, so every
+ * comparison against one has to be made there — otherwise a laptop set to
+ * another zone reads a different wall clock than the server does, and the
+ * time-in window says open on screen while attendance_time_in() refuses it.
+ * Falls back to the machine's own clock when no zone is known, which is what
+ * this did everywhere before there was one to ask for.
+ */
+export function minutesInZone(d: Date, timeZone: string | null | undefined) {
+  if (!timeZone) return minutesSinceMidnight(d)
+  try {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone,
+      hour: '2-digit',
+      minute: '2-digit',
+      // h23 rather than hour12:false — the latter still renders midnight as
+      // 24 in some implementations, which would read as minute 1440.
+      hourCycle: 'h23',
+    }).formatToParts(d)
+    const h = Number(parts.find((p) => p.type === 'hour')?.value)
+    const m = Number(parts.find((p) => p.type === 'minute')?.value)
+    if (Number.isNaN(h) || Number.isNaN(m)) return minutesSinceMidnight(d)
+    return (h % 24) * 60 + m
+  } catch {
+    // An unknown zone throws rather than silently misreporting the hour.
+    return minutesSinceMidnight(d)
+  }
+}
+
 /** Total minutes actually owed on this shift: the roster span, less the meal. */
 export function workingMinutes(shift: Shift) {
   const span = spanMinutes(toMinutes(shift.time_in), toMinutes(shift.time_out))
@@ -106,13 +137,17 @@ export const EARLY_GRACE_MIN = 30
  * Wall-clock throughout, so it wraps: the graveyard shift's window opens at
  * 16:30 and runs past midnight to 02:00.
  */
-export function timeInWindow(shift: Shift | null, now: Date) {
+export function timeInWindow(
+  shift: Shift | null,
+  now: Date,
+  timeZone?: string | null
+) {
   if (!shift) return { open: true, opensAt: null as number | null }
   const start = toMinutes(shift.time_in)
   const opensAt = (start - EARLY_GRACE_MIN + 1440) % 1440
   const length = EARLY_GRACE_MIN + spanMinutes(start, toMinutes(shift.time_out))
   return {
-    open: forwardMinutes(opensAt, minutesSinceMidnight(now)) <= length,
+    open: forwardMinutes(opensAt, minutesInZone(now, timeZone)) <= length,
     opensAt,
   }
 }
