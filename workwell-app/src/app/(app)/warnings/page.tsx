@@ -1,20 +1,21 @@
 import { createClient } from '@/lib/supabase/server'
-import { PageHead, RoleLocked } from '@/components/chrome'
+import { readIsHr } from '@/lib/role'
+import { LoadError, PageHead } from '@/components/chrome'
 import WarningsClient from '../../warnings/warnings-client'
+import WarningsManageClient from '../../warnings/warnings-manage-client'
 
 export default async function Warnings() {
   const supabase = await createClient()
-  const { data: roles } = await supabase.from('person_roles').select('role')
-  const isHr = (roles ?? []).some((r) => r.role === 'hr')
+  const { isHr, error } = await readIsHr(supabase)
 
-  if (!isHr) {
+  if (error) {
     return (
       <>
-        <PageHead title="Not available on this account" />
-        <RoleLocked audience="hr" />
+        <PageHead title="Warnings" />
+        <LoadError what="Your account" detail={error} />
       </>
     )
   }
 
-  return <WarningsClient />
+  return isHr ? <WarningsManageClient /> : <WarningsClient />
 }

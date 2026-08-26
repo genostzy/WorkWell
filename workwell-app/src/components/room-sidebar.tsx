@@ -34,6 +34,7 @@ const WORK_SPOTS: Spot[] = [
   { id: 'news', href: '/news', label: 'News', sub: 'Notices' },
   { id: 'complaints', href: '/complaints', label: 'Complaints', sub: 'File a case' },
   { id: 'resignations', href: '/resignations', label: 'Resignations', sub: 'Give notice' },
+  { id: 'warnings', href: '/warnings', label: 'Warnings', sub: 'Your file' },
 ]
 
 /** Administration — the whole of the HR/admin account's plane. There is no
