@@ -5,24 +5,64 @@ import { createClient } from '@/lib/supabase/client'
 import { labelTime, ringState, type DayLog, type Shift } from '@/lib/shift'
 
 /**
- * The working day, drawn as the room's own wall.
+ * The working day, drawn on the room's own wall.
  *
- * The path traces the floor plan's outer wall exactly — same rounded rect as
- * `.floor` in room.js (x24 y24, 952×672, r22) — with a gap left at bottom
- * centre so the two ends read as a beginning and an end rather than a closed
- * loop. It runs clockwise from that gap, which from the bottom of a circle
- * means heading left first, the way a clock's hand leaves six.
+ * The path traces the floor plan's outer wall exactly — the same rounded
+ * rect as `.floor` in room.js (x24 y24, 952×672, r22) — with a gap left at
+ * bottom centre so the two ends read as a beginning and an end rather than a
+ * closed loop. It runs clockwise from that gap, which from the bottom of a
+ * loop means heading left first, the way a clock's hand leaves six.
  *
- * Overlaid rather than drawn into the room because room.js writes its SVG
- * with innerHTML on every clock tick — anything React put inside would be
- * thrown away a minute later. Same viewBox and the same default
- * preserveAspectRatio as the room's SVG, in a box pinned to the same bounds,
- * so the two letterbox identically at every size.
+ * Injected into the room's own <svg> rather than layered over it in a second
+ * one. An overlay has to be positioned to land on the wall, and the room's
+ * SVG letterboxes inside its box, so the two only agree if their boxes agree
+ * exactly — they did not, and the ring drew low, with its labels hanging off
+ * the bottom of the room. Sharing the room's viewBox removes the question:
+ * user units here are the same user units the wall was drawn in.
+ *
+ * That means living with room.js rewriting the room's innerHTML on every
+ * clock tick, which throws these nodes away with everything else. Rather
+ * than couple to when that happens, the tick below re-creates the group
+ * whenever it finds it missing — self-healing, and cheap when it isn't.
  */
 
 const RING_PATH =
   'M 482 696 L 46 696 A 22 22 0 0 1 24 674 L 24 46 A 22 22 0 0 1 46 24 ' +
   'L 954 24 A 22 22 0 0 1 976 46 L 976 674 A 22 22 0 0 1 954 696 L 518 696'
+
+/** Built once per injection; everything that changes is set as an attribute
+ *  afterwards, so nothing here is re-parsed on a tick. */
+function skeleton(shift: Shift) {
+  return `
+    <defs>
+      <linearGradient id="shift-ring-grad" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0%" stop-color="#34d399"/>
+        <stop offset="55%" stop-color="#4ade80"/>
+        <stop offset="100%" stop-color="#86efac"/>
+      </linearGradient>
+      <mask id="shift-ring-filled">
+        <path class="shift-ring__maskpath" d="${RING_PATH}" pathLength="1"
+              fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round"/>
+      </mask>
+    </defs>
+    <path class="shift-ring__track" d="${RING_PATH}"/>
+    <path class="shift-ring__glow shift-ring__glow--wide" d="${RING_PATH}" pathLength="1"/>
+    <path class="shift-ring__glow shift-ring__glow--mid" d="${RING_PATH}" pathLength="1"/>
+    <path class="shift-ring__fill" d="${RING_PATH}" pathLength="1"/>
+    <g mask="url(#shift-ring-filled)">
+      <path class="shift-ring__shimmer" d="${RING_PATH}" pathLength="1"/>
+    </g>
+    <g class="shift-ring__tip" hidden>
+      <circle class="shift-ring__tip-halo" r="9"/>
+      <circle class="shift-ring__tip-dot" r="4"/>
+    </g>
+    <g class="shift-ring__ends">
+      <circle class="shift-ring__end is-start" cx="482" cy="696" r="5"/>
+      <circle class="shift-ring__end is-finish" cx="518" cy="696" r="5"/>
+      <text class="shift-ring__label is-start" x="468" y="696">in ${labelTime(shift.time_in)}</text>
+      <text class="shift-ring__label is-finish" x="532" y="696">out ${labelTime(shift.time_out)}</text>
+    </g>`
+}
 
 type Row = {
   time_in: string | null
@@ -31,16 +71,15 @@ type Row = {
   time_out: string | null
 }
 
-export function ShiftRing() {
+export function ShiftRing({ roomRef }: { roomRef: React.RefObject<HTMLDivElement | null> }) {
   const [shift, setShift] = useState<Shift | null>(null)
-  const [log, setLog] = useState<DayLog | null>(null)
-  const [now, setNow] = useState(() => new Date())
-  const pathRef = useRef<SVGPathElement>(null)
-  const [tip, setTip] = useState<{ x: number; y: number } | null>(null)
+  const logRef = useRef<DayLog | null>(null)
 
   // One read on mount, then a re-read every minute: the two RPCs that stamp
   // the meal pause fire from the attendance screen, so this view has to pick
-  // their result up rather than assume the roster was followed.
+  // their result up rather than assume the roster was followed. Held in a
+  // ref, not state — the tick below reads it directly, and re-rendering
+  // React for a value only the DOM cares about would be wasted work.
   useEffect(() => {
     let cancelled = false
 
@@ -51,7 +90,7 @@ export function ShiftRing() {
       const [{ data: assignment }, { data: attendance }] = await Promise.all([
         supabase
           .from('shift_assignments')
-          .select('shift_id, shifts(id, name, time_in, meal_start, meal_end, time_out)')
+          .select('shifts(id, name, time_in, meal_start, meal_end, time_out)')
           .maybeSingle(),
         supabase
           .from('attendance')
@@ -61,22 +100,19 @@ export function ShiftRing() {
       ])
       if (cancelled) return
 
-      // The embed comes back as an object for a to-one relationship, but the
-      // generated types can't know that from the shape alone.
-      const s = (assignment as { shifts?: Shift } | null)?.shifts ?? null
-      setShift(s ?? null)
+      // The embed comes back as an object for a to-one relationship; the
+      // generated types can't tell that from the shape alone.
+      setShift((assignment as { shifts?: Shift } | null)?.shifts ?? null)
 
       const r = attendance as Row | null
-      setLog(
-        r
-          ? {
-              timeIn: r.time_in,
-              lunchStart: r.lunch_start,
-              lunchEnd: r.lunch_end,
-              timeOut: r.time_out,
-            }
-          : { timeIn: null, lunchStart: null, lunchEnd: null, timeOut: null }
-      )
+      logRef.current = r
+        ? {
+            timeIn: r.time_in,
+            lunchStart: r.lunch_start,
+            lunchEnd: r.lunch_end,
+            timeOut: r.time_out,
+          }
+        : { timeIn: null, lunchStart: null, lunchEnd: null, timeOut: null }
     }
 
     read()
@@ -87,120 +123,69 @@ export function ShiftRing() {
     }
   }, [])
 
-  // The fill has to creep, not step. A minute-granular tick would leave it
-  // motionless for 59 seconds and then jump.
+  // Draws and re-draws. Runs every second so the fill creeps rather than
+  // stepping, and so a rebuild by room.js is repaired within a second of it
+  // happening rather than leaving the wall blank until the next minute.
   useEffect(() => {
-    const id = window.setInterval(() => setNow(new Date()), 1000)
-    return () => window.clearInterval(id)
-  }, [])
+    if (!shift) return
 
-  const state = shift && log ? ringState(shift, log, now) : null
+    const paint = () => {
+      const svg = roomRef.current?.querySelector<SVGSVGElement>('svg.room__svg')
+      const log = logRef.current
+      if (!svg || !log) return
 
-  // The head of the fill, in the path's own user units, so the droplet sits
-  // exactly where the stroke ends at any progress.
-  useEffect(() => {
-    const path = pathRef.current
-    if (!path || !state || state.progress <= 0) {
-      setTip(null)
-      return
+      let ring = svg.querySelector<SVGGElement>('.shift-ring')
+      if (!ring) {
+        ring = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+        ring.setAttribute('class', 'shift-ring')
+        ring.setAttribute('aria-hidden', 'true')
+        ring.innerHTML = skeleton(shift)
+        // Last child: over the floor and the furniture, under nothing. The
+        // group takes no pointer events, so the spots underneath it stay
+        // clickable.
+        svg.appendChild(ring)
+      }
+
+      const s = ringState(shift, log, new Date())
+      const offset = String(1 - s.progress)
+
+      ring.setAttribute(
+        'data-mode',
+        s.done ? 'done' : s.paused ? 'paused' : s.running ? 'running' : 'waiting'
+      )
+      ring
+        .querySelectorAll<SVGPathElement>(
+          '.shift-ring__fill, .shift-ring__glow, .shift-ring__maskpath'
+        )
+        .forEach((p) => p.style.setProperty('stroke-dashoffset', offset))
+
+      const tip = ring.querySelector<SVGGElement>('.shift-ring__tip')
+      const fill = ring.querySelector<SVGPathElement>('.shift-ring__fill')
+      if (tip && fill) {
+        if (s.progress <= 0) {
+          tip.setAttribute('hidden', '')
+        } else {
+          try {
+            const pt = fill.getPointAtLength(fill.getTotalLength() * s.progress)
+            tip.setAttribute('transform', `translate(${pt.x} ${pt.y})`)
+            tip.removeAttribute('hidden')
+          } catch {
+            tip.setAttribute('hidden', '')
+          }
+        }
+      }
     }
-    try {
-      const p = path.getPointAtLength(path.getTotalLength() * state.progress)
-      setTip({ x: p.x, y: p.y })
-    } catch {
-      setTip(null)
+
+    paint()
+    const id = window.setInterval(paint, 1000)
+    return () => {
+      window.clearInterval(id)
+      // Leaving the room: take the ring with it, so a rebuild for someone
+      // else's view never inherits this one's stale fill.
+      roomRef.current?.querySelector('.shift-ring')?.remove()
     }
-  }, [state?.progress, state])
+  }, [shift, roomRef])
 
-  // No shift assigned is not a broken ring, it is a room with no roster on
-  // it — draw nothing at all rather than an empty gauge that never moves.
-  if (!shift || !state) return null
-
-  const mode = state.done ? 'done' : state.paused ? 'paused' : state.running ? 'running' : 'waiting'
-
-  return (
-    <svg
-      className="shift-ring"
-      viewBox="0 0 1000 720"
-      aria-hidden="true"
-      data-mode={mode}
-    >
-      <defs>
-        <linearGradient id="shift-ring-fill" x1="0" y1="1" x2="0" y2="0">
-          <stop offset="0%" stopColor="#34d399" />
-          <stop offset="55%" stopColor="#4ade80" />
-          <stop offset="100%" stopColor="#86efac" />
-        </linearGradient>
-
-        {/* Confines the drifting highlight to the part of the wall the day
-            has actually reached, so it never runs on ahead of the water. */}
-        <mask id="shift-ring-filled">
-          <path
-            d={RING_PATH}
-            pathLength={1}
-            fill="none"
-            stroke="#fff"
-            strokeWidth={9}
-            strokeLinecap="round"
-            strokeDasharray={1}
-            style={{ strokeDashoffset: 1 - state.progress }}
-          />
-        </mask>
-      </defs>
-
-      {/* The empty wall — where the day still has to go. */}
-      <path className="shift-ring__track" d={RING_PATH} />
-
-      {/* The glow is stacked translucent strokes rather than one blurred
-          one. A CSS blur on a path this long builds a filter region the size
-          of the whole room and re-runs it on every frame of an animation
-          that never stops — it showed as a faint rectangular seam across the
-          floor, and cost far more paint than the look is worth. Three
-          widths of the same green falls off just as softly for nothing. */}
-      <path
-        className="shift-ring__glow shift-ring__glow--wide"
-        d={RING_PATH}
-        pathLength={1}
-        style={{ strokeDashoffset: 1 - state.progress }}
-      />
-      <path
-        className="shift-ring__glow shift-ring__glow--mid"
-        d={RING_PATH}
-        pathLength={1}
-        style={{ strokeDashoffset: 1 - state.progress }}
-      />
-      <path
-        ref={pathRef}
-        className="shift-ring__fill"
-        d={RING_PATH}
-        pathLength={1}
-        style={{ strokeDashoffset: 1 - state.progress }}
-      />
-
-      {/* A highlight drifting along the filled length — light moving on a
-          surface that is itself moving. */}
-      <g mask="url(#shift-ring-filled)">
-        <path className="shift-ring__shimmer" d={RING_PATH} pathLength={1} />
-      </g>
-
-      {tip && (
-        <g className="shift-ring__tip" transform={`translate(${tip.x} ${tip.y})`}>
-          <circle className="shift-ring__tip-halo" r={9} />
-          <circle className="shift-ring__tip-dot" r={4} />
-        </g>
-      )}
-
-      {/* The two ends of the day, on either side of the gap. */}
-      <g className="shift-ring__ends">
-        <circle className="shift-ring__end is-start" cx={482} cy={696} r={5} />
-        <circle className="shift-ring__end is-finish" cx={518} cy={696} r={5} />
-        <text className="shift-ring__label is-start" x={468} y={696}>
-          in {labelTime(shift.time_in)}
-        </text>
-        <text className="shift-ring__label is-finish" x={532} y={696}>
-          out {labelTime(shift.time_out)}
-        </text>
-      </g>
-    </svg>
-  )
+  // Nothing rendered by React — the ring lives in the room's own SVG.
+  return null
 }
