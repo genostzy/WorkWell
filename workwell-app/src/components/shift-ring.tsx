@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { labelTime, ringState, type DayLog, type Shift } from '@/lib/shift'
+import { labelTime, mealFraction, ringState, type DayLog, type Shift } from '@/lib/shift'
 
 /**
  * The working day, drawn on the room's own wall.
@@ -53,6 +53,10 @@ function skeleton(shift: Shift) {
     <g mask="url(#shift-ring-filled)">
       <path class="shift-ring__shimmer" d="${RING_PATH}" pathLength="1"/>
     </g>
+    <g class="shift-ring__meal" hidden>
+      <circle class="shift-ring__meal-dot" r="7"/>
+      <text class="shift-ring__meal-label">meal ${labelTime(shift.meal_start)}</text>
+    </g>
     <g class="shift-ring__tip" hidden>
       <circle class="shift-ring__tip-halo" r="12"/>
       <circle class="shift-ring__tip-dot" r="5.5"/>
@@ -63,6 +67,43 @@ function skeleton(shift: Shift) {
       <text class="shift-ring__label is-start" x="468" y="696">in ${labelTime(shift.time_in)}</text>
       <text class="shift-ring__label is-finish" x="532" y="696">out ${labelTime(shift.time_out)}</text>
     </g>`
+}
+
+/**
+ * Puts the meal mark on the wall, with its label leaning into the room.
+ *
+ * Which way "into the room" is depends on the wall it lands on, so the
+ * offset is chosen from the point's own coordinates rather than assumed — a
+ * label hung below a mark on the *bottom* wall would sit outside the room
+ * entirely, which is exactly the mistake the ring itself started out making.
+ * Done once at injection: the mark is fixed by the roster and never moves.
+ */
+function placeMeal(ring: SVGGElement, shift: Shift) {
+  const fill = ring.querySelector<SVGPathElement>('.shift-ring__fill')
+  const meal = ring.querySelector<SVGGElement>('.shift-ring__meal')
+  const label = ring.querySelector<SVGTextElement>('.shift-ring__meal-label')
+  if (!fill || !meal || !label) return
+
+  let pt: DOMPoint
+  try {
+    pt = fill.getPointAtLength(fill.getTotalLength() * mealFraction(shift))
+  } catch {
+    return
+  }
+
+  // The wall's own bounds, from room.js's floor rect.
+  const [dx, dy, anchor] =
+    pt.y <= 26 ? [0, 26, 'middle']
+    : pt.y >= 694 ? [0, -22, 'middle']
+    : pt.x <= 26 ? [18, 5, 'start']
+    : pt.x >= 974 ? [-18, 5, 'end']
+    : [0, 26, 'middle'] // a corner arc — inward is ambiguous, so drop below
+
+  meal.setAttribute('transform', `translate(${pt.x} ${pt.y})`)
+  label.setAttribute('x', String(dx))
+  label.setAttribute('y', String(dy))
+  label.setAttribute('text-anchor', anchor)
+  meal.removeAttribute('hidden')
 }
 
 type Row = {
@@ -147,6 +188,15 @@ export function ShiftRing({ roomRef }: { roomRef: React.RefObject<HTMLDivElement
         svg.appendChild(ring)
       }
 
+      // Placed here rather than once at injection: getPointAtLength throws
+      // on a path that isn't being rendered, which is the case if the list
+      // view was showing when the ring was built. Retrying while it is still
+      // unplaced costs one attribute read a second and means switching back
+      // to the room finds the mark there.
+      if (ring.querySelector('.shift-ring__meal')?.hasAttribute('hidden')) {
+        placeMeal(ring, shift)
+      }
+
       const s = ringState(shift, log, new Date())
       const offset = String(1 - s.progress)
 
@@ -159,6 +209,11 @@ export function ShiftRing({ roomRef }: { roomRef: React.RefObject<HTMLDivElement
           '.shift-ring__fill, .shift-ring__glow, .shift-ring__maskpath'
         )
         .forEach((p) => p.style.setProperty('stroke-dashoffset', offset))
+
+      // Behind the water, or still ahead of it.
+      ring
+        .querySelector('.shift-ring__meal')
+        ?.setAttribute('data-passed', String(s.progress >= mealFraction(shift)))
 
       const tip = ring.querySelector<SVGGElement>('.shift-ring__tip')
       const fill = ring.querySelector<SVGPathElement>('.shift-ring__fill')
