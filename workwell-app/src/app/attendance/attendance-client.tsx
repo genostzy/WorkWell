@@ -5,12 +5,21 @@ import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { ConfirmButton } from '@/components/controls'
 import { createClient } from '@/lib/supabase/client'
 import { fmtDate } from '@/lib/format-date'
+import {
+  inWindow,
+  labelTime,
+  minutesSinceMidnight,
+  toMinutes,
+  type Shift,
+} from '@/lib/shift'
 
-// Lunch is not something you clock — the app pauses it for you. Two fixed
-// hours, matching the standard PH lunch block; a real rollout would read
-// this from company policy instead of a constant.
-const LUNCH_START_MIN = 12 * 60
-const LUNCH_END_MIN = 13 * 60
+// Mealtime is not something you clock — the app pauses it for you, at the
+// hours your shift actually runs. This used to be a hardcoded 12:00–13:00
+// for everybody, which paused a night-shift worker in the middle of their
+// own morning off. It comes from the assigned shift now (see 0049_shifts),
+// falling back to the old constants only for an account with no shift set.
+const FALLBACK_MEAL_START = 12 * 60
+const FALLBACK_MEAL_END = 13 * 60
 
 type DayLog = {
   timeIn: string | null
@@ -52,10 +61,6 @@ function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })
 }
 
-function minutesSinceMidnight(d: Date) {
-  return d.getHours() * 60 + d.getMinutes()
-}
-
 function hoursWorked(log: DayLog) {
   if (!log.timeIn || !log.timeOut) return null
   let ms = +new Date(log.timeOut) - +new Date(log.timeIn)
@@ -81,6 +86,7 @@ export default function AttendanceClient() {
   const week = weekDates()
   const today = week.find((d) => d.isToday)
   const [logs, setLogs] = useState<Record<string, DayLog>>({})
+  const [shift, setShift] = useState<Shift | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -127,19 +133,25 @@ export default function AttendanceClient() {
 
     ;(async () => {
       const supabase = createClient()
-      const [{ data, error }, { data: resets, error: resetsError }] = await Promise.all([
-        supabase
-          .from('attendance')
-          .select('day, time_in, lunch_start, lunch_end, time_out')
-          .gte('day', week[0].iso)
-          .lte('day', week[week.length - 1].iso),
-        supabase
-          .from('attendance_reset_requests')
-          .select('id, day, reason, status')
-          .order('created_at', { ascending: false }),
-      ])
+      const [{ data, error }, { data: resets, error: resetsError }, { data: assignment }] =
+        await Promise.all([
+          supabase
+            .from('attendance')
+            .select('day, time_in, lunch_start, lunch_end, time_out')
+            .gte('day', week[0].iso)
+            .lte('day', week[week.length - 1].iso),
+          supabase
+            .from('attendance_reset_requests')
+            .select('id, day, reason, status')
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('shift_assignments')
+            .select('shifts(id, name, time_in, meal_start, meal_end, time_out)')
+            .maybeSingle(),
+        ])
 
       if (cancelled) return
+      setShift((assignment as { shifts?: Shift } | null)?.shifts ?? null)
       if (error) {
         setLoadError(error.message)
         setLoading(false)
@@ -168,19 +180,26 @@ export default function AttendanceClient() {
   // is harmless.
   useEffect(() => {
     if (!today) return
+    const mealStart = shift ? toMinutes(shift.meal_start) : FALLBACK_MEAL_START
+    const mealEnd = shift ? toMinutes(shift.meal_end) : FALLBACK_MEAL_END
+
     const tick = async () => {
       const log = logs[today.iso]
       if (!log?.timeIn || log.timeOut) return
       const mins = minutesSinceMidnight(new Date())
       const supabase = createClient()
+      const onMeal = inWindow(mins, mealStart, mealEnd)
 
-      if (!log.lunchStart && mins >= LUNCH_START_MIN && mins < LUNCH_END_MIN) {
+      if (!log.lunchStart && onMeal) {
         const { error } = await supabase.rpc('attendance_lunch_start')
         if (error) setActionError(error.message)
         else reloadToday()
         return
       }
-      if (log.lunchStart && !log.lunchEnd && mins >= LUNCH_END_MIN) {
+      // Having left the window is what ends the pause — comparing against
+      // the end minute alone would never fire for a meal that runs past
+      // midnight, which a graveyard shift's can.
+      if (log.lunchStart && !log.lunchEnd && !onMeal) {
         const { error } = await supabase.rpc('attendance_lunch_end')
         if (error) setActionError(error.message)
         else reloadToday()
@@ -189,7 +208,7 @@ export default function AttendanceClient() {
     tick()
     const id = window.setInterval(tick, 30000)
     return () => window.clearInterval(id)
-  }, [today, logs, reloadToday])
+  }, [today, logs, reloadToday, shift])
 
   async function timeIn() {
     setActionError(null)
@@ -291,6 +310,16 @@ export default function AttendanceClient() {
 
         <p className="field__hint mt-3">
           {daysLogged} of {week.length} days completed this week.
+          {shift ? (
+            <>
+              {' '}
+              You&rsquo;re on <b>{shift.name}</b> — {labelTime(shift.time_in)} to{' '}
+              {labelTime(shift.time_out)}, mealtime pauses {labelTime(shift.meal_start)}–
+              {labelTime(shift.meal_end)}.
+            </>
+          ) : (
+            ' No shift is set for you, so mealtime pauses at midday by default.'
+          )}
         </p>
       </div>
 
