@@ -456,8 +456,13 @@ function roomSVG(opts) {
     ${spotOpen(
         Object.assign({}, by('clock'), { sub: formatTime(mins) }),
         clock, 245, 132)}
-    ${spotOpen(by('journal'), journal, 270, 282)}
+    <!-- Desk before journal: the journal sits ON the desk, and .furn carries
+         a translucent fill, so drawing the desk second tinted the notebook —
+         and would wash out its label now that the label sits on it too.
+         Painting the desk first puts the thing on the surface above the
+         surface, which is the order a hand would put them down in. -->
     ${spotOpen(by('desk'), desk, 190, 534)}
+    ${spotOpen(by('journal'), journal, 270, 369)}
     ${spotOpen(by('cooler'), cooler, 450, 510)}
     ${spotOpen(by('lounge'), lounge, 730, 382)}
     ${nook}
