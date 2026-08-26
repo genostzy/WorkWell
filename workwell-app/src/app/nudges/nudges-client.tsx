@@ -250,19 +250,23 @@ export default function NudgesClient() {
                 These are not preferences. They hold whatever else you turn on.
               </p>
               <div className="stack stack--tight">
-                {[
-                  'Time off & leave',
-                  'Out of office',
-                  'Focus time',
-                  'Meetings',
-                  'Quiet hours',
-                ].map((t) => (
+                {['Time off & leave', 'Quiet hours'].map((t) => (
                   <div className="row row--between" key={t}>
                     <span className="toggle__title">{t}</span>
                     <span className="chip chip--accent">Always</span>
                   </div>
                 ))}
+                {['Out of office', 'Focus time', 'Meetings'].map((t) => (
+                  <div className="row row--between" key={t}>
+                    <span className="toggle__title">{t}</span>
+                    <span className="chip">Needs a calendar</span>
+                  </div>
+                ))}
               </div>
+              <p className="field__hint mt-4">
+                Out of office, focus time and meetings need a calendar
+                connection, which is not built — nothing checks them yet.
+              </p>
             </div>
           </div>
 
