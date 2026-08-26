@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { readIsHr } from '@/lib/role'
-import { LoadError, PageHead, RoleLocked } from '@/components/chrome'
+import { LoadError, PageHead } from '@/components/chrome'
 import HolidaysClient from '../../holidays/holidays-client'
+import HolidaysManageClient from '../../holidays/holidays-manage-client'
 
 export default async function Holidays() {
   const supabase = await createClient()
@@ -16,14 +17,5 @@ export default async function Holidays() {
     )
   }
 
-  if (isHr) {
-    return (
-      <>
-        <PageHead title="Not available on this account" />
-        <RoleLocked audience="employee" />
-      </>
-    )
-  }
-
-  return <HolidaysClient />
+  return isHr ? <HolidaysManageClient /> : <HolidaysClient />
 }
