@@ -40,9 +40,10 @@ function skeleton(shift: Shift) {
         <stop offset="55%" stop-color="#4ade80"/>
         <stop offset="100%" stop-color="#86efac"/>
       </linearGradient>
+      <!-- Wider than the shimmer it clips, so a round cap is never shaved. -->
       <mask id="shift-ring-filled">
         <path class="shift-ring__maskpath" d="${RING_PATH}" pathLength="1"
-              fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round"/>
+              fill="none" stroke="#fff" stroke-width="11" stroke-linecap="round"/>
       </mask>
     </defs>
     <path class="shift-ring__track" d="${RING_PATH}"/>
@@ -53,12 +54,12 @@ function skeleton(shift: Shift) {
       <path class="shift-ring__shimmer" d="${RING_PATH}" pathLength="1"/>
     </g>
     <g class="shift-ring__tip" hidden>
-      <circle class="shift-ring__tip-halo" r="9"/>
-      <circle class="shift-ring__tip-dot" r="4"/>
+      <circle class="shift-ring__tip-halo" r="12"/>
+      <circle class="shift-ring__tip-dot" r="5.5"/>
     </g>
     <g class="shift-ring__ends">
-      <circle class="shift-ring__end is-start" cx="482" cy="696" r="5"/>
-      <circle class="shift-ring__end is-finish" cx="518" cy="696" r="5"/>
+      <circle class="shift-ring__end is-start" cx="482" cy="696" r="6"/>
+      <circle class="shift-ring__end is-finish" cx="518" cy="696" r="6"/>
       <text class="shift-ring__label is-start" x="468" y="696">in ${labelTime(shift.time_in)}</text>
       <text class="shift-ring__label is-finish" x="532" y="696">out ${labelTime(shift.time_out)}</text>
     </g>`
