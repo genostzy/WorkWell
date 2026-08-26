@@ -133,6 +133,10 @@ export default function BoundariesClient() {
                 onChange={(delayed_sending) => update({ delayed_sending })}
               />
             </div>
+            <p className="field__hint mt-4">
+              Holding a message needs somewhere to send it from, which is not
+              built. This setting is stored and will apply when it is.
+            </p>
           </div>
 
           <div className="card">
