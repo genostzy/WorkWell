@@ -2,52 +2,56 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { PageHead, PlaneBadge } from '@/components/chrome'
+import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
+import { ConfirmButton } from '@/components/controls'
 
 type Employee = { id: string; name: string; title: string }
-type Template = { id: string; name: string; body: (name: string, title: string) => string }
+type Template = { id: string; name: string; body: string }
 
-const TEMPLATES: Template[] = [
-  {
-    id: 't1',
-    name: 'Employment certificate',
-    body: (name, title) =>
-      `This is to certify that ${name} is a current employee of WorkWell, holding the position of ${title}, in good standing as of today.`,
-  },
-  {
-    id: 't2',
-    name: 'Offer letter',
-    body: (name, title) =>
-      `Dear ${name},\n\nWe are pleased to offer you the position of ${title} at WorkWell. Full terms will follow under separate cover.`,
-  },
-  {
-    id: 't3',
-    name: 'Certificate of employment (final)',
-    body: (name, title) =>
-      `This certifies that ${name} was employed by WorkWell as ${title}. We wish them well in their next role.`,
-  },
-]
+const EMPTY_DRAFT = { name: '', body: '' }
 
+function fill(body: string, name: string, title: string) {
+  return body.replaceAll('{{name}}', name).replaceAll('{{title}}', title)
+}
+
+/**
+ * Letter heads was the one mock page 0037's sweep missed — three templates
+ * hardcoded in this file, with nowhere for HR to add a fourth or fix a typo
+ * in one of the three. Templates now live in work.letter_heads; the
+ * placeholders a template can use are exactly the two fields generation
+ * has ever filled in, {{name}} and {{title}}.
+ */
 export default function LetterHeadsClient() {
+  const [orgId, setOrgId] = useState<string | null>(null)
   const [employees, setEmployees] = useState<Employee[]>([])
+  const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
-  const [templateId, setTemplateId] = useState(TEMPLATES[0].id)
+  const [templateId, setTemplateId] = useState<string | null>(null)
   const [employeeId, setEmployeeId] = useState<string | null>(null)
   const [preview, setPreview] = useState<{ template: string; body: string } | null>(null)
+
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [draft, setDraft] = useState(EMPTY_DRAFT)
+  const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       const supabase = createClient()
-      const [{ data: people, error: pError }, { data: employment }] = await Promise.all([
-        supabase.from('people').select('id, full_name').order('full_name'),
-        supabase.from('employment').select('person_id, job_title'),
-      ])
+      const [{ data: me, error: meError }, { data: people, error: pError }, { data: employment }, { data: tmpl, error: tError }] =
+        await Promise.all([
+          supabase.from('me').select('org_id').maybeSingle(),
+          supabase.from('people').select('id, full_name').order('full_name'),
+          supabase.from('employment').select('person_id, job_title'),
+          supabase.from('letter_heads').select('id, name, body').order('name'),
+        ])
       if (cancelled) return
-      if (pError) {
-        setLoadError(pError.message)
+      const err = meError ?? pError ?? tError
+      if (err) {
+        setLoadError(err.message)
         setLoading(false)
         return
       }
@@ -57,8 +61,11 @@ export default function LetterHeadsClient() {
         name: p.full_name as string,
         title: titles.get(p.id) ?? '—',
       }))
+      setOrgId(me?.org_id ?? null)
       setEmployees(rows)
       setEmployeeId(rows[0]?.id ?? null)
+      setTemplates((tmpl ?? []) as Template[])
+      setTemplateId((tmpl ?? [])[0]?.id ?? null)
       setLoading(false)
     })()
     return () => {
@@ -68,17 +75,94 @@ export default function LetterHeadsClient() {
 
   function generate(e: React.FormEvent) {
     e.preventDefault()
-    const template = TEMPLATES.find((t) => t.id === templateId)!
+    const template = templates.find((t) => t.id === templateId)
     const employee = employees.find((e) => e.id === employeeId)
-    if (!employee) return
-    setPreview({ template: template.name, body: template.body(employee.name, employee.title) })
+    if (!template || !employee) return
+    setPreview({ template: template.name, body: fill(template.body, employee.name, employee.title) })
+  }
+
+  function startCreate() {
+    setEditingId('new')
+    setDraft(EMPTY_DRAFT)
+    setFormError(null)
+  }
+
+  function startEdit(t: Template) {
+    setEditingId(t.id)
+    setDraft({ name: t.name, body: t.body })
+    setFormError(null)
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setFormError(null)
+  }
+
+  async function save() {
+    const name = draft.name.trim()
+    const body = draft.body.trim()
+    if (!name || !body) {
+      setFormError('Name and body are both required.')
+      return
+    }
+
+    setSaving(true)
+    setFormError(null)
+    const supabase = createClient()
+
+    if (editingId === 'new') {
+      if (!orgId) {
+        setSaving(false)
+        setFormError('This account is not linked to an organisation yet.')
+        return
+      }
+      const { data, error } = await supabase
+        .from('letter_heads')
+        .insert({ org_id: orgId, name, body })
+        .select('id, name, body')
+        .single()
+      setSaving(false)
+      if (error) return setFormError(error.message)
+      const row = data as Template
+      setTemplates((prev) => [...prev, row].sort((a, b) => a.name.localeCompare(b.name)))
+      setTemplateId((current) => current ?? row.id)
+      setEditingId(null)
+      return
+    }
+
+    const { data, error } = await supabase
+      .from('letter_heads')
+      .update({ name, body })
+      .eq('id', editingId)
+      .select('id, name, body')
+      .single()
+    setSaving(false)
+    if (error) return setFormError(error.message)
+    setTemplates((prev) =>
+      prev
+        .map((t) => (t.id === editingId ? (data as Template) : t))
+        .sort((a, b) => a.name.localeCompare(b.name))
+    )
+    setEditingId(null)
+  }
+
+  async function remove(id: string) {
+    const supabase = createClient()
+    const { error } = await supabase.from('letter_heads').delete().eq('id', id)
+    if (error) {
+      setLoadError(error.message)
+      return
+    }
+    setTemplates((prev) => prev.filter((t) => t.id !== id))
+    setTemplateId((current) => (current === id ? templates.find((t) => t.id !== id)?.id ?? null : current))
+    if (editingId === id) setEditingId(null)
   }
 
   return (
     <>
       <PageHead
         title="Letter heads"
-        lead="Templates HR generates from — offer letters, employment certificates, that kind of thing."
+        lead="Templates HR authors and generates from — offer letters, employment certificates, that kind of thing."
       />
       <PlaneBadge plane="work" />
 
@@ -96,8 +180,14 @@ export default function LetterHeadsClient() {
 
             <div className="mt-4">
               <label className="field__label" htmlFor="ltpl">Template</label>
-              <select id="ltpl" className="select" value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
-                {TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              <select
+                id="ltpl"
+                className="select"
+                value={templateId ?? ''}
+                disabled={loading || templates.length === 0}
+                onChange={(e) => setTemplateId(e.target.value)}
+              >
+                {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
             </div>
 
@@ -115,28 +205,67 @@ export default function LetterHeadsClient() {
             </div>
 
             <div className="mt-4">
-              <button className="btn btn--primary" type="submit" disabled={!employeeId}>
+              <button className="btn btn--primary" type="submit" disabled={!employeeId || !templateId}>
                 Generate
               </button>
             </div>
           </form>
 
-          <div className="card card--flush">
-            <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-              <h2 className="card__title">Available templates</h2>
-            </div>
-            <div className="table-scroll">
-              <table className="data-table">
-                <caption className="sr-only">Letter templates</caption>
-                <tbody>
-                  {TEMPLATES.map((t) => (
-                    <tr key={t.id}>
-                      <th scope="row" style={{ fontWeight: 600 }}>{t.name}</th>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div className="card">
+            <h2 className="card__title mb-3">
+              {editingId && editingId !== 'new' ? 'Edit template' : 'Templates'}
+            </h2>
+
+            {editingId ? (
+              <TemplateForm
+                draft={draft}
+                setDraft={setDraft}
+                onSave={save}
+                onCancel={cancelEdit}
+                saving={saving}
+                error={formError}
+                submitLabel={editingId === 'new' ? 'Add' : 'Save changes'}
+              />
+            ) : (
+              <>
+                {loading ? (
+                  <div className="skel skel--text" />
+                ) : templates.length === 0 ? (
+                  <p className="t-subtle">No templates yet.</p>
+                ) : (
+                  <div className="stack stack--tight">
+                    {templates.map((t) => (
+                      <div className="card card--quiet" key={t.id} style={{ margin: 0 }}>
+                        <div className="row row--between">
+                          <b>{t.name}</b>
+                          <div className="row" style={{ gap: 'var(--s-2)' }}>
+                            <button
+                              type="button"
+                              className="btn btn--secondary btn--sm"
+                              onClick={() => startEdit(t)}
+                            >
+                              Edit
+                            </button>
+                            <ConfirmButton
+                              label="Delete"
+                              className="btn btn--ghost btn--sm"
+                              onConfirm={() => remove(t.id)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className="btn btn--secondary btn--sm mt-3"
+                  onClick={startCreate}
+                >
+                  New template
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -154,6 +283,81 @@ export default function LetterHeadsClient() {
           )}
         </div>
       </div>
+
+      <PrivacyNote
+        plane="work"
+        detail="Templates are reference data shared across your organisation's HR account, the same as news posts or company policies. Generating a letter only ever fills one in on screen — nothing is sent, saved, or logged."
+      >
+        <b>Generating never sends or records anything.</b>{' '}
+      </PrivacyNote>
     </>
+  )
+}
+
+function TemplateForm({
+  draft,
+  setDraft,
+  onSave,
+  onCancel,
+  saving,
+  error,
+  submitLabel,
+}: {
+  draft: { name: string; body: string }
+  setDraft: (d: { name: string; body: string }) => void
+  onSave: () => void
+  onCancel: () => void
+  saving: boolean
+  error: string | null
+  submitLabel: string
+}) {
+  return (
+    <div className="stack stack--tight">
+      {error && (
+        <div className="banner banner--error" role="alert">
+          {error}
+        </div>
+      )}
+      <div className="field">
+        <label className="field__label" htmlFor="tmpl-name">
+          Name
+        </label>
+        <input
+          id="tmpl-name"
+          className="input"
+          value={draft.name}
+          maxLength={120}
+          onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+        />
+      </div>
+      <div className="field">
+        <label className="field__label" htmlFor="tmpl-body">
+          Body
+        </label>
+        <textarea
+          id="tmpl-body"
+          className="textarea"
+          rows={6}
+          value={draft.body}
+          onChange={(e) => setDraft({ ...draft, body: e.target.value })}
+        />
+        <span className="field__hint">
+          Use <code>{'{{name}}'}</code> and <code>{'{{title}}'}</code> — filled in from the employee chosen when generating.
+        </span>
+      </div>
+      <div className="row" style={{ gap: 'var(--s-2)' }}>
+        <button
+          type="button"
+          className="btn btn--primary btn--sm"
+          disabled={saving}
+          onClick={onSave}
+        >
+          {saving ? 'Saving…' : submitLabel}
+        </button>
+        <button type="button" className="btn btn--ghost btn--sm" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </div>
   )
 }
