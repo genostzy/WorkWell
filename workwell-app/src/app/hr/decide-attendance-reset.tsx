@@ -100,7 +100,7 @@ export function DecideAttendanceReset({
         </div>
         <div className="field" style={{ flex: '1 1 120px' }}>
           <label className="field__label" htmlFor={`ls-${requestId}`}>
-            Lunch start
+            Mealtime start
           </label>
           <input
             id={`ls-${requestId}`}
@@ -112,7 +112,7 @@ export function DecideAttendanceReset({
         </div>
         <div className="field" style={{ flex: '1 1 120px' }}>
           <label className="field__label" htmlFor={`le-${requestId}`}>
-            Lunch end
+            Mealtime end
           </label>
           <input
             id={`le-${requestId}`}

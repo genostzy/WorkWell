@@ -65,7 +65,7 @@ function hoursWorked(log: DayLog) {
 
 function statusOf(log: DayLog) {
   if (log.timeOut) return 'Done for the day'
-  if (log.lunchStart && !log.lunchEnd) return 'On lunch (auto)'
+  if (log.lunchStart && !log.lunchEnd) return 'On mealtime (auto)'
   if (log.timeIn) return 'Working'
   return 'Not timed in'
 }
@@ -246,7 +246,7 @@ export default function AttendanceClient() {
 
   return (
     <>
-      <PageHead title="Attendance" lead="Time in, time out — lunch pauses itself." />
+      <PageHead title="Attendance" lead="Time in, time out — mealtime pauses itself." />
       <PlaneBadge plane="work" />
 
       {(loadError || actionError) && (
@@ -281,7 +281,7 @@ export default function AttendanceClient() {
               {todayLog.lunchStart ? fmtTime(todayLog.lunchStart) : '—'}
               {todayLog.lunchEnd ? ` – ${fmtTime(todayLog.lunchEnd)}` : todayLog.lunchStart ? ' –' : ''}
             </span>
-            <span className="stat__label">Lunch (auto)</span>
+            <span className="stat__label">Mealtime (auto)</span>
           </div>
           <div className="stat">
             <span className="stat__value t-num">{todayLog.timeOut ? fmtTime(todayLog.timeOut) : '—'}</span>
@@ -305,7 +305,7 @@ export default function AttendanceClient() {
               <tr>
                 <th scope="col">Day</th>
                 <th scope="col">Time in</th>
-                <th scope="col">Lunch</th>
+                <th scope="col">Mealtime</th>
                 <th scope="col">Time out</th>
                 <th scope="col">Hours</th>
               </tr>
@@ -424,7 +424,7 @@ export default function AttendanceClient() {
 
       <PrivacyNote
         plane="work"
-        detail="A per-minute time record is a real change from the confirmation-only design this screen used to mock — worth knowing it's here. Lunch is paused automatically between 12:00 pm and 1:00 pm rather than clocked, so it never counts as worked time and never needs a separate button. This record is yours alone by default — never visible to HR, individually or aggregated. The one exception: if you request a reset with a reason below, HR can see and correct that single day while your request is open, and nothing else. Approve, decline, or withdraw it and the door closes again."
+        detail="A per-minute time record is a real change from the confirmation-only design this screen used to mock — worth knowing it's here. Mealtime is paused automatically between 12:00 pm and 1:00 pm rather than clocked, so it never counts as worked time and never needs a separate button. This record is yours alone by default — never visible to HR, individually or aggregated. The one exception: if you request a reset with a reason below, HR can see and correct that single day while your request is open, and nothing else. Approve, decline, or withdraw it and the door closes again."
       >
         <b>Self-only, with one narrow exception you control.</b>{' '}
       </PrivacyNote>

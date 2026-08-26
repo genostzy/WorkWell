@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { readIsHr } from '@/lib/role'
 import { Empty, LoadError, PageHead, PlaneBadge, PrivacyNote, RoleLocked } from '@/components/chrome'
-import { QuickMood } from '../../trends/quick-mood'
 
 /** The PRD is explicit that we say "not enough data yet" rather than
  *  guess. Four entries cannot describe a pattern. */
@@ -133,7 +132,6 @@ export default async function Trends() {
       <>
         <PageHead title="Your trends" />
         <PlaneBadge plane="private" />
-        <QuickMood />
         <Empty
           title="Nothing here yet"
           action={
@@ -151,10 +149,6 @@ export default async function Trends() {
   const enough = rows.length >= ENOUGH
   const signals = patternSignals(rows)
 
-  const today = new Date().toISOString().slice(0, 10)
-  const todayRow = rows.find((r) => r.day === today)
-  const showQuickMood = !todayRow || todayRow.mood == null
-
   return (
     <>
       <PageHead
@@ -167,8 +161,6 @@ export default async function Trends() {
       />
 
       <PlaneBadge plane="private" />
-
-      {showQuickMood && <QuickMood />}
 
       {signals.length > 0 && (
         <div className="card card--accent">

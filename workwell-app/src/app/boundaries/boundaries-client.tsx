@@ -149,7 +149,7 @@ export default function BoundariesClient() {
                 onChange={(hold_morning) => update({ hold_morning })}
               />
               <ToggleRow
-                title="Protect lunch"
+                title="Protect mealtime"
                 desc="Every weekday"
                 on={value.protect_lunch}
                 onChange={(protect_lunch) => update({ protect_lunch })}
