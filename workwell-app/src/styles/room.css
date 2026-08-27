@@ -767,13 +767,10 @@ a.roomlist__item:hover { border-color: var(--accent); background: var(--accent-q
   filter: drop-shadow(0 0 5px rgba(74, 222, 128, .95));
 }
 
-/* Bobs gently in place, like the surface at the waterline, rather than
-   pinging outward and fading — a mark that is *there*, not one that keeps
-   announcing itself. */
+/* A still mark, not a moving one — it says where the fill's head is, and
+   nothing more. */
 .shift-ring__tip-halo {
   fill: rgba(74, 222, 128, .3);
-  animation: shift-ring-bob 2.4s ease-in-out infinite;
-  transform-origin: center;
 }
 
 .shift-ring__end {
@@ -891,14 +888,12 @@ a.roomlist__item:hover { border-color: var(--accent); background: var(--accent-q
 }
 .shift-ring[data-mode="paused"] .shift-ring__tip-halo {
   fill: rgba(251, 191, 36, .28);
-  animation-duration: 4.5s;
 }
 
 /* Done: the wall is full, and it stops asking for attention. */
 .shift-ring[data-mode="done"] .shift-ring__glow--wide { animation: none; opacity: .14; }
 .shift-ring[data-mode="done"] .shift-ring__glow--mid { animation: none; opacity: .26; }
 .shift-ring[data-mode="done"] .shift-ring__shimmer { animation: none; opacity: 0; }
-.shift-ring[data-mode="done"] .shift-ring__tip-halo { animation: none; }
 .shift-ring[data-mode="done"] .shift-ring__end.is-finish {
   fill: #4ade80;
   stroke: #4ade80;
@@ -935,18 +930,10 @@ a.roomlist__item:hover { border-color: var(--accent); background: var(--accent-q
   to   { stroke-dashoffset: .04; }
 }
 
-/* A slight rise and swell in place — the waterline lifting, not a ring
-   pinging outward. */
-@keyframes shift-ring-bob {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50%      { transform: translateY(-2px) scale(1.08); }
-}
-
 /* Asked for less motion: the ring still says exactly the same thing, it
    just stops moving to say it. The fill still steps to where the day is. */
 :root[data-motion="reduced"] .shift-ring__glow,
 :root[data-motion="reduced"] .shift-ring__shimmer,
-:root[data-motion="reduced"] .shift-ring__tip-halo,
 :root[data-motion="reduced"] .shift-ring__meal-dot,
 :root[data-motion="reduced"] .shift-ring__end {
   animation: none;
@@ -958,7 +945,6 @@ a.roomlist__item:hover { border-color: var(--accent); background: var(--accent-q
 @media (prefers-reduced-motion: reduce) {
   :root:where(:not([data-motion="full"])) .shift-ring__glow,
   :root:where(:not([data-motion="full"])) .shift-ring__shimmer,
-  :root:where(:not([data-motion="full"])) .shift-ring__tip-halo,
   :root:where(:not([data-motion="full"])) .shift-ring__meal-dot,
   :root:where(:not([data-motion="full"])) .shift-ring__end {
     animation: none;
