@@ -22,7 +22,7 @@ export const BADGE: Record<Plane, { icon: string; label: string; sub: string }> 
   work: {
     icon: '🏢',
     label: 'Work plane',
-    sub: 'Employment data. HR sees this — and only this.',
+    sub: 'Employment data. Only HR sees this.',
   },
   org: {
     icon: '👥',
@@ -31,14 +31,38 @@ export const BADGE: Record<Plane, { icon: string; label: string; sub: string }> 
   },
 }
 
+/**
+ * A "?" that reveals a short sentence on hover or focus — no JS, no state,
+ * just `.tip:hover`/`.tip:focus-within` in components.css. Kept out of the
+ * flow of the label it explains, so what stays permanently on screen is the
+ * label alone, not the label plus a paragraph justifying it.
+ */
+function InfoTip({ text }: { text: string }) {
+  return (
+    <span className="tip">
+      <button type="button" className="tip__trigger" aria-label={text}>
+        ?
+      </button>
+      <span className="tip__bubble" role="tooltip">
+        {text}
+      </span>
+    </span>
+  )
+}
+
+/** The plane identity, kept to the two things that matter at a glance — the
+ *  icon and the name. What used to run on as a full sentence under it every
+ *  single time is now a tap or hover away instead: the "?" carries exactly
+ *  the words InfoTip is passed, nothing trimmed from them, just not forced
+ *  onto the page whether anyone reads it or not. */
 export function PlaneBadge({ plane }: { plane: Plane }) {
   const b = BADGE[plane]
   return (
     <div className="plane-badge">
       <span aria-hidden="true">{b.icon}</span>
-      <div>
-        <div className="plane-badge__label">{b.label}</div>
-        <div className="plane-badge__sub">{b.sub}</div>
+      <div className="plane-badge__label">
+        {b.label}
+        <InfoTip text={b.sub} />
       </div>
     </div>
   )
@@ -62,8 +86,14 @@ export function PrivacyNote({
       <span>
         {children}
         {detail && (
+          // <details>/<summary> rather than InfoTip: this text runs to a
+          // paragraph, and a hover bubble that size would either clip it or
+          // swallow half the screen. A tap that expands in place is the
+          // right control for a paragraph; InfoTip is for a sentence.
           <details style={{ display: 'inline' }}>
-            <summary className="privacy-more">What this means</summary>
+            <summary className="privacy-more" aria-label="What this means">
+              ?
+            </summary>
             <span className="privacy-detail">{detail}</span>
           </details>
         )}
@@ -96,7 +126,7 @@ export function LoadError({
         </div>
         <h2 className="state__title">{what} could not be loaded</h2>
         <p className="state__text">
-          Nothing has been lost — this is a read failing, not data missing.
+          Nothing has been lost. This is a read failing, not data missing.
         </p>
         {detail && (
           <p className="t-subtle mt-3">
@@ -155,7 +185,7 @@ export function RoleLocked({
         }
       : {
           title: 'This area is for employees',
-          text: detail ?? "HR/admin accounts hold no private plane of their own — there is nothing on this screen for this account.",
+          text: detail ?? "HR/admin accounts hold no private plane of their own. There is nothing on this screen for this account.",
         }
 
   return (
