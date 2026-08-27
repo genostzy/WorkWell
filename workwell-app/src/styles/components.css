@@ -190,16 +190,28 @@ button.chip[aria-pressed="true"] {
 
 /* Progressive disclosure: the claim stays one line; the proof is one tap away.
    A privacy promise has to be available, but it should not shout on every
-   screen — that is how it stops being read. */
+   screen — that is how people stop reading it. A round "?" rather than the
+   words "What this means" repeated on every card: the label already told
+   you there is more; the icon just says where. */
 .privacy-more {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 2px;
+  vertical-align: -3px;
+  border-radius: 50%;
+  border: 1px solid var(--accent-border);
   color: var(--accent-text);
+  font-size: 11px;
   font-weight: var(--fw-bold);
-  font-size: inherit;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  white-space: nowrap;
+  line-height: 1;
+  cursor: pointer;
+  list-style: none;
 }
-.privacy-more:hover { color: var(--accent-hover); }
+.privacy-more::-webkit-details-marker { display: none; }
+.privacy-more:hover { background: var(--accent-hover); color: var(--text-on-accent); }
+.privacy-more:focus-visible { outline: 2px solid var(--accent-border); outline-offset: 2px; }
 .privacy-detail { display: block; margin-top: var(--s-2); }
 /* `display` beats the hidden attribute, so restore it explicitly. */
 .privacy-detail[hidden] { display: none; }
@@ -874,8 +886,10 @@ details.table-view summary:hover { color: var(--text); }
 .locked__title { font-size: var(--fs-sm); font-weight: var(--fw-heavy); color: var(--text-muted); }
 .locked__text { font-size: var(--fs-xs); color: var(--text-subtle); max-width: 34ch; line-height: 1.5; }
 
-/* Tooltip on the locked card */
-.tip { position: relative; display: inline-flex; }
+/* Tooltip: a "?" that reveals one sentence on hover or keyboard focus, and
+   on tap wherever tapping focuses a button (most touch browsers). No JS —
+   :hover and :focus-within alone decide whether .tip__bubble shows. */
+.tip { position: relative; display: inline-flex; vertical-align: middle; }
 .tip__bubble {
   position: absolute;
   bottom: calc(100% + 8px);
@@ -898,6 +912,27 @@ details.table-view summary:hover { color: var(--text); }
 }
 .tip:hover .tip__bubble,
 .tip:focus-within .tip__bubble { opacity: 1; }
+
+/* The trigger itself — small enough to sit inline after a label without
+   throwing off its line height, round so it never reads as a text button. */
+.tip__trigger {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-quiet);
+  color: var(--accent-text);
+  font-size: 10px;
+  line-height: 1;
+  font-weight: var(--fw-bold);
+  cursor: help;
+  padding: 0;
+}
+.tip__trigger:hover { background: var(--accent-hover); color: var(--text-on-accent); }
+.tip__trigger:focus-visible { outline: 2px solid var(--accent-border); outline-offset: 2px; }
 
 /* ------------------------------------------------------------- Feed list */
 
