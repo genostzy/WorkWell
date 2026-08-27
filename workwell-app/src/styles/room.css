@@ -748,16 +748,17 @@ a.roomlist__item:hover { border-color: var(--accent); background: var(--accent-q
   animation: shift-ring-breathe-mid 4.5s ease-in-out infinite;
 }
 
-/* The pulse that runs the ring in to out. Opacity starts at 0 and is owned
-   entirely by the keyframe, so killing the animation for reduced motion
-   leaves it invisible rather than parked as a bright stripe. */
+/* Flecks of light carried along by the current — a tiled dash pattern that
+   never stops or fades, so it reads as water actually moving rather than a
+   single highlight blipping past every few seconds. Masked to the filled
+   stretch the same way the old shimmer was. */
 .shift-ring__shimmer {
-  stroke: rgba(255, 255, 255, .9);
-  stroke-width: 7;
+  stroke: rgba(255, 255, 255, .6);
+  stroke-width: 6;
   stroke-linecap: round;
-  stroke-dasharray: .06 .94;
-  opacity: 0;
-  animation: shift-ring-sweep 5s linear infinite;
+  stroke-dasharray: .012 .028;
+  opacity: .55;
+  animation: shift-ring-flow 3.2s linear infinite;
 }
 
 /* The head of the fill — where the water is arriving now. */
@@ -766,9 +767,12 @@ a.roomlist__item:hover { border-color: var(--accent); background: var(--accent-q
   filter: drop-shadow(0 0 5px rgba(74, 222, 128, .95));
 }
 
+/* Bobs gently in place, like the surface at the waterline, rather than
+   pinging outward and fading — a mark that is *there*, not one that keeps
+   announcing itself. */
 .shift-ring__tip-halo {
   fill: rgba(74, 222, 128, .3);
-  animation: shift-ring-ripple 2.4s ease-out infinite;
+  animation: shift-ring-bob 2.4s ease-in-out infinite;
   transform-origin: center;
 }
 
@@ -833,7 +837,7 @@ a.roomlist__item:hover { border-color: var(--accent); background: var(--accent-q
 .shift-ring[data-mode="paused"] .shift-ring__meal-dot {
   fill: #fbbf24;
   stroke: #fde68a;
-  animation: shift-ring-pulse 2.2s ease-in-out infinite;
+  animation: shift-ring-glow-amber 2.6s ease-in-out infinite;
 }
 .shift-ring[data-mode="paused"] .shift-ring__meal-label,
 .shift-ring[data-mode="paused"] .shift-ring__meal-hour { opacity: 1; }
@@ -866,10 +870,10 @@ a.roomlist__item:hover { border-color: var(--accent); background: var(--accent-q
 }
 
 /* Not timed in yet: nothing is moving, so the one thing that can happen
-   next is the thing that pulses. */
+   next is the thing that glows. */
 .shift-ring[data-mode="waiting"] .shift-ring__end.is-start {
   stroke: #4ade80;
-  animation: shift-ring-pulse 2.6s ease-in-out infinite;
+  animation: shift-ring-glow-green 2.6s ease-in-out infinite;
 }
 
 /* On the meal break. The ring holds exactly where it was — the pause is
@@ -910,28 +914,32 @@ a.roomlist__item:hover { border-color: var(--accent); background: var(--accent-q
   50%      { opacity: .3; }
 }
 
-/* The one thing that can happen next, when nothing else is moving. */
-@keyframes shift-ring-pulse {
-  0%, 100% { opacity: .45; }
-  50%      { opacity: 1; }
+/* The one thing that can happen next, when nothing else is moving — a slow
+   glow rather than a blink, so it reads as alive without flashing. */
+@keyframes shift-ring-glow-green {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(74, 222, 128, 0)); }
+  50%      { filter: drop-shadow(0 0 6px rgba(74, 222, 128, .85)); }
+}
+
+@keyframes shift-ring-glow-amber {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(251, 191, 36, 0)); }
+  50%      { filter: drop-shadow(0 0 6px rgba(251, 191, 36, .85)); }
 }
 
 /* Runs the way the day runs: from the time-in end round to time-out.
-   Increasing stroke-dashoffset walks the dash forward along the path — the
-   previous keyframe decreased it, so the highlight was in fact travelling
-   backwards, out to in. Fading in and out at the ends is what makes it read
-   as a pulse passing through rather than a bead endlessly circling. */
-@keyframes shift-ring-sweep {
-  0%   { stroke-dashoffset: 0; opacity: 0; }
-  12%  { opacity: .62; }
-  84%  { opacity: .62; }
-  100% { stroke-dashoffset: 1; opacity: 0; }
+   Tiles one dash-and-gap length per cycle so the loop has no seam, and never
+   drops to zero opacity — a current that keeps moving, not a highlight that
+   blips past and vanishes. */
+@keyframes shift-ring-flow {
+  from { stroke-dashoffset: 0; }
+  to   { stroke-dashoffset: .04; }
 }
 
-@keyframes shift-ring-ripple {
-  0%   { transform: scale(.7); opacity: .55; }
-  70%  { transform: scale(1.9); opacity: 0; }
-  100% { transform: scale(1.9); opacity: 0; }
+/* A slight rise and swell in place — the waterline lifting, not a ring
+   pinging outward. */
+@keyframes shift-ring-bob {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(-2px) scale(1.08); }
 }
 
 /* Asked for less motion: the ring still says exactly the same thing, it
