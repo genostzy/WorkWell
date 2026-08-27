@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { fmtDate } from '@/lib/format-date'
@@ -15,32 +16,23 @@ type Asset = {
   issue_note: string | null
 }
 
+async function fetchAssets() {
+  const { data, error } = await createClient()
+    .from('assets')
+    .select('id, tag, asset_type, issued_on, condition, issue_reported, issue_note')
+    .order('issued_on')
+  if (error) throw error
+  return (data ?? []) as Asset[]
+}
+
 export default function AssetsClient() {
-  const [assets, setAssets] = useState<Asset[]>([])
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  const { data: assets, error: loadErrorObj, isLoading: loading, mutate } = useSWR('assets:mine', fetchAssets)
+  const loadError = loadErrorObj?.message ?? null
 
   const [reporting, setReporting] = useState<string | null>(null)
   const [note, setNote] = useState('')
   const [sending, setSending] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from('assets')
-        .select('id, tag, asset_type, issued_on, condition, issue_reported, issue_note')
-        .order('issued_on')
-      if (cancelled) return
-      if (error) setLoadError(error.message)
-      setAssets((data ?? []) as Asset[])
-      setLoading(false)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  const [actionError, setActionError] = useState<string | null>(null)
 
   function cancelReport() {
     setReporting(null)
@@ -50,6 +42,7 @@ export default function AssetsClient() {
   async function report(id: string) {
     if (!note.trim()) return
     setSending(true)
+    setActionError(null)
     const supabase = createClient()
     const { error } = await supabase
       .from('assets')
@@ -57,10 +50,14 @@ export default function AssetsClient() {
       .eq('id', id)
     setSending(false)
 
-    if (error) return setLoadError(error.message)
+    if (error) return setActionError(error.message)
 
-    setAssets((a) =>
-      a.map((x) => (x.id === id ? { ...x, issue_reported: true, issue_note: note.trim() || null } : x))
+    await mutate(
+      (current) =>
+        current?.map((x) =>
+          x.id === id ? { ...x, issue_reported: true, issue_note: note.trim() || null } : x
+        ),
+      { revalidate: false }
     )
     setReporting(null)
     setNote('')
@@ -78,16 +75,16 @@ export default function AssetsClient() {
         <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
           <h2 className="card__title">Issued to you</h2>
         </div>
-        {loadError && (
+        {(loadError || actionError) && (
           <div className="banner banner--error" style={{ margin: '0 var(--s-5) var(--s-5)' }} role="alert">
-            {loadError}
+            {loadError ?? actionError}
           </div>
         )}
         {loading ? (
           <div style={{ padding: '0 var(--s-5) var(--s-5)' }}>
             <div className="skel skel--text" />
           </div>
-        ) : assets.length === 0 ? (
+        ) : (assets ?? []).length === 0 ? (
           <p className="t-subtle" style={{ padding: '0 var(--s-5) var(--s-5)' }}>
             Nothing issued to you yet.
           </p>
@@ -105,7 +102,7 @@ export default function AssetsClient() {
                 </tr>
               </thead>
               <tbody>
-                {assets.map((a) => (
+                {(assets ?? []).map((a) => (
                   <tr key={a.id}>
                     <th scope="row" style={{ fontWeight: 600 }}>{a.asset_type}</th>
                     <td className="t-subtle">{a.tag}</td>

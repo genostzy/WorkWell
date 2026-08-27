@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { fmtDate } from '@/lib/format-date'
@@ -27,6 +28,21 @@ const EMPTY_DRAFT = {
   condition: 'Good' as (typeof CONDITIONS)[number],
 }
 
+async function fetchPeople() {
+  const { data, error } = await createClient().from('people').select('id, full_name').order('full_name')
+  if (error) throw error
+  return (data ?? []) as Person[]
+}
+
+async function fetchAssets() {
+  const { data, error } = await createClient()
+    .from('assets')
+    .select('id, person_id, tag, asset_type, issued_on, condition, issue_reported, issue_note')
+    .order('issued_on', { ascending: false })
+  if (error) throw error
+  return (data ?? []) as Asset[]
+}
+
 /**
  * HR's side of Assets. 0037's own comment says the design outright: "HR
  * issues rows and the employee's only write is reporting a fault on their
@@ -37,10 +53,10 @@ const EMPTY_DRAFT = {
  * employee's own path from touching those columns, not HR's.
  */
 export default function AssetsManageClient() {
-  const [people, setPeople] = useState<Person[]>([])
-  const [assets, setAssets] = useState<Asset[]>([])
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  const { data: people, error: peopleErrorObj } = useSWR('people', fetchPeople)
+  const { data: assets, error: assetsErrorObj, isLoading: loading, mutate } = useSWR('assets:all', fetchAssets)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const loadError = actionError ?? peopleErrorObj?.message ?? assetsErrorObj?.message ?? null
 
   const [issuing, setIssuing] = useState(false)
   const [draft, setDraft] = useState(EMPTY_DRAFT)
@@ -48,30 +64,8 @@ export default function AssetsManageClient() {
   const [saving, setSaving] = useState(false)
   const [resolvingId, setResolvingId] = useState<string | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      const supabase = createClient()
-      const [{ data: ppl, error: pplError }, { data, error }] = await Promise.all([
-        supabase.from('people').select('id, full_name').order('full_name'),
-        supabase
-          .from('assets')
-          .select('id, person_id, tag, asset_type, issued_on, condition, issue_reported, issue_note')
-          .order('issued_on', { ascending: false }),
-      ])
-      if (cancelled) return
-      if (pplError ?? error) setLoadError((pplError ?? error)!.message)
-      setPeople((ppl ?? []) as Person[])
-      setAssets((data ?? []) as Asset[])
-      setLoading(false)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  const names = new Map(people.map((p) => [p.id, p.full_name]))
-  const reported = assets.filter((a) => a.issue_reported)
+  const names = new Map((people ?? []).map((p) => [p.id, p.full_name]))
+  const reported = (assets ?? []).filter((a) => a.issue_reported)
 
   function startIssue() {
     setIssuing(true)
@@ -101,7 +95,7 @@ export default function AssetsManageClient() {
     setSaving(false)
     if (error) return setFormError(error.message)
 
-    setAssets((prev) => [data as Asset, ...prev])
+    await mutate((prev) => [data as Asset, ...(prev ?? [])], { revalidate: false })
     setIssuing(false)
   }
 
@@ -114,13 +108,15 @@ export default function AssetsManageClient() {
       .eq('id', id)
     setResolvingId(null)
     if (error) {
-      setLoadError(error.message)
+      setActionError(error.message)
       return
     }
-    setAssets((prev) =>
-      prev.map((a) =>
-        a.id === id ? { ...a, issue_reported: false, issue_note: null, condition: newCondition } : a
-      )
+    await mutate(
+      (prev) =>
+        prev?.map((a) =>
+          a.id === id ? { ...a, issue_reported: false, issue_note: null, condition: newCondition } : a
+        ),
+      { revalidate: false }
     )
   }
 
@@ -173,7 +169,7 @@ export default function AssetsManageClient() {
           <div style={{ padding: '0 var(--s-5) var(--s-5)' }}>
             <div className="skel skel--text" />
           </div>
-        ) : assets.length === 0 ? (
+        ) : (assets ?? []).length === 0 ? (
           <p className="t-subtle" style={{ padding: '0 var(--s-5) var(--s-5)' }}>
             Nothing issued yet.
           </p>
@@ -191,7 +187,7 @@ export default function AssetsManageClient() {
                 </tr>
               </thead>
               <tbody>
-                {assets.map((a) => (
+                {(assets ?? []).map((a) => (
                   <tr key={a.id}>
                     <th scope="row" style={{ fontWeight: 600 }}>{names.get(a.person_id) ?? 'Someone'}</th>
                     <td>{a.asset_type}</td>
@@ -228,7 +224,7 @@ export default function AssetsManageClient() {
                 onChange={(e) => setDraft({ ...draft, personId: e.target.value })}
               >
                 <option value="">Choose one</option>
-                {people.map((p) => (
+                {(people ?? []).map((p) => (
                   <option key={p.id} value={p.id}>{p.full_name}</option>
                 ))}
               </select>

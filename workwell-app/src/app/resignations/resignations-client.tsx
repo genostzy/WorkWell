@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { ConfirmButton } from '@/components/controls'
@@ -12,47 +13,35 @@ type Resignation = {
   status: 'Submitted' | 'Acknowledged' | 'Withdrawn'
 }
 
+async function fetchMe() {
+  const { data, error } = await createClient().from('me').select('id').maybeSingle()
+  if (error) throw error
+  return data?.id ?? null
+}
+
+async function fetchCurrentResignation(): Promise<Resignation | null> {
+  const { data, error } = await createClient()
+    .from('resignations')
+    .select('id, last_day, status')
+    .neq('status', 'Withdrawn')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  return (data as Resignation) ?? null
+}
+
 export default function ResignationsClient() {
-  const [personId, setPersonId] = useState<string | null>(null)
-  const [current, setCurrent] = useState<Resignation | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  const { data: personId } = useSWR('me:id', fetchMe)
+  const { data: current, error: loadErrorObj, isLoading: loading, mutate } = useSWR('resignations:current', fetchCurrentResignation)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const loadError = actionError ?? loadErrorObj?.message ?? null
 
   const [lastDay, setLastDay] = useState('')
   const [reason, setReason] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
   const [withdrawing, setWithdrawing] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      const supabase = createClient()
-      const { data: me, error: meError } = await supabase.from('me').select('id').maybeSingle()
-      if (cancelled) return
-      if (meError) {
-        setLoadError(meError.message)
-        setLoading(false)
-        return
-      }
-      setPersonId(me?.id ?? null)
-
-      const { data, error } = await supabase
-        .from('resignations')
-        .select('id, last_day, status')
-        .neq('status', 'Withdrawn')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-      if (cancelled) return
-      if (error) setLoadError(error.message)
-      setCurrent((data as Resignation) ?? null)
-      setLoading(false)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -70,7 +59,7 @@ export default function ResignationsClient() {
     setSending(false)
 
     if (error) return setError(error.message)
-    setCurrent(data as Resignation)
+    await mutate(data as Resignation, { revalidate: false })
   }
 
   async function withdraw() {
@@ -83,8 +72,8 @@ export default function ResignationsClient() {
       .eq('id', current.id)
     setWithdrawing(false)
 
-    if (error) return setLoadError(error.message)
-    setCurrent(null)
+    if (error) return setActionError(error.message)
+    await mutate(null, { revalidate: false })
     setLastDay('')
     setReason('')
   }

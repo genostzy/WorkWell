@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { ConfirmButton } from '@/components/controls'
@@ -11,35 +12,28 @@ const TYPES = ['Text', 'Number', 'Date', 'Select'] as const
 
 const EMPTY_DRAFT = { name: '', field_type: TYPES[0] as string }
 
+async function fetchOrgId() {
+  const { data, error } = await createClient().from('me').select('org_id').maybeSingle()
+  if (error) throw error
+  return data?.org_id ?? null
+}
+
+async function fetchFields() {
+  const { data, error } = await createClient().from('custom_fields').select('id, name, field_type').order('created_at')
+  if (error) throw error
+  return (data ?? []) as Field[]
+}
+
 export default function CustomFieldsClient() {
-  const [orgId, setOrgId] = useState<string | null>(null)
-  const [fields, setFields] = useState<Field[]>([])
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  const { data: orgId } = useSWR('me:org_id', fetchOrgId)
+  const { data: fields, error: loadErrorObj, isLoading: loading, mutate } = useSWR('custom_fields:all', fetchFields)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const loadError = actionError ?? loadErrorObj?.message ?? null
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draft, setDraft] = useState(EMPTY_DRAFT)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      const supabase = createClient()
-      const [{ data: me, error: meError }, { data, error }] = await Promise.all([
-        supabase.from('me').select('org_id').maybeSingle(),
-        supabase.from('custom_fields').select('id, name, field_type').order('created_at'),
-      ])
-      if (cancelled) return
-      if (meError ?? error) setLoadError((meError ?? error)!.message)
-      setOrgId(me?.org_id ?? null)
-      setFields((data ?? []) as Field[])
-      setLoading(false)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   function startCreate() {
     setEditingId('new')
@@ -82,7 +76,7 @@ export default function CustomFieldsClient() {
         .single()
       setSaving(false)
       if (error) return setFormError(error.message)
-      setFields((prev) => [...prev, data as Field])
+      await mutate((prev) => [...(prev ?? []), data as Field], { revalidate: false })
       setEditingId(null)
       return
     }
@@ -95,7 +89,7 @@ export default function CustomFieldsClient() {
       .single()
     setSaving(false)
     if (error) return setFormError(error.message)
-    setFields((prev) => prev.map((f) => (f.id === editingId ? (data as Field) : f)))
+    await mutate((prev) => prev?.map((f) => (f.id === editingId ? (data as Field) : f)), { revalidate: false })
     setEditingId(null)
   }
 
@@ -103,10 +97,10 @@ export default function CustomFieldsClient() {
     const supabase = createClient()
     const { error } = await supabase.from('custom_fields').delete().eq('id', id)
     if (error) {
-      setLoadError(error.message)
+      setActionError(error.message)
       return
     }
-    setFields((prev) => prev.filter((f) => f.id !== id))
+    await mutate((prev) => prev?.filter((f) => f.id !== id), { revalidate: false })
     if (editingId === id) setEditingId(null)
   }
 
@@ -133,7 +127,7 @@ export default function CustomFieldsClient() {
               <div style={{ padding: '0 var(--s-5) var(--s-5)' }}>
                 <div className="skel skel--text" />
               </div>
-            ) : fields.length === 0 ? (
+            ) : (fields ?? []).length === 0 ? (
               <p className="t-subtle" style={{ padding: '0 var(--s-5) var(--s-5)' }}>
                 No fields defined yet.
               </p>
@@ -163,7 +157,7 @@ export default function CustomFieldsClient() {
                     </tr>
                   </thead>
                   <tbody>
-                    {fields.map((f) => (
+                    {(fields ?? []).map((f) => (
                       <tr key={f.id}>
                         <th scope="row" style={{ fontWeight: 600 }}>{f.name}</th>
                         <td><span className="chip">{f.field_type}</span></td>

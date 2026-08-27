@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 
@@ -31,55 +32,33 @@ function monthLabel(iso: string) {
   })
 }
 
+async function fetchMe() {
+  const { data, error } = await createClient().from('me').select('id').maybeSingle()
+  if (error) throw error
+  return data?.id ?? null
+}
+
+async function fetchPayrollData() {
+  const supabase = createClient()
+  const [{ data: slips, error: slipsError }, { data: reqs, error: reqsError }] = await Promise.all([
+    supabase.from('payslips').select('id, period_month, gross, net, status').order('period_month', { ascending: false }),
+    supabase.from('payroll_requests').select('id, kind, note, status').order('created_at', { ascending: false }),
+  ])
+  if (slipsError ?? reqsError) throw slipsError ?? reqsError
+  return { payslips: (slips ?? []) as Payslip[], requests: (reqs ?? []) as Request[] }
+}
+
 export default function PayrollClient() {
-  const [personId, setPersonId] = useState<string | null>(null)
-  const [payslips, setPayslips] = useState<Payslip[]>([])
-  const [requests, setRequests] = useState<Request[]>([])
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  const { data: personId } = useSWR('me:id', fetchMe)
+  const { data, error: loadErrorObj, isLoading: loading, mutate } = useSWR('payroll:mine', fetchPayrollData)
+  const loadError = loadErrorObj?.message ?? null
+  const payslips = data?.payslips ?? []
+  const requests = data?.requests ?? []
 
   const [kind, setKind] = useState<string>(KINDS[0])
   const [note, setNote] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      const supabase = createClient()
-      const { data: me, error: meError } = await supabase
-        .from('me')
-        .select('id')
-        .maybeSingle()
-      if (cancelled) return
-      if (meError) {
-        setLoadError(meError.message)
-        setLoading(false)
-        return
-      }
-      setPersonId(me?.id ?? null)
-
-      const [{ data: slips, error: slipsError }, { data: reqs, error: reqsError }] =
-        await Promise.all([
-          supabase
-            .from('payslips')
-            .select('id, period_month, gross, net, status')
-            .order('period_month', { ascending: false }),
-          supabase
-            .from('payroll_requests')
-            .select('id, kind, note, status')
-            .order('created_at', { ascending: false }),
-        ])
-      if (cancelled) return
-      if (slipsError ?? reqsError) setLoadError((slipsError ?? reqsError)!.message)
-      setPayslips((slips ?? []) as Payslip[])
-      setRequests((reqs ?? []) as Request[])
-      setLoading(false)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -89,7 +68,7 @@ export default function PayrollClient() {
 
     setSending(true)
     const supabase = createClient()
-    const { data, error } = await supabase
+    const { data: row, error } = await supabase
       .from('payroll_requests')
       .insert({ person_id: personId, kind, note: note.trim() })
       .select('id, kind, note, status')
@@ -98,7 +77,10 @@ export default function PayrollClient() {
 
     if (error) return setError(error.message)
 
-    setRequests((r) => [data as Request, ...r])
+    await mutate(
+      (current) => current && { ...current, requests: [row as Request, ...current.requests] },
+      { revalidate: false }
+    )
     setNote('')
   }
 

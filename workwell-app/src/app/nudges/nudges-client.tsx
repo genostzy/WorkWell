@@ -2,7 +2,8 @@
 
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { SaveState, ToggleRow } from '@/components/controls'
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
+import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { usePrefs } from '@/lib/use-prefs'
 
@@ -30,6 +31,17 @@ const KINDS = [
  *  enforceable rather than a number the client agrees to respect. */
 type Delivered = { id: string; kind: string; action: string | null }
 
+async function fetchDelivered() {
+  const supabase = createClient()
+  const today = new Date().toISOString().slice(0, 10)
+  const { data, error } = await supabase
+    .from('nudge_log')
+    .select('id, kind, action')
+    .eq('sent_on', today)
+  if (error) throw error
+  return (data ?? []) as Delivered[]
+}
+
 const COPY: Record<string, { title: string; text: string }> = {
   move: { title: 'Fancy a two-minute stretch?', text: 'A while at the desk now. Won’t fix a heavy week.' },
   hydrate: { title: 'Water within reach?', text: 'Small thing, easy to miss.' },
@@ -49,40 +61,17 @@ export default function NudgesClient() {
   const { value: workspace } = usePrefs('workspace_prefs', {
     focus_one_question: false,
   })
-  const [delivered, setDelivered] = useState<Delivered[]>([])
-  const [logError, setLogError] = useState<string | null>(null)
+  const { data: delivered, error: loadErrorObj, mutate: mutateDelivered } = useSWR('nudges:delivered:today', fetchDelivered)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const logError = actionError ?? loadErrorObj?.message ?? null
   const [answering, setAnswering] = useState<string | null>(null)
-
-  const loadDelivered = useCallback(async () => {
-    const supabase = createClient()
-    const today = new Date().toISOString().slice(0, 10)
-    const { data, error } = await supabase
-      .from('nudge_log')
-      .select('id, kind, action')
-      .eq('sent_on', today)
-    setLogError(error?.message ?? null)
-    setDelivered(data ?? [])
-  }, [])
-
-  useEffect(() => {
-    ;(async () => {
-      const supabase = createClient()
-      const today = new Date().toISOString().slice(0, 10)
-      const { data, error } = await supabase
-        .from('nudge_log')
-        .select('id, kind, action')
-        .eq('sent_on', today)
-      setLogError(error?.message ?? null)
-      setDelivered(data ?? [])
-    })()
-  }, [])
 
   // Answering used to ignore its own result, so a failed write left the
   // nudge sitting there and the three buttons doing nothing visible. A
   // silent no-op is the one response a person cannot act on.
   async function answer(id: string, action: string) {
     setAnswering(id)
-    setLogError(null)
+    setActionError(null)
     const supabase = createClient()
     const { error } = await supabase
       .from('nudge_log')
@@ -90,11 +79,15 @@ export default function NudgesClient() {
       .eq('id', id)
     setAnswering(null)
 
-    if (error) setLogError(error.message)
-    else loadDelivered()
+    if (error) setActionError(error.message)
+    else
+      await mutateDelivered(
+        (current) => current?.map((d) => (d.id === id ? { ...d, action } : d)),
+        { revalidate: false }
+      )
   }
 
-  const open = delivered.filter((d) => d.action === null)
+  const open = (delivered ?? []).filter((d) => d.action === null)
 
   const today = new Date().toISOString().slice(0, 10)
   const focusMode = workspace.focus_one_question
@@ -275,7 +268,7 @@ export default function NudgesClient() {
               <div>
                 <h2 className="card__title">Daily cap</h2>
                 <p className="card__sub">
-                  {delivered.length} of at most {value.daily_cap} today. The cap
+                  {(delivered ?? []).length} of at most {value.daily_cap} today. The cap
                   is the point.
                 </p>
               </div>

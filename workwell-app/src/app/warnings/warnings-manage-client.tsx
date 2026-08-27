@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 
@@ -24,17 +25,37 @@ function fmtDateTime(iso: string) {
   })
 }
 
+async function fetchMe() {
+  const { data, error } = await createClient().from('me').select('id').maybeSingle()
+  if (error) throw error
+  return data?.id ?? null
+}
+
+async function fetchPeopleAndWarnings() {
+  const supabase = createClient()
+  const [{ data: ppl, error: pplError }, { data, error }] = await Promise.all([
+    supabase.from('people').select('id, full_name').order('full_name'),
+    supabase
+      .from('warnings')
+      .select('id, person_id, category, note, status, created_at')
+      .order('created_at', { ascending: false }),
+  ])
+  if (pplError ?? error) throw pplError ?? error
+  return { people: (ppl ?? []) as Person[], warnings: (data ?? []) as Warning[] }
+}
+
 /** HR's side of Warnings, made real. Issuing one tells the person the same
  *  moment every other decide-flow in this product does; resolving one is
  *  one-way (the database enforces Active -> Resolved only) and, unlike
  *  issuing, doesn't notify -- the actionable moment for the person was
  *  being told a warning exists, not that it was later closed out. */
 export default function WarningsManageClient() {
-  const [me, setMe] = useState<string | null>(null)
-  const [people, setPeople] = useState<Person[]>([])
-  const [warnings, setWarnings] = useState<Warning[]>([])
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  const { data: me } = useSWR('me:id', fetchMe)
+  const { data, error: loadErrorObj, isLoading: loading, mutate } = useSWR('warnings:manage', fetchPeopleAndWarnings)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const loadError = actionError ?? loadErrorObj?.message ?? null
+  const people = data?.people ?? []
+  const warnings = data?.warnings ?? []
 
   const [personId, setPersonId] = useState('')
   const [category, setCategory] = useState<string>(CATEGORIES[0])
@@ -42,30 +63,6 @@ export default function WarningsManageClient() {
   const [formError, setFormError] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
   const [resolvingId, setResolvingId] = useState<string | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      const supabase = createClient()
-      const [{ data: mine }, { data: ppl, error: pplError }, { data, error }] = await Promise.all([
-        supabase.from('me').select('id').maybeSingle(),
-        supabase.from('people').select('id, full_name').order('full_name'),
-        supabase
-          .from('warnings')
-          .select('id, person_id, category, note, status, created_at')
-          .order('created_at', { ascending: false }),
-      ])
-      if (cancelled) return
-      setMe(mine?.id ?? null)
-      if (pplError ?? error) setLoadError((pplError ?? error)!.message)
-      setPeople((ppl ?? []) as Person[])
-      setWarnings((data ?? []) as Warning[])
-      setLoading(false)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   const names = new Map(people.map((p) => [p.id, p.full_name]))
 
@@ -77,7 +74,7 @@ export default function WarningsManageClient() {
 
     setSending(true)
     const supabase = createClient()
-    const { data, error } = await supabase
+    const { data: row, error } = await supabase
       .from('warnings')
       .insert({ person_id: personId, category, note: note.trim(), issued_by: me })
       .select('id, person_id, category, note, status, created_at')
@@ -97,7 +94,7 @@ export default function WarningsManageClient() {
     })
 
     setSending(false)
-    setWarnings((w) => [data as Warning, ...w])
+    await mutate((prev) => prev && { ...prev, warnings: [row as Warning, ...prev.warnings] }, { revalidate: false })
     setPersonId('')
     setCategory(CATEGORIES[0])
     setNote('')
@@ -113,10 +110,17 @@ export default function WarningsManageClient() {
     setResolvingId(null)
 
     if (error) {
-      setLoadError(error.message)
+      setActionError(error.message)
       return
     }
-    setWarnings((w) => w.map((x) => (x.id === id ? { ...x, status: 'Resolved' } : x)))
+    await mutate(
+      (prev) =>
+        prev && {
+          ...prev,
+          warnings: prev.warnings.map((x) => (x.id === id ? { ...x, status: 'Resolved' as const } : x)),
+        },
+      { revalidate: false }
+    )
   }
 
   return (

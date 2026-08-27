@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { ToggleRow } from '@/components/controls'
@@ -8,41 +9,34 @@ import { fmtDate } from '@/lib/format-date'
 
 type Policy = { id: string; title: string; updated_on: string }
 
+async function fetchMe() {
+  const { data, error } = await createClient().from('me').select('id').maybeSingle()
+  if (error) throw error
+  return data?.id ?? null
+}
+
+async function fetchPoliciesAndAcks() {
+  const supabase = createClient()
+  const [{ data: ps, error: psError }, { data: acks, error: acksError }] = await Promise.all([
+    supabase.from('policies').select('id, title, updated_on').order('title'),
+    supabase.from('policy_acks').select('policy_id'),
+  ])
+  if (psError ?? acksError) throw psError ?? acksError
+  return {
+    policies: (ps ?? []) as Policy[],
+    ack: Object.fromEntries((acks ?? []).map((a) => [a.policy_id, true])) as Record<string, boolean>,
+  }
+}
+
 export default function CompanyPoliciesClient() {
-  const [personId, setPersonId] = useState<string | null>(null)
-  const [policies, setPolicies] = useState<Policy[]>([])
-  const [ack, setAck] = useState<Record<string, boolean>>({})
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  const { data: personId } = useSWR('me:id', fetchMe)
+  const { data, error: loadErrorObj, isLoading: loading, mutate } = useSWR('policies:mine', fetchPoliciesAndAcks)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const loadError = actionError ?? loadErrorObj?.message ?? null
+  const policies = data?.policies ?? []
+  const ack = data?.ack ?? {}
+
   const [busy, setBusy] = useState<string | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      const supabase = createClient()
-      const { data: me, error: meError } = await supabase.from('me').select('id').maybeSingle()
-      if (cancelled) return
-      if (meError) {
-        setLoadError(meError.message)
-        setLoading(false)
-        return
-      }
-      setPersonId(me?.id ?? null)
-
-      const [{ data: ps, error: psError }, { data: acks, error: acksError }] = await Promise.all([
-        supabase.from('policies').select('id, title, updated_on').order('title'),
-        supabase.from('policy_acks').select('policy_id'),
-      ])
-      if (cancelled) return
-      if (psError ?? acksError) setLoadError((psError ?? acksError)!.message)
-      setPolicies((ps ?? []) as Policy[])
-      setAck(Object.fromEntries((acks ?? []).map((a) => [a.policy_id, true])))
-      setLoading(false)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   async function acknowledge(policyId: string) {
     if (!personId) return
@@ -53,8 +47,12 @@ export default function CompanyPoliciesClient() {
       .insert({ policy_id: policyId, person_id: personId })
     setBusy(null)
 
-    if (error) return setLoadError(error.message)
-    setAck((a) => ({ ...a, [policyId]: true }))
+    if (error) return setActionError(error.message)
+    await mutate(
+      (current) =>
+        current && { ...current, ack: { ...current.ack, [policyId]: true } },
+      { revalidate: false }
+    )
   }
 
   const done = policies.filter((p) => ack[p.id]).length

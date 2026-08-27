@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge } from '@/components/chrome'
 import { ToggleRow } from '@/components/controls'
@@ -16,60 +17,47 @@ const CHECKLIST = [
   { key: 'exit', title: 'Exit interview done', desc: 'Optional, but logged either way' },
 ] as const
 
+async function fetchLeavers(): Promise<Leaver[]> {
+  const supabase = createClient()
+  const { data: resignations, error: rError } = await supabase
+    .from('resignations')
+    .select('person_id, last_day')
+    .neq('status', 'Withdrawn')
+    .order('last_day')
+  if (rError) throw rError
+
+  const personIds = [...new Set((resignations ?? []).map((r) => r.person_id))]
+  if (personIds.length === 0) return []
+
+  const { data: people, error: pError } = await supabase
+    .from('people')
+    .select('id, full_name')
+    .in('id', personIds)
+  if (pError) throw pError
+
+  const names = new Map((people ?? []).map((p) => [p.id, p.full_name]))
+  return (resignations ?? []).map((r) => ({
+    personId: r.person_id as string,
+    name: names.get(r.person_id) ?? 'Someone',
+    lastDay: r.last_day as string,
+  }))
+}
+
 export default function OffboardingClient() {
-  const [leavers, setLeavers] = useState<Leaver[]>([])
+  const { data: leavers, error: loadErrorObj, isLoading: loading } = useSWR('offboarding:leavers', fetchLeavers)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const loadError = actionError ?? loadErrorObj?.message ?? null
+
   const [selected, setSelected] = useState<string | null>(null)
+  const [seeded, setSeeded] = useState(false)
   const [checks, setChecks] = useState<Record<string, boolean>>({})
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      const supabase = createClient()
-      const { data: resignations, error: rError } = await supabase
-        .from('resignations')
-        .select('person_id, last_day')
-        .neq('status', 'Withdrawn')
-        .order('last_day')
-      if (cancelled) return
-      if (rError) {
-        setLoadError(rError.message)
-        setLoading(false)
-        return
-      }
-
-      const personIds = [...new Set((resignations ?? []).map((r) => r.person_id))]
-      if (personIds.length === 0) {
-        setLoading(false)
-        return
-      }
-
-      const { data: people, error: pError } = await supabase
-        .from('people')
-        .select('id, full_name')
-        .in('id', personIds)
-      if (cancelled) return
-      if (pError) {
-        setLoadError(pError.message)
-        setLoading(false)
-        return
-      }
-
-      const names = new Map((people ?? []).map((p) => [p.id, p.full_name]))
-      const rows = (resignations ?? []).map((r) => ({
-        personId: r.person_id as string,
-        name: names.get(r.person_id) ?? 'Someone',
-        lastDay: r.last_day as string,
-      }))
-      setLeavers(rows)
-      setSelected(rows[0]?.personId ?? null)
-      setLoading(false)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  // Default to the first leaver, then the person is free to switch — set
+  // during render so it's seeded before anything paints.
+  if (!loading && !seeded) {
+    setSeeded(true)
+    setSelected((leavers ?? [])[0]?.personId ?? null)
+  }
 
   useEffect(() => {
     if (!selected) return
@@ -81,7 +69,7 @@ export default function OffboardingClient() {
         .select('item_key, done')
         .eq('person_id', selected)
       if (cancelled) return
-      if (error) return setLoadError(error.message)
+      if (error) return setActionError(error.message)
       setChecks(Object.fromEntries((data ?? []).map((c) => [c.item_key, c.done])))
     })()
     return () => {
@@ -99,11 +87,11 @@ export default function OffboardingClient() {
         { person_id: selected, item_key: key, done: on, updated_at: new Date().toISOString() },
         { onConflict: 'person_id,item_key' }
       )
-    if (error) setLoadError(error.message)
+    if (error) setActionError(error.message)
   }
 
   const done = CHECKLIST.filter((c) => checks[c.key]).length
-  const current = leavers.find((l) => l.personId === selected)
+  const current = (leavers ?? []).find((l) => l.personId === selected)
 
   return (
     <>
@@ -123,7 +111,7 @@ export default function OffboardingClient() {
         <div className="card">
           <div className="skel skel--text" />
         </div>
-      ) : leavers.length === 0 ? (
+      ) : (leavers ?? []).length === 0 ? (
         <div className="card card--quiet">
           <p className="t-subtle">Nobody has given notice yet.</p>
         </div>
@@ -137,7 +125,7 @@ export default function OffboardingClient() {
               value={selected ?? ''}
               onChange={(e) => setSelected(e.target.value)}
             >
-              {leavers.map((l) => (
+              {(leavers ?? []).map((l) => (
                 <option key={l.personId} value={l.personId}>
                   {l.name} — last day {fmtDate(l.lastDay, { day: 'numeric', month: 'short' })}
                 </option>

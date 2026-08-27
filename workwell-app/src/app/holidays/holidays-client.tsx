@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge } from '@/components/chrome'
 import { fmtDate } from '@/lib/format-date'
@@ -12,32 +12,22 @@ function daysUntil(iso: string) {
   return Math.round(ms / 86400000)
 }
 
-export default function HolidaysClient() {
-  const [holidays, setHolidays] = useState<Holiday[]>([])
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
+async function fetchHolidays() {
+  const { data, error } = await createClient()
+    .from('holidays')
+    .select('id, observed_on, name')
+    .order('observed_on')
+  if (error) throw error
+  return (data ?? []) as Holiday[]
+}
 
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from('holidays')
-        .select('id, observed_on, name')
-        .order('observed_on')
-      if (cancelled) return
-      if (error) setLoadError(error.message)
-      setHolidays((data ?? []) as Holiday[])
-      setLoading(false)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
+export default function HolidaysClient() {
+  const { data: holidays, error: loadErrorObj, isLoading: loading } = useSWR('holidays:all', fetchHolidays)
+  const loadError = loadErrorObj?.message ?? null
 
   const today = new Date().toISOString().slice(0, 10)
-  const upcoming = holidays.filter((h) => h.observed_on >= today)
-  const past = holidays.filter((h) => h.observed_on < today)
+  const upcoming = (holidays ?? []).filter((h) => h.observed_on >= today)
+  const past = (holidays ?? []).filter((h) => h.observed_on < today)
   const next = upcoming[0]
 
   return (
