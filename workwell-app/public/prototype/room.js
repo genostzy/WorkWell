@@ -453,9 +453,11 @@ function roomSVG(opts) {
       </g>
     </g>` : `
     ${spotOpen(by('shelf'), shelf, 100, 132)}
-    ${spotOpen(
-        Object.assign({}, by('clock'), { sub: formatTime(mins) }),
-        clock, 245, 132)}
+    <!-- The clock's tag used to read out the live time, which made the one
+         spot on the wall that is about *setting* your hours look like a
+         readout of them. Its own one-word sub ("Boundaries") says what
+         going there does; the drawn hands still tell the time. -->
+    ${spotOpen(by('clock'), clock, 245, 132)}
     <!-- Desk before journal: the journal sits ON the desk, and .furn carries
          a translucent fill, so drawing the desk second tinted the notebook —
          and would wash out its label now that the label sits on it too.
