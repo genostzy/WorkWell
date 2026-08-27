@@ -175,19 +175,25 @@ export default function ExpensesClient() {
               </select>
             </div>
 
-            <div className="mt-4" style={{ display: 'flex', gap: 12 }}>
-              {/* flex: 3/2 alone sets flex-basis:0%, so the 3:2 ratio only
-                  governed growth from nothing — each field's default
-                  min-width:auto then decided the real floor, and a
-                  type="date" input's min-content (fixed calendar chrome)
-                  can't shrink the way a number input's digits can. Date
-                  was winning that floor fight and squeezing Amount down to
-                  the reverse of the declared ratio. A real basis fixes it. */}
-              <div style={{ flex: '3 1 160px', minWidth: 140 }}>
+            {/* These two wrap rather than share a line, because in this
+                column they cannot both be comfortable at once.
+
+                A type="date" input's min-width:auto floor is its min-content,
+                and the calendar chrome makes that around 205px — it will not
+                shrink past it no matter what flex says. Tuning the ratio (the
+                previous attempt here) therefore changed nothing: Date took its
+                floor first and Amount was left with whatever remained, which
+                in this ~385px column is under 175px. Giving both a basis wider
+                than half the column makes the line break instead, so each
+                field gets the column's full width and neither is squeezed.
+                Side by side returns on its own wherever the column is wide
+                enough to seat both. */}
+            <div className="mt-4" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 220px' }}>
                 <label className="field__label" htmlFor="eamt">Amount</label>
                 <input id="eamt" className="input" type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
               </div>
-              <div style={{ flex: '2 1 140px' }}>
+              <div style={{ flex: '1 1 220px' }}>
                 <label className="field__label" htmlFor="edate">Date</label>
                 <input id="edate" className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
               </div>
