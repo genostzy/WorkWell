@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 
@@ -38,6 +39,21 @@ const EMPTY_DRAFT = {
   status: 'Processing' as 'Processing' | 'Paid',
 }
 
+async function fetchPeople() {
+  const { data, error } = await createClient().from('people').select('id, full_name').order('full_name')
+  if (error) throw error
+  return (data ?? []) as Person[]
+}
+
+async function fetchPayslips() {
+  const { data, error } = await createClient()
+    .from('payslips')
+    .select('id, person_id, period_month, gross, net, status')
+    .order('period_month', { ascending: false })
+  if (error) throw error
+  return (data ?? []) as Payslip[]
+}
+
 /**
  * HR's side of payroll: issuing the payslip, not just reading it. The
  * table has always allowed this (see 0034_payroll.sql) — there was simply
@@ -51,39 +67,16 @@ const EMPTY_DRAFT = {
  * changing either is really issuing a different payslip.
  */
 export function PayrollManageClient() {
-  const [people, setPeople] = useState<Person[]>([])
-  const [payslips, setPayslips] = useState<Payslip[]>([])
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  const { data: people, error: peopleErrorObj } = useSWR('people', fetchPeople)
+  const { data: payslips, error: payslipsErrorObj, isLoading: loading, mutate } = useSWR('payslips:all', fetchPayslips)
+  const loadError = peopleErrorObj?.message ?? payslipsErrorObj?.message ?? null
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draft, setDraft] = useState(EMPTY_DRAFT)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      const supabase = createClient()
-      const [{ data: ppl, error: pplError }, { data, error }] = await Promise.all([
-        supabase.from('people').select('id, full_name').order('full_name'),
-        supabase
-          .from('payslips')
-          .select('id, person_id, period_month, gross, net, status')
-          .order('period_month', { ascending: false }),
-      ])
-      if (cancelled) return
-      if (pplError ?? error) setLoadError((pplError ?? error)!.message)
-      setPeople((ppl ?? []) as Person[])
-      setPayslips((data ?? []) as Payslip[])
-      setLoading(false)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  const names = new Map(people.map((p) => [p.id, p.full_name]))
+  const names = new Map((people ?? []).map((p) => [p.id, p.full_name]))
 
   function startCreate() {
     setEditingId('new')
@@ -146,10 +139,12 @@ export function PayrollManageClient() {
       setSaving(false)
       if (error) return setFormError(error.message)
       const row = data as Payslip
-      setPayslips((prev) =>
-        [row, ...prev.filter((p) => p.id !== row.id)].sort((a, b) =>
-          a.period_month < b.period_month ? 1 : -1
-        )
+      await mutate(
+        (prev) =>
+          [row, ...(prev ?? []).filter((p) => p.id !== row.id)].sort((a, b) =>
+            a.period_month < b.period_month ? 1 : -1
+          ),
+        { revalidate: false }
       )
       setEditingId(null)
       return
@@ -163,7 +158,7 @@ export function PayrollManageClient() {
       .single()
     setSaving(false)
     if (error) return setFormError(error.message)
-    setPayslips((prev) => prev.map((p) => (p.id === editingId ? (data as Payslip) : p)))
+    await mutate((prev) => prev?.map((p) => (p.id === editingId ? (data as Payslip) : p)), { revalidate: false })
     setEditingId(null)
   }
 
@@ -191,7 +186,7 @@ export function PayrollManageClient() {
               <div style={{ padding: '0 var(--s-5) var(--s-5)' }}>
                 <div className="skel skel--text" />
               </div>
-            ) : payslips.length === 0 ? (
+            ) : (payslips ?? []).length === 0 ? (
               <p className="t-subtle" style={{ padding: '0 var(--s-5) var(--s-5)' }}>
                 Nothing issued yet.
               </p>
@@ -212,7 +207,7 @@ export function PayrollManageClient() {
                     </tr>
                   </thead>
                   <tbody>
-                    {payslips.map((p) => (
+                    {(payslips ?? []).map((p) => (
                       <tr key={p.id}>
                         <th scope="row" style={{ fontWeight: 600 }}>
                           {names.get(p.person_id) ?? 'Someone'}
@@ -267,7 +262,7 @@ export function PayrollManageClient() {
                       onChange={(e) => setDraft({ ...draft, personId: e.target.value })}
                     >
                       <option value="">Choose one</option>
-                      {people.map((p) => (
+                      {(people ?? []).map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.full_name}
                         </option>

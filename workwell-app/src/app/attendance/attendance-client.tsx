@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import useSWR from 'swr'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { ConfirmButton } from '@/components/controls'
 import { createClient } from '@/lib/supabase/client'
@@ -85,40 +86,89 @@ type ResetRequest = {
   status: 'pending' | 'approved' | 'declined' | 'withdrawn'
 }
 
+type WeekData = {
+  logs: Record<string, DayLog>
+  shift: Shift | null
+  timeZone: string | null
+}
+
+const EMPTY_LOGS: Record<string, DayLog> = {}
+
 export default function AttendanceClient() {
   const week = weekDates()
   const today = week.find((d) => d.isToday)
-  const [logs, setLogs] = useState<Record<string, DayLog>>({})
-  const [shift, setShift] = useState<Shift | null>(null)
-  const [timeZone, setTimeZone] = useState<string | null>(null)
+  const weekStart = week[0].iso
+  const weekEnd = week[week.length - 1].iso
+
+  const weekKey = `attendance:week:${weekStart}:${weekEnd}`
+  // Not wrapped in useCallback: SWR keys revalidation off `weekKey` itself
+  // (which only changes value when the calendar week actually does), not
+  // off this function's identity, so memoizing it here buys nothing.
+  async function fetchWeek(): Promise<WeekData> {
+    const supabase = createClient()
+    const [{ data, error }, { data: assignment }, { data: org }] = await Promise.all([
+      supabase
+        .from('attendance')
+        .select('day, time_in, lunch_start, lunch_end, time_out')
+        .gte('day', weekStart)
+        .lte('day', weekEnd),
+      supabase
+        .from('shift_assignments')
+        .select('shifts(id, name, time_in, meal_start, meal_end, time_out)')
+        .maybeSingle(),
+      supabase.from('org').select('timezone').maybeSingle(),
+    ])
+    if (error) throw error
+    const byDay: Record<string, DayLog> = {}
+    for (const r of (data ?? []) as Row[]) byDay[r.day] = toLog(r)
+    return {
+      logs: byDay,
+      shift: (assignment as { shifts?: Shift } | null)?.shifts ?? null,
+      timeZone: org?.timezone ?? null,
+    }
+  }
+
+  const { data: weekData, error: loadErrorObj, isLoading: loading, mutate: mutateWeek } =
+    useSWR(weekKey, fetchWeek)
+  const loadError = loadErrorObj?.message ?? null
+  const logs = weekData?.logs ?? EMPTY_LOGS
+  const shift = weekData?.shift ?? null
+  const timeZone = weekData?.timeZone ?? null
+
   // Ticks so the Time in button opens on its own when the window arrives,
   // rather than only on the next reload.
   const [now, setNow] = useState(() => new Date())
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
-  const [resetRequests, setResetRequests] = useState<ResetRequest[]>([])
+  const { data: resetRequests, error: resetLoadErrorObj, mutate: mutateResets } =
+    useSWR('attendance:resets', async () => {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('attendance_reset_requests')
+        .select('id, day, reason, status')
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return (data ?? []) as ResetRequest[]
+    })
+
   const [resetDay, setResetDay] = useState(today?.iso ?? week[0].iso)
   const [resetReason, setResetReason] = useState('')
   const [requesting, setRequesting] = useState(false)
   const [resetSent, setResetSent] = useState(false)
-  const [resetError, setResetError] = useState<string | null>(null)
+  const [resetError, setResetError] = useState<string | null>(resetLoadErrorObj?.message ?? null)
   const [withdrawingId, setWithdrawingId] = useState<string | null>(null)
 
   const reloadResetRequests = useCallback(async () => {
-    const supabase = createClient()
-    const { data, error } = await supabase
-      .from('attendance_reset_requests')
-      .select('id, day, reason, status')
-      .order('created_at', { ascending: false })
-    if (error) {
-      setResetError(error.message)
-      return
-    }
-    setResetRequests((data ?? []) as ResetRequest[])
-  }, [])
+    const { error } = await mutateResets()
+      .then(() => ({ error: null as string | null }))
+      .catch((e: Error) => ({ error: e.message }))
+    if (error) setResetError(error)
+  }, [mutateResets])
 
+  // Fetches just today's row and merges it into the week's cache — this
+  // fires from the meal auto-pause tick every 30 seconds while someone is
+  // timed in, so it stays a single-row read rather than re-pulling the
+  // whole week, the reset list, the shift, and the org timezone each time.
   const reloadToday = useCallback(async () => {
     if (!today) return
     const supabase = createClient()
@@ -131,58 +181,12 @@ export default function AttendanceClient() {
       setActionError(error.message)
       return
     }
-    setLogs((s) => ({ ...s, [today.iso]: toLog(data as Row | undefined) }))
+    await mutateWeek(
+      (current) => current && { ...current, logs: { ...current.logs, [today.iso]: toLog(data as Row | undefined) } },
+      { revalidate: false }
+    )
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [today?.iso])
-
-  useEffect(() => {
-    let cancelled = false
-
-    ;(async () => {
-      const supabase = createClient()
-      const [
-        { data, error },
-        { data: resets, error: resetsError },
-        { data: assignment },
-        { data: org },
-      ] = await Promise.all([
-          supabase
-            .from('attendance')
-            .select('day, time_in, lunch_start, lunch_end, time_out')
-            .gte('day', week[0].iso)
-            .lte('day', week[week.length - 1].iso),
-          supabase
-            .from('attendance_reset_requests')
-            .select('id, day, reason, status')
-            .order('created_at', { ascending: false }),
-          supabase
-            .from('shift_assignments')
-            .select('shifts(id, name, time_in, meal_start, meal_end, time_out)')
-            .maybeSingle(),
-          supabase.from('org').select('timezone').maybeSingle(),
-        ])
-
-      if (cancelled) return
-      setShift((assignment as { shifts?: Shift } | null)?.shifts ?? null)
-      setTimeZone(org?.timezone ?? null)
-      if (error) {
-        setLoadError(error.message)
-        setLoading(false)
-        return
-      }
-      const byDay: Record<string, DayLog> = {}
-      for (const r of (data ?? []) as Row[]) byDay[r.day] = toLog(r)
-      setLogs(byDay)
-      if (resetsError) setResetError(resetsError.message)
-      else setResetRequests((resets ?? []) as ResetRequest[])
-      setLoading(false)
-    })()
-
-    return () => {
-      cancelled = true
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [today?.iso, mutateWeek])
 
   const todayLog = today ? logs[today.iso] ?? EMPTY_LOG : EMPTY_LOG
 
@@ -462,10 +466,10 @@ export default function AttendanceClient() {
           </button>
         </form>
 
-        {resetRequests.length > 0 && (
+        {(resetRequests ?? []).length > 0 && (
           <div className="stack stack--tight mt-5">
             <span className="field__label">Your requests</span>
-            {resetRequests.map((r) => (
+            {(resetRequests ?? []).map((r) => (
               <div className="row row--between" key={r.id} style={{ alignItems: 'flex-start' }}>
                 <div>
                   <b>{fmtDate(r.day, { day: 'numeric', month: 'short' })}</b>
