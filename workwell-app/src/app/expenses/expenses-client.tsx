@@ -176,11 +176,18 @@ export default function ExpensesClient() {
             </div>
 
             <div className="mt-4" style={{ display: 'flex', gap: 12 }}>
-              <div style={{ flex: 3 }}>
+              {/* flex: 3/2 alone sets flex-basis:0%, so the 3:2 ratio only
+                  governed growth from nothing — each field's default
+                  min-width:auto then decided the real floor, and a
+                  type="date" input's min-content (fixed calendar chrome)
+                  can't shrink the way a number input's digits can. Date
+                  was winning that floor fight and squeezing Amount down to
+                  the reverse of the declared ratio. A real basis fixes it. */}
+              <div style={{ flex: '3 1 160px', minWidth: 140 }}>
                 <label className="field__label" htmlFor="eamt">Amount</label>
                 <input id="eamt" className="input" type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
               </div>
-              <div style={{ flex: 2 }}>
+              <div style={{ flex: '2 1 140px' }}>
                 <label className="field__label" htmlFor="edate">Date</label>
                 <input id="edate" className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
               </div>

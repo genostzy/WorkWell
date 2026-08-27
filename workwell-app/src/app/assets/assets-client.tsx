@@ -42,7 +42,13 @@ export default function AssetsClient() {
     }
   }, [])
 
+  function cancelReport() {
+    setReporting(null)
+    setNote('')
+  }
+
   async function report(id: string) {
+    if (!note.trim()) return
     setSending(true)
     const supabase = createClient()
     const { error } = await supabase
@@ -124,10 +130,18 @@ export default function AssetsClient() {
                           <button
                             className="btn btn--primary btn--sm"
                             type="button"
-                            disabled={sending}
+                            disabled={sending || !note.trim()}
                             onClick={() => report(a.id)}
                           >
                             Send
+                          </button>
+                          <button
+                            className="btn btn--ghost btn--sm"
+                            type="button"
+                            disabled={sending}
+                            onClick={cancelReport}
+                          >
+                            Cancel
                           </button>
                         </div>
                       ) : (
