@@ -310,15 +310,6 @@
 .room[data-phase="quiet"] .plant-2 { opacity: .3; }
 .room[data-phase="quiet"] .rug { opacity: .35; }
 
-/* The clock stays legible — it is the thing you would come here to change. */
-.room[data-phase="quiet"] .spot[data-spot="clock"] .spot__tagbg {
-  fill: var(--accent); stroke: var(--accent);
-}
-.room[data-phase="quiet"] .spot[data-spot="clock"] .spot__tagtext,
-.room[data-phase="quiet"] .spot[data-spot="clock"] .spot__tagsub {
-  fill: var(--text-on-accent);
-}
-
 /* Quiet-hours notice, in place of the check-in offer. */
 .room-note {
   display: flex;
@@ -899,6 +890,162 @@ a.roomlist__item:hover { border-color: var(--accent); background: var(--accent-q
   stroke: #4ade80;
 }
 
+/* ===================================================== The dock
+
+   How much of the day is left, and the one button that starts or ends it.
+   Bottom centre, just above the front door.
+
+   It is one button rather than two because only one of them is ever
+   pressable — so it changes what it says instead of graying a twin out. Its
+   fill is the same measure the ring is drawing around the walls, shown from
+   the other direction: the day rises through the button as it goes round
+   the room. */
+
+.shift-dock { pointer-events: none; }
+
+.shift-dock__hours {
+  fill: var(--room-ink-strong);
+  stroke: var(--room-halo);
+  stroke-width: 3;
+  stroke-linejoin: round;
+  paint-order: stroke fill;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .01em;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+/* The button is the one thing in this group that is not a readout. */
+.shift-dock__btn {
+  pointer-events: auto;
+  cursor: pointer;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform var(--dur-fast) var(--ease);
+}
+
+.shift-dock__btn:hover { transform: scale(1.04); }
+.shift-dock__btn:active { transform: scale(.97); }
+.shift-dock__btn:focus-visible {
+  outline: none;
+}
+.shift-dock__btn:focus-visible .shift-dock__edge {
+  stroke: var(--room-ink-strong);
+  stroke-width: 3;
+}
+
+/* Nothing to press: it keeps its place and says why rather than vanishing,
+   so the dock never changes shape under the cursor. */
+.shift-dock[data-mode="shut"] .shift-dock__btn,
+.shift-dock[data-mode="done"] .shift-dock__btn {
+  pointer-events: none;
+  cursor: default;
+}
+.shift-dock[data-mode="shut"] .shift-dock__btn:hover,
+.shift-dock[data-mode="done"] .shift-dock__btn:hover { transform: none; }
+
+.shift-dock__bg {
+  fill: color-mix(in srgb, var(--bg) 82%, transparent);
+  stroke: color-mix(in srgb, var(--room-ink) 38%, transparent);
+  stroke-width: 1.5;
+}
+
+/* The day so far, risen through the button. Transitioned rather than
+   snapped so the once-a-second width write creeps like the ring's own
+   fill instead of stepping. */
+.shift-dock__fill {
+  fill: color-mix(in srgb, #4ade80 26%, transparent);
+  transition: width 900ms cubic-bezier(.33, .68, .35, 1);
+}
+
+/* A light travelling across the face — only while there is something to
+   press, so movement always means "this one is yours to act on". */
+.shift-dock__sheen {
+  opacity: 0;
+  transform: translateX(-140px);
+}
+
+.shift-dock__edge {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 2;
+  transition: stroke var(--dur-fast) var(--ease);
+}
+
+.shift-dock__label {
+  fill: var(--room-ink-strong);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: .01em;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+.shift-dock__halo {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 2;
+}
+
+/* Ready to start: the one thing that can happen next, so it is the one
+   thing moving — a slow breath on the halo and a light crossing the face. */
+.shift-dock[data-mode="ready"] .shift-dock__bg {
+  fill: color-mix(in srgb, #4ade80 20%, var(--bg));
+  stroke: color-mix(in srgb, #4ade80 70%, transparent);
+}
+.shift-dock[data-mode="ready"] .shift-dock__halo {
+  stroke: color-mix(in srgb, #4ade80 55%, transparent);
+  animation: shift-dock-breathe 2.8s ease-in-out infinite;
+}
+.shift-dock[data-mode="ready"] .shift-dock__sheen {
+  animation: shift-dock-sheen 3.4s ease-in-out infinite;
+}
+
+/* Working: calmer. The fill is already saying how the day is going, so the
+   button stops competing with it. */
+.shift-dock[data-mode="working"] .shift-dock__bg {
+  stroke: color-mix(in srgb, #4ade80 50%, transparent);
+}
+
+/* On the meal break: the ring has cooled to amber, and so has this. */
+.shift-dock[data-mode="paused"] .shift-dock__bg {
+  fill: color-mix(in srgb, #fbbf24 16%, var(--bg));
+  stroke: color-mix(in srgb, #fbbf24 60%, transparent);
+}
+.shift-dock[data-mode="paused"] .shift-dock__fill {
+  fill: color-mix(in srgb, #fbbf24 26%, transparent);
+}
+
+/* Nothing left to do today. */
+.shift-dock[data-mode="done"] .shift-dock__bg {
+  fill: color-mix(in srgb, #4ade80 12%, var(--bg));
+  stroke: color-mix(in srgb, #4ade80 40%, transparent);
+}
+.shift-dock[data-mode="done"] .shift-dock__label,
+.shift-dock[data-mode="shut"] .shift-dock__label { opacity: .72; }
+
+/* Not open yet: present, legible, plainly not for pressing. */
+.shift-dock[data-mode="shut"] .shift-dock__bg {
+  fill: color-mix(in srgb, var(--bg) 88%, transparent);
+  stroke: color-mix(in srgb, var(--room-ink) 26%, transparent);
+}
+
+@keyframes shift-dock-breathe {
+  0%, 100% { opacity: .25; }
+  50%      { opacity: .9; }
+}
+
+/* Starts and ends clear of the pill, so the light enters and leaves rather
+   than popping into existence mid-face. */
+@keyframes shift-dock-sheen {
+  0%       { transform: translateX(-140px); opacity: 0; }
+  15%      { opacity: .9; }
+  70%      { opacity: .9; }
+  100%     { transform: translateX(140px); opacity: 0; }
+}
+
 @keyframes shift-ring-breathe-wide {
   0%, 100% { opacity: .08; }
   50%      { opacity: .17; }
@@ -935,9 +1082,16 @@ a.roomlist__item:hover { border-color: var(--accent); background: var(--accent-q
 :root[data-motion="reduced"] .shift-ring__glow,
 :root[data-motion="reduced"] .shift-ring__shimmer,
 :root[data-motion="reduced"] .shift-ring__meal-dot,
-:root[data-motion="reduced"] .shift-ring__end {
+:root[data-motion="reduced"] .shift-ring__end,
+:root[data-motion="reduced"] .shift-dock__halo,
+:root[data-motion="reduced"] .shift-dock__sheen {
   animation: none;
 }
+/* The halo still has to mark the actionable state without moving to do it. */
+:root[data-motion="reduced"] .shift-dock[data-mode="ready"] .shift-dock__halo { opacity: .8; }
+:root[data-motion="reduced"] .shift-dock__sheen { opacity: 0; }
+:root[data-motion="reduced"] .shift-dock__fill,
+:root[data-motion="reduced"] .shift-dock__btn { transition: none; }
 :root[data-motion="reduced"] .shift-ring__shimmer { opacity: 0; }
 :root[data-motion="reduced"] .shift-ring__fill,
 :root[data-motion="reduced"] .shift-ring__glow { transition: none; }
@@ -946,9 +1100,15 @@ a.roomlist__item:hover { border-color: var(--accent); background: var(--accent-q
   :root:where(:not([data-motion="full"])) .shift-ring__glow,
   :root:where(:not([data-motion="full"])) .shift-ring__shimmer,
   :root:where(:not([data-motion="full"])) .shift-ring__meal-dot,
-  :root:where(:not([data-motion="full"])) .shift-ring__end {
+  :root:where(:not([data-motion="full"])) .shift-ring__end,
+  :root:where(:not([data-motion="full"])) .shift-dock__halo,
+  :root:where(:not([data-motion="full"])) .shift-dock__sheen {
     animation: none;
   }
+  :root:where(:not([data-motion="full"])) .shift-dock[data-mode="ready"] .shift-dock__halo { opacity: .8; }
+  :root:where(:not([data-motion="full"])) .shift-dock__sheen { opacity: 0; }
+  :root:where(:not([data-motion="full"])) .shift-dock__fill,
+  :root:where(:not([data-motion="full"])) .shift-dock__btn { transition: none; }
   :root:where(:not([data-motion="full"])) .shift-ring__shimmer { opacity: 0; }
   :root:where(:not([data-motion="full"])) .shift-ring__fill,
   :root:where(:not([data-motion="full"])) .shift-ring__glow { transition: none; }
