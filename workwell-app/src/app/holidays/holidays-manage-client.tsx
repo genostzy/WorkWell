@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import useSWR from 'swr'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { fmtDate } from '@/lib/format-date'
@@ -9,18 +8,6 @@ import { fmtDate } from '@/lib/format-date'
 type Holiday = { id: string; observed_on: string; name: string }
 
 const EMPTY_DRAFT = { observed_on: '', name: '' }
-
-async function fetchOrgId() {
-  const { data, error } = await createClient().from('me').select('org_id').maybeSingle()
-  if (error) throw error
-  return data?.org_id ?? null
-}
-
-async function fetchHolidays() {
-  const { data, error } = await createClient().from('holidays').select('id, observed_on, name').order('observed_on')
-  if (error) throw error
-  return (data ?? []) as Holiday[]
-}
 
 /**
  * HR's side of Holidays. The table always allowed HR to write it (see
@@ -30,14 +17,34 @@ async function fetchHolidays() {
  * other reference-data table here -- fix a wrong entry in place instead.
  */
 export default function HolidaysManageClient() {
-  const { data: orgId } = useSWR('me:org_id', fetchOrgId)
-  const { data: holidays, error: loadErrorObj, isLoading: loading, mutate } = useSWR('holidays:all', fetchHolidays)
-  const loadError = loadErrorObj?.message ?? null
+  const [orgId, setOrgId] = useState<string | null>(null)
+  const [holidays, setHolidays] = useState<Holiday[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draft, setDraft] = useState(EMPTY_DRAFT)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const supabase = createClient()
+      const [{ data: me, error: meError }, { data, error }] = await Promise.all([
+        supabase.from('me').select('org_id').maybeSingle(),
+        supabase.from('holidays').select('id, observed_on, name').order('observed_on'),
+      ])
+      if (cancelled) return
+      if (meError ?? error) setLoadError((meError ?? error)!.message)
+      setOrgId(me?.org_id ?? null)
+      setHolidays((data ?? []) as Holiday[])
+      setLoading(false)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   function startCreate() {
     setEditingId('new')
@@ -84,9 +91,8 @@ export default function HolidaysManageClient() {
         .single()
       setSaving(false)
       if (error) return setFormError(error.message)
-      await mutate(
-        (prev) => [...(prev ?? []), data as Holiday].sort((a, b) => (a.observed_on < b.observed_on ? -1 : 1)),
-        { revalidate: false }
+      setHolidays((prev) =>
+        [...prev, data as Holiday].sort((a, b) => (a.observed_on < b.observed_on ? -1 : 1))
       )
       setEditingId(null)
       return
@@ -100,12 +106,10 @@ export default function HolidaysManageClient() {
       .single()
     setSaving(false)
     if (error) return setFormError(error.message)
-    await mutate(
-      (prev) =>
-        (prev ?? [])
-          .map((h) => (h.id === editingId ? (data as Holiday) : h))
-          .sort((a, b) => (a.observed_on < b.observed_on ? -1 : 1)),
-      { revalidate: false }
+    setHolidays((prev) =>
+      prev
+        .map((h) => (h.id === editingId ? (data as Holiday) : h))
+        .sort((a, b) => (a.observed_on < b.observed_on ? -1 : 1))
     )
     setEditingId(null)
   }
@@ -130,12 +134,12 @@ export default function HolidaysManageClient() {
             <div className="card">
               <div className="skel skel--text" />
             </div>
-          ) : (holidays ?? []).length === 0 ? (
+          ) : holidays.length === 0 ? (
             <div className="card card--quiet">
               <p className="t-subtle">Nothing on the calendar yet.</p>
             </div>
           ) : (
-            (holidays ?? []).map((h) => (
+            holidays.map((h) => (
               <div className="card" key={h.id}>
                 {editingId === h.id ? (
                   <HolidayForm

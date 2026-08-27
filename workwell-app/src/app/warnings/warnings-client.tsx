@@ -1,6 +1,6 @@
 'use client'
 
-import useSWR from 'swr'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 
@@ -20,21 +20,31 @@ type Warning = {
   created_at: string
 }
 
-async function fetchWarnings() {
-  const { data, error } = await createClient()
-    .from('warnings')
-    .select('id, category, note, status, created_at')
-    .order('created_at', { ascending: false })
-  if (error) throw error
-  return (data ?? []) as Warning[]
-}
-
 /** Read-only: an employee sees their own warnings the moment HR raises one,
  *  the same visibility Expenses and Complaints already give their own
  *  subject. There's nothing here to act on — no withdraw, no reply. */
 export default function WarningsClient() {
-  const { data: warnings, error: loadErrorObj, isLoading: loading } = useSWR('warnings:mine', fetchWarnings)
-  const loadError = loadErrorObj?.message ?? null
+  const [warnings, setWarnings] = useState<Warning[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('warnings')
+        .select('id, category, note, status, created_at')
+        .order('created_at', { ascending: false })
+      if (cancelled) return
+      if (error) setLoadError(error.message)
+      else setWarnings((data ?? []) as Warning[])
+      setLoading(false)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   return (
     <>
@@ -55,13 +65,13 @@ export default function WarningsClient() {
           <div style={{ padding: '0 var(--s-5) var(--s-5)' }}>
             <div className="skel skel--text" />
           </div>
-        ) : (warnings ?? []).length === 0 ? (
+        ) : warnings.length === 0 ? (
           <p className="t-subtle" style={{ padding: '0 var(--s-5) var(--s-5)' }}>
             None on file.
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {(warnings ?? []).map((w) => (
+            {warnings.map((w) => (
               <div
                 key={w.id}
                 style={{ padding: 'var(--s-4) var(--s-5)', borderBottom: '1px solid var(--border)' }}

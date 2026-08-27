@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import useSWR from 'swr'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { fmtDate } from '@/lib/format-date'
@@ -21,25 +20,11 @@ function peso(n: number) {
   return `₱${n.toLocaleString('en-PH')}`
 }
 
-async function fetchMe() {
-  const { data, error } = await createClient().from('me').select('id').maybeSingle()
-  if (error) throw error
-  return data?.id ?? null
-}
-
-async function fetchClaims() {
-  const { data, error } = await createClient()
-    .from('expenses')
-    .select('id, category, amount, spent_on, note, status')
-    .order('created_at', { ascending: false })
-  if (error) throw error
-  return (data ?? []) as Claim[]
-}
-
 export default function ExpensesClient() {
-  const { data: personId } = useSWR('me:id', fetchMe)
-  const { data: claims, error: loadErrorObj, isLoading: loading, mutate } = useSWR('expenses:mine', fetchClaims)
-  const loadError = loadErrorObj?.message ?? null
+  const [personId, setPersonId] = useState<string | null>(null)
+  const [claims, setClaims] = useState<Claim[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const [category, setCategory] = useState<string>(CATEGORIES[0])
   const [amount, setAmount] = useState('')
@@ -48,6 +33,36 @@ export default function ExpensesClient() {
   const [error, setError] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const supabase = createClient()
+      const { data: me, error: meError } = await supabase
+        .from('me')
+        .select('id')
+        .maybeSingle()
+      if (cancelled) return
+      if (meError) {
+        setLoadError(meError.message)
+        setLoading(false)
+        return
+      }
+      setPersonId(me?.id ?? null)
+
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('id, category, amount, spent_on, note, status')
+        .order('created_at', { ascending: false })
+      if (cancelled) return
+      if (error) setLoadError(error.message)
+      else setClaims((data ?? []) as Claim[])
+      setLoading(false)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -74,7 +89,7 @@ export default function ExpensesClient() {
 
     if (error) return setError(error.message)
 
-    await mutate((current) => [data as Claim, ...(current ?? [])], { revalidate: false })
+    setClaims((c) => [data as Claim, ...c])
     setCategory(CATEGORIES[0])
     setAmount('')
     setDate('')
@@ -102,7 +117,7 @@ export default function ExpensesClient() {
               <div style={{ padding: '0 var(--s-5) var(--s-5)' }}>
                 <div className="skel skel--text" />
               </div>
-            ) : (claims ?? []).length === 0 ? (
+            ) : claims.length === 0 ? (
               <p className="t-subtle" style={{ padding: '0 var(--s-5) var(--s-5)' }}>
                 Nothing claimed yet.
               </p>
@@ -119,7 +134,7 @@ export default function ExpensesClient() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(claims ?? []).map((c) => (
+                    {claims.map((c) => (
                       <tr key={c.id}>
                         <th scope="row" style={{ fontWeight: 600 }}>{c.category}</th>
                         <td>{fmtDate(c.spent_on)}</td>

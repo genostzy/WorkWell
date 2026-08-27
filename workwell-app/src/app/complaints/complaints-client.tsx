@@ -1,36 +1,48 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
-import useSWR from 'swr'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 
 type Case = { id: string; summary: string; status: 'Submitted' | 'In review' | 'Resolved' }
 
-async function fetchMe() {
-  const { data, error } = await createClient().from('me').select('id').maybeSingle()
-  if (error) throw error
-  return data?.id ?? null
-}
-
-async function fetchCases() {
-  const { data, error } = await createClient()
-    .from('complaints')
-    .select('id, summary, status')
-    .order('created_at', { ascending: false })
-  if (error) throw error
-  return (data ?? []) as Case[]
-}
-
 export default function ComplaintsClient() {
-  const { data: personId } = useSWR('me:id', fetchMe)
-  const { data: cases, error: loadErrorObj, isLoading: loading, mutate } = useSWR('complaints:mine', fetchCases)
-  const loadError = loadErrorObj?.message ?? null
+  const [personId, setPersonId] = useState<string | null>(null)
+  const [cases, setCases] = useState<Case[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const [summary, setSummary] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const supabase = createClient()
+      const { data: me, error: meError } = await supabase.from('me').select('id').maybeSingle()
+      if (cancelled) return
+      if (meError) {
+        setLoadError(meError.message)
+        setLoading(false)
+        return
+      }
+      setPersonId(me?.id ?? null)
+
+      const { data, error } = await supabase
+        .from('complaints')
+        .select('id, summary, status')
+        .order('created_at', { ascending: false })
+      if (cancelled) return
+      if (error) setLoadError(error.message)
+      setCases((data ?? []) as Case[])
+      setLoading(false)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -49,7 +61,7 @@ export default function ComplaintsClient() {
 
     if (error) return setError(error.message)
 
-    await mutate((current) => [data as Case, ...(current ?? [])], { revalidate: false })
+    setCases((c) => [data as Case, ...c])
     setSummary('')
   }
 
@@ -85,7 +97,7 @@ export default function ComplaintsClient() {
               <div style={{ padding: '0 var(--s-5) var(--s-5)' }}>
                 <div className="skel skel--text" />
               </div>
-            ) : (cases ?? []).length === 0 ? (
+            ) : cases.length === 0 ? (
               <p className="t-subtle" style={{ padding: '0 var(--s-5) var(--s-5)' }}>
                 Nothing filed.
               </p>
@@ -94,7 +106,7 @@ export default function ComplaintsClient() {
                 <table className="data-table">
                   <caption className="sr-only">Your complaint cases</caption>
                   <tbody>
-                    {(cases ?? []).map((c) => (
+                    {cases.map((c) => (
                       <tr key={c.id}>
                         <td>{c.summary}</td>
                         <td><span className="chip">{c.status}</span></td>
