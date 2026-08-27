@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import useSWR from 'swr'
+import { useCallback, useEffect, useState } from 'react'
 import { LoadError, PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { ConfirmButton } from '@/components/controls'
 import { createClient } from '@/lib/supabase/client'
@@ -23,51 +22,6 @@ type SupportRequest = {
 }
 type TeamSignal = { id: string; created_at: string }
 
-type RecognitionData = {
-  me: string | null
-  people: Person[]
-  received: Appreciation[]
-  requests: SupportRequest[]
-  signals: TeamSignal[]
-}
-
-async function fetchRecognitionData(): Promise<RecognitionData> {
-  const supabase = createClient()
-
-  const { data: mine, error: meError } = await supabase.from('me').select('id').maybeSingle()
-
-  const [
-    { data: ppl },
-    { data: apps, error: appError },
-    { data: reqs, error: reqError },
-    { data: sigs, error: sigError },
-  ] = await Promise.all([
-    supabase.from('people').select('id, full_name').order('full_name'),
-    supabase
-      .from('appreciations')
-      .select('id, from_person, to_person, message, created_at')
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('support_requests')
-      .select('id, body, route, status, created_at')
-      .order('created_at', { ascending: false }),
-    supabase.from('team_signals').select('id, created_at').order('created_at', { ascending: false }),
-  ])
-
-  // A read that failed is not an empty inbox, and throwing it is how a
-  // permission problem stays distinguishable from "nobody has thanked you".
-  const err = meError ?? appError ?? reqError ?? sigError
-  if (err) throw err
-
-  return {
-    me: mine?.id ?? null,
-    people: (ppl ?? []).filter((p) => p.id !== mine?.id),
-    received: (apps ?? []).filter((a) => a.to_person === mine?.id),
-    requests: reqs ?? [],
-    signals: sigs ?? [],
-  }
-}
-
 /** Recognition and connection — PRD F5.
  *
  *  Nothing is counted, by design. The PRD forbids leaderboards, and a tally
@@ -77,13 +31,13 @@ async function fetchRecognitionData(): Promise<RecognitionData> {
  *  deliberately opens a channel to HR. That consent is expressed per row
  *  and is revocable: withdrawing takes it back out of HR's view entirely. */
 export default function RecognitionClient() {
-  const { data, error: loadErrorObj, isLoading: loading, mutate: load } = useSWR('recognition:data', fetchRecognitionData)
-  const loadError = loadErrorObj?.message ?? null
-  const me = data?.me ?? null
-  const people = data?.people ?? []
-  const received = data?.received ?? []
-  const requests = data?.requests ?? []
-  const signals = data?.signals ?? []
+  const [me, setMe] = useState<string | null>(null)
+  const [people, setPeople] = useState<Person[]>([])
+  const [received, setReceived] = useState<Appreciation[]>([])
+  const [requests, setRequests] = useState<SupportRequest[]>([])
+  const [signals, setSignals] = useState<TeamSignal[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const [to, setTo] = useState('')
   const [message, setMessage] = useState('')
@@ -107,6 +61,86 @@ export default function RecognitionClient() {
   const [raising, setRaising] = useState(false)
   const [raiseError, setRaiseError] = useState<string | null>(null)
   const [signalBusyId, setSignalBusyId] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    const supabase = createClient()
+
+    const { data: mine, error: meError } = await supabase
+      .from('me')
+      .select('id')
+      .maybeSingle()
+    setMe(mine?.id ?? null)
+
+    const [
+      { data: ppl },
+      { data: apps, error: appError },
+      { data: reqs, error: reqError },
+      { data: sigs, error: sigError },
+    ] = await Promise.all([
+      supabase.from('people').select('id, full_name').order('full_name'),
+      supabase
+        .from('appreciations')
+        .select('id, from_person, to_person, message, created_at')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('support_requests')
+        .select('id, body, route, status, created_at')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('team_signals')
+        .select('id, created_at')
+        .order('created_at', { ascending: false }),
+    ])
+
+    // A read that failed is not an empty inbox, and showing it as one is how
+    // a permission problem gets mistaken for "nobody has thanked you".
+    setLoadError((meError ?? appError ?? reqError ?? sigError)?.message ?? null)
+    setPeople((ppl ?? []).filter((p) => p.id !== mine?.id))
+    setReceived((apps ?? []).filter((a) => a.to_person === mine?.id))
+    setRequests(reqs ?? [])
+    setSignals(sigs ?? [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    ;(async () => {
+      const supabase = createClient()
+
+      const { data: mine, error: meError } = await supabase
+        .from('me')
+        .select('id')
+        .maybeSingle()
+      setMe(mine?.id ?? null)
+
+      const [
+        { data: ppl },
+        { data: apps, error: appError },
+        { data: reqs, error: reqError },
+        { data: sigs, error: sigError },
+      ] = await Promise.all([
+        supabase.from('people').select('id, full_name').order('full_name'),
+        supabase
+          .from('appreciations')
+          .select('id, from_person, to_person, message, created_at')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('support_requests')
+          .select('id, body, route, status, created_at')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('team_signals')
+          .select('id, created_at')
+          .order('created_at', { ascending: false }),
+      ])
+
+      setLoadError((meError ?? appError ?? reqError ?? sigError)?.message ?? null)
+      setPeople((ppl ?? []).filter((p) => p.id !== mine?.id))
+      setReceived((apps ?? []).filter((a) => a.to_person === mine?.id))
+      setRequests(reqs ?? [])
+      setSignals(sigs ?? [])
+      setLoading(false)
+    })()
+  }, [])
 
   // Without a person row every insert below fails on a not-null constraint,
   // and a constraint violation is a poor way to learn you have no access yet.

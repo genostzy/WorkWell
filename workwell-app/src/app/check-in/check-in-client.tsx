@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { usePrefs } from '@/lib/use-prefs'
@@ -150,26 +149,6 @@ const EMOJI = ['', '😞', '😕', '😐', '🙂', '😄']
 
 type Answers = Record<Key, number | null>
 
-type SavedCheckIn = {
-  mood: number | null
-  energy: number | null
-  pressure: number | null
-  workload: number | null
-  note: string | null
-} | null
-
-async function fetchTodayCheckIn(): Promise<SavedCheckIn> {
-  const supabase = createClient()
-  const today = new Date().toISOString().slice(0, 10)
-  const { data, error } = await supabase
-    .from('check_ins')
-    .select('mood, energy, pressure, workload, note')
-    .eq('day', today)
-    .maybeSingle()
-  if (error) throw error
-  return data ?? null
-}
-
 export default function CheckInClient() {
   const router = useRouter()
   const flowRef = useRef<HTMLDivElement>(null)
@@ -178,9 +157,6 @@ export default function CheckInClient() {
     'workspace_prefs',
     PREFS_DEFAULTS
   )
-
-  const { data: existingCheckIn, error: loadErrorObj, isLoading: loading, mutate: mutateCheckIn } =
-    useSWR('check_in:today', fetchTodayCheckIn)
 
   const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState<Answers>({
@@ -192,44 +168,41 @@ export default function CheckInClient() {
   const [labels, setLabels] = useState<Partial<Record<Key, string>>>({})
   const [note, setNote] = useState('')
   const [existing, setExisting] = useState(false)
-  const [seeded, setSeeded] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [saveError, setSaveError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [ready, setReady] = useState(false)
   const [scalesFailed, setScalesFailed] = useState(false)
 
-  const error = saveError ?? loadErrorObj?.message ?? null
+  /* ------------------------------------------------------------- Loading */
 
-  /* --------------------------------------------------------------- Seeding
+  useEffect(() => {
+    const supabase = createClient()
+    const today = new Date().toISOString().slice(0, 10)
 
-     A once-only fork: local answers/note start from whatever was already
-     saved today, then diverge as the person edits. Re-running this whenever
-     the cache revalidates would stomp on an in-progress edit, so it only
-     ever fires once, the first time today's row is known.
-
-     Done during render rather than in a useEffect: an effect would commit
-     the still-unseeded, default-answers DOM first and only then correct it,
-     which is exactly the extra render pass and stale-read window that broke
-     the drag scales the first time this page shipped (see the comment
-     below). Setting state directly in the render body is React's own
-     supported way to adjust state from a value that just became available —
-     React discards this in-progress render and starts over immediately, so
-     nothing is ever painted with the wrong seed. */
-
-  if (!loading && !seeded) {
-    setSeeded(true)
-    if (existingCheckIn) {
-      setExisting(true)
-      setAnswers({
-        mood: existingCheckIn.mood,
-        energy: existingCheckIn.energy,
-        pressure: existingCheckIn.pressure,
-        workload: existingCheckIn.workload,
+    supabase
+      .from('check_ins')
+      .select('mood, energy, pressure, workload, note')
+      .eq('day', today)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        // No row for today is the normal case. A failed read is not, and
+        // starting blank over answers that exist would overwrite them.
+        if (error) setError(error.message)
+        else if (data) {
+          setExisting(true)
+          setAnswers({
+            mood: data.mood,
+            energy: data.energy,
+            pressure: data.pressure,
+            workload: data.workload,
+          })
+          setNote(data.note ?? '')
+        }
+        setLoading(false)
       })
-      setNote(existingCheckIn.note ?? '')
-    }
-  }
+  }, [])
 
   /* -------------------------------------------------------- The scales
 
@@ -241,16 +214,10 @@ export default function CheckInClient() {
      Only attempted when the format is actually 'scale': with 'emoji' or
      'words' there are no [data-scale] nodes in the DOM at all by design,
      and the old built-count check below would otherwise read that as the
-     scripts failing rather than as nothing to mount.
-
-     Gated on `seeded`, not just `loading`: the fetch and the seeding of
-     `answers` from it now land in separate render passes (SWR's own state
-     update, then this component's effect), so mounting on `loading` alone
-     could read `data-value` one render too early, off the still-default
-     answers instead of the ones just fetched. */
+     scripts failing rather than as nothing to mount. */
 
   useEffect(() => {
-    if (!seeded || prefsLoading || prefs.checkin_format !== 'scale') return
+    if (loading || prefsLoading || prefs.checkin_format !== 'scale') return
 
     let cancelled = false
 
@@ -290,7 +257,7 @@ export default function CheckInClient() {
     return () => {
       cancelled = true
     }
-  }, [seeded, prefsLoading, prefs.checkin_format])
+  }, [loading, prefsLoading, prefs.checkin_format])
 
   // One listener for all four: the event bubbles and carries its own name.
   useEffect(() => {
@@ -309,7 +276,7 @@ export default function CheckInClient() {
 
   async function save() {
     setSaving(true)
-    setSaveError(null)
+    setError(null)
 
     const supabase = createClient()
     const { error } = await supabase.rpc('save_check_in', {
@@ -321,12 +288,8 @@ export default function CheckInClient() {
     })
 
     setSaving(false)
-    if (error) setSaveError(error.message)
+    if (error) setError(error.message)
     else {
-      await mutateCheckIn(
-        { mood: answers.mood, energy: answers.energy, pressure: answers.pressure, workload: answers.workload, note },
-        { revalidate: false }
-      )
       setSaved(true)
       router.refresh()
     }
@@ -345,7 +308,7 @@ export default function CheckInClient() {
 
   /* ------------------------------------------------------------ Rendering */
 
-  if (loading || !seeded || prefsLoading) {
+  if (loading || prefsLoading) {
     return (
       <>
         <PageHead title="How’s today going?" />

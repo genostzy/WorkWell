@@ -1,35 +1,37 @@
 'use client'
 
-import { useState } from 'react'
-import useSWR from 'swr'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge } from '@/components/chrome'
 import { fmtDate } from '@/lib/format-date'
 
 type Post = { id: string; title: string; posted_on: string; body: string }
 
-async function fetchPosts() {
-  const { data, error } = await createClient()
-    .from('news_posts')
-    .select('id, title, posted_on, body')
-    .order('posted_on', { ascending: false })
-  if (error) throw error
-  return (data ?? []) as Post[]
-}
-
 export default function NewsClient() {
-  const { data: posts, error: loadErrorObj, isLoading: loading } = useSWR('news:posts', fetchPosts)
-  const loadError = loadErrorObj?.message ?? null
-
+  const [posts, setPosts] = useState<Post[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [open, setOpen] = useState<string | null>(null)
-  const [seeded, setSeeded] = useState(false)
 
-  // First post opens by default, then the person is free to collapse or
-  // switch — set during render so it's seeded before anything paints.
-  if (!loading && !seeded) {
-    setSeeded(true)
-    setOpen((posts ?? [])[0]?.id ?? null)
-  }
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('news_posts')
+        .select('id, title, posted_on, body')
+        .order('posted_on', { ascending: false })
+      if (cancelled) return
+      if (error) setLoadError(error.message)
+      const rows = (data ?? []) as Post[]
+      setPosts(rows)
+      setOpen(rows[0]?.id ?? null)
+      setLoading(false)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   return (
     <>
@@ -46,13 +48,13 @@ export default function NewsClient() {
         <div className="card">
           <div className="skel skel--text" />
         </div>
-      ) : (posts ?? []).length === 0 ? (
+      ) : posts.length === 0 ? (
         <div className="card card--quiet">
           <p className="t-subtle">Nothing posted yet.</p>
         </div>
       ) : (
         <div className="stack">
-          {(posts ?? []).map((p) => {
+          {posts.map((p) => {
             const expanded = open === p.id
             return (
               <div className="card" key={p.id}>

@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import useSWR from 'swr'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { ConfirmButton } from '@/components/controls'
@@ -42,37 +41,6 @@ function describe(s: Shift) {
   )} – ${labelTime(s.meal_end)} · ${hours(workingMinutes(s))}`
 }
 
-type ShiftsData = {
-  me: string | null
-  orgId: string | null
-  shifts: Shift[]
-  people: Person[]
-  assignments: Assignment[]
-  timeZone: string | null
-}
-
-async function fetchShiftsData(): Promise<ShiftsData> {
-  const supabase = createClient()
-  const [{ data: mine }, { data: sh, error: shError }, { data: ppl, error: pplError }, { data: asg, error: asgError }, { data: org }] =
-    await Promise.all([
-      supabase.from('me').select('id, org_id').maybeSingle(),
-      supabase.from('shifts').select('id, name, time_in, meal_start, meal_end, time_out').order('time_in'),
-      supabase.from('people').select('id, full_name').order('full_name'),
-      supabase.from('shift_assignments').select('person_id, shift_id'),
-      supabase.from('org').select('timezone').maybeSingle(),
-    ])
-  const err = shError ?? pplError ?? asgError
-  if (err) throw err
-  return {
-    me: mine?.id ?? null,
-    orgId: mine?.org_id ?? null,
-    shifts: (sh ?? []) as Shift[],
-    people: (ppl ?? []) as Person[],
-    assignments: (asg ?? []) as Assignment[],
-    timeZone: org?.timezone ?? null,
-  }
-}
-
 /**
  * Who works when.
  *
@@ -83,23 +51,52 @@ async function fetchShiftsData(): Promise<ShiftsData> {
  * around the room, correct for a person who starts at 3pm.
  */
 export default function ShiftsManageClient() {
-  const { data, error: loadErrorObj, isLoading: loading, mutate } = useSWR('shifts:manage:data', fetchShiftsData)
-  const [actionError, setActionError] = useState<string | null>(null)
-  const loadError = actionError ?? loadErrorObj?.message ?? null
-
-  const me = data?.me ?? null
-  const orgId = data?.orgId ?? null
-  const shifts = data?.shifts ?? []
-  const people = data?.people ?? []
-  const assignments = data?.assignments ?? []
-  const timeZone = data?.timeZone ?? null
+  const [orgId, setOrgId] = useState<string | null>(null)
+  const [me, setMe] = useState<string | null>(null)
+  const [shifts, setShifts] = useState<Shift[]>([])
+  const [timeZone, setTimeZone] = useState<string | null>(null)
   const [savingZone, setSavingZone] = useState(false)
+  const [people, setPeople] = useState<Person[]>([])
+  const [assignments, setAssignments] = useState<Assignment[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draft, setDraft] = useState(EMPTY_DRAFT)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [busyPerson, setBusyPerson] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const supabase = createClient()
+      const [{ data: mine }, { data: sh, error: shError }, { data: ppl, error: pplError }, { data: asg, error: asgError }, { data: org }] =
+        await Promise.all([
+          supabase.from('me').select('id, org_id').maybeSingle(),
+          supabase
+            .from('shifts')
+            .select('id, name, time_in, meal_start, meal_end, time_out')
+            .order('time_in'),
+          supabase.from('people').select('id, full_name').order('full_name'),
+          supabase.from('shift_assignments').select('person_id, shift_id'),
+          supabase.from('org').select('timezone').maybeSingle(),
+        ])
+      if (cancelled) return
+      const err = shError ?? pplError ?? asgError
+      if (err) setLoadError(err.message)
+      setMe(mine?.id ?? null)
+      setOrgId(mine?.org_id ?? null)
+      setShifts((sh ?? []) as Shift[])
+      setPeople((ppl ?? []) as Person[])
+      setAssignments((asg ?? []) as Assignment[])
+      setTimeZone(org?.timezone ?? null)
+      setLoading(false)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const shiftOf = new Map(assignments.map((a) => [a.person_id, a.shift_id]))
   const byId = new Map(shifts.map((s) => [s.id, s]))
@@ -149,19 +146,19 @@ export default function ShiftsManageClient() {
         setSaving(false)
         return setFormError('This account is not linked to an organisation yet.')
       }
-      const { data: row, error } = await supabase
+      const { data, error } = await supabase
         .from('shifts')
         .insert({ org_id: orgId, ...values })
         .select('id, name, time_in, meal_start, meal_end, time_out')
         .single()
       setSaving(false)
       if (error) return setFormError(error.message)
-      await mutate((prev) => prev && { ...prev, shifts: [...prev.shifts, row as Shift] }, { revalidate: false })
+      setShifts((prev) => [...prev, data as Shift])
       setEditingId(null)
       return
     }
 
-    const { data: row, error } = await supabase
+    const { data, error } = await supabase
       .from('shifts')
       .update(values)
       .eq('id', editingId)
@@ -169,59 +166,45 @@ export default function ShiftsManageClient() {
       .single()
     setSaving(false)
     if (error) return setFormError(error.message)
-    await mutate(
-      (prev) => prev && { ...prev, shifts: prev.shifts.map((s) => (s.id === editingId ? (row as Shift) : s)) },
-      { revalidate: false }
-    )
+    setShifts((prev) => prev.map((s) => (s.id === editingId ? (data as Shift) : s)))
     setEditingId(null)
   }
 
   async function removeShift(id: string) {
     const supabase = createClient()
     const { error } = await supabase.from('shifts').delete().eq('id', id)
-    if (error) return setActionError(error.message)
+    if (error) return setLoadError(error.message)
+    setShifts((prev) => prev.filter((s) => s.id !== id))
     // The assignment rows cascade in the database; mirror that here rather
     // than leaving the table showing hours nobody is on any more.
-    await mutate(
-      (prev) =>
-        prev && {
-          ...prev,
-          shifts: prev.shifts.filter((s) => s.id !== id),
-          assignments: prev.assignments.filter((a) => a.shift_id !== id),
-        },
-      { revalidate: false }
-    )
+    setAssignments((prev) => prev.filter((a) => a.shift_id !== id))
     if (editingId === id) setEditingId(null)
   }
 
   async function saveZone(next: string) {
     const previous = timeZone
-    // optimistic: the select should not lag the click
-    await mutate((prev) => prev && { ...prev, timeZone: next }, { revalidate: false })
+    setTimeZone(next)          // optimistic: the select should not lag the click
     setSavingZone(true)
-    setActionError(null)
+    setLoadError(null)
     const supabase = createClient()
     const { error } = await supabase.rpc('set_org_timezone', { p_timezone: next })
     setSavingZone(false)
     if (error) {
-      await mutate((prev) => prev && { ...prev, timeZone: previous }, { revalidate: false })
-      setActionError(error.message)
+      setTimeZone(previous)
+      setLoadError(error.message)
     }
   }
 
   async function assign(personId: string, shiftId: string) {
     setBusyPerson(personId)
-    setActionError(null)
+    setLoadError(null)
     const supabase = createClient()
 
     if (!shiftId) {
       const { error } = await supabase.from('shift_assignments').delete().eq('person_id', personId)
       setBusyPerson(null)
-      if (error) return setActionError(error.message)
-      await mutate(
-        (prev) => prev && { ...prev, assignments: prev.assignments.filter((a) => a.person_id !== personId) },
-        { revalidate: false }
-      )
+      if (error) return setLoadError(error.message)
+      setAssignments((prev) => prev.filter((a) => a.person_id !== personId))
       return
     }
 
@@ -232,18 +215,11 @@ export default function ShiftsManageClient() {
         { onConflict: 'person_id' }
       )
     setBusyPerson(null)
-    if (error) return setActionError(error.message)
-    await mutate(
-      (prev) =>
-        prev && {
-          ...prev,
-          assignments: [
-            ...prev.assignments.filter((a) => a.person_id !== personId),
-            { person_id: personId, shift_id: shiftId },
-          ],
-        },
-      { revalidate: false }
-    )
+    if (error) return setLoadError(error.message)
+    setAssignments((prev) => [
+      ...prev.filter((a) => a.person_id !== personId),
+      { person_id: personId, shift_id: shiftId },
+    ])
   }
 
   return (

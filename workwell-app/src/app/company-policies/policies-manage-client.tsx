@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import useSWR from 'swr'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { ConfirmButton } from '@/components/controls'
@@ -15,18 +14,6 @@ function today() {
 
 const EMPTY_DRAFT = { title: '', updated_on: today() }
 
-async function fetchOrgId() {
-  const { data, error } = await createClient().from('me').select('org_id').maybeSingle()
-  if (error) throw error
-  return data?.org_id ?? null
-}
-
-async function fetchPolicies() {
-  const { data, error } = await createClient().from('policies').select('id, title, updated_on').order('title')
-  if (error) throw error
-  return (data ?? []) as Policy[]
-}
-
 /**
  * HR's side of Company policies: the list employees acknowledge, minus the
  * acknowledging. A policy here is a title and a date — the document itself
@@ -39,15 +26,34 @@ async function fetchPolicies() {
  * title or date in place leaves existing acknowledgements standing.
  */
 export function PoliciesManageClient() {
-  const { data: orgId } = useSWR('me:org_id', fetchOrgId)
-  const { data: policies, error: loadErrorObj, isLoading: loading, mutate } = useSWR('policies:all', fetchPolicies)
-  const [actionError, setActionError] = useState<string | null>(null)
-  const loadError = actionError ?? loadErrorObj?.message ?? null
+  const [orgId, setOrgId] = useState<string | null>(null)
+  const [policies, setPolicies] = useState<Policy[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draft, setDraft] = useState(EMPTY_DRAFT)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const supabase = createClient()
+      const [{ data: me, error: meError }, { data, error }] = await Promise.all([
+        supabase.from('me').select('org_id').maybeSingle(),
+        supabase.from('policies').select('id, title, updated_on').order('title'),
+      ])
+      if (cancelled) return
+      if (meError ?? error) setLoadError((meError ?? error)!.message)
+      setOrgId(me?.org_id ?? null)
+      setPolicies((data ?? []) as Policy[])
+      setLoading(false)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   function startCreate() {
     setEditingId('new')
@@ -90,9 +96,8 @@ export function PoliciesManageClient() {
         .single()
       setSaving(false)
       if (error) return setFormError(error.message)
-      await mutate(
-        (prev) => [...(prev ?? []), data as Policy].sort((a, b) => a.title.localeCompare(b.title)),
-        { revalidate: false }
+      setPolicies((prev) =>
+        [...prev, data as Policy].sort((a, b) => a.title.localeCompare(b.title))
       )
       setEditingId(null)
       return
@@ -106,12 +111,10 @@ export function PoliciesManageClient() {
       .single()
     setSaving(false)
     if (error) return setFormError(error.message)
-    await mutate(
-      (prev) =>
-        (prev ?? [])
-          .map((p) => (p.id === editingId ? (data as Policy) : p))
-          .sort((a, b) => a.title.localeCompare(b.title)),
-      { revalidate: false }
+    setPolicies((prev) =>
+      prev
+        .map((p) => (p.id === editingId ? (data as Policy) : p))
+        .sort((a, b) => a.title.localeCompare(b.title))
     )
     setEditingId(null)
   }
@@ -120,10 +123,10 @@ export function PoliciesManageClient() {
     const supabase = createClient()
     const { error } = await supabase.from('policies').delete().eq('id', id)
     if (error) {
-      setActionError(error.message)
+      setLoadError(error.message)
       return
     }
-    await mutate((prev) => prev?.filter((p) => p.id !== id), { revalidate: false })
+    setPolicies((prev) => prev.filter((p) => p.id !== id))
     if (editingId === id) setEditingId(null)
   }
 
@@ -147,12 +150,12 @@ export function PoliciesManageClient() {
             <div className="card">
               <div className="skel skel--text" />
             </div>
-          ) : (policies ?? []).length === 0 ? (
+          ) : policies.length === 0 ? (
             <div className="card card--quiet">
               <p className="t-subtle">No policies defined yet.</p>
             </div>
           ) : (
-            (policies ?? []).map((p) => (
+            policies.map((p) => (
               <div className="card" key={p.id}>
                 {editingId === p.id ? (
                   <PolicyForm

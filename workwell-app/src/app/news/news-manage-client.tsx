@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import useSWR from 'swr'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { ConfirmButton } from '@/components/controls'
@@ -15,36 +14,43 @@ function today() {
 
 const EMPTY_DRAFT = { title: '', body: '', posted_on: today() }
 
-async function fetchOrgId() {
-  const { data, error } = await createClient().from('me').select('org_id').maybeSingle()
-  if (error) throw error
-  return data?.org_id ?? null
-}
-
-async function fetchPosts() {
-  const { data, error } = await createClient()
-    .from('news_posts')
-    .select('id, title, posted_on, body')
-    .order('posted_on', { ascending: false })
-  if (error) throw error
-  return (data ?? []) as Post[]
-}
-
 /**
  * HR's side of News: the same feed employees see, with the authoring taken
  * out of the seed data and put in HR's hands. Posts are visible org-wide
  * the moment they're saved — there is no draft state to half-finish one in.
  */
 export function NewsManageClient() {
-  const { data: orgId } = useSWR('me:org_id', fetchOrgId)
-  const { data: posts, error: loadErrorObj, isLoading: loading, mutate } = useSWR('news:posts', fetchPosts)
-  const [actionError, setActionError] = useState<string | null>(null)
-  const loadError = actionError ?? loadErrorObj?.message ?? null
+  const [orgId, setOrgId] = useState<string | null>(null)
+  const [posts, setPosts] = useState<Post[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draft, setDraft] = useState(EMPTY_DRAFT)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const supabase = createClient()
+      const [{ data: me, error: meError }, { data, error }] = await Promise.all([
+        supabase.from('me').select('org_id').maybeSingle(),
+        supabase
+          .from('news_posts')
+          .select('id, title, posted_on, body')
+          .order('posted_on', { ascending: false }),
+      ])
+      if (cancelled) return
+      if (meError ?? error) setLoadError((meError ?? error)!.message)
+      setOrgId(me?.org_id ?? null)
+      setPosts((data ?? []) as Post[])
+      setLoading(false)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   function startCreate() {
     setEditingId('new')
@@ -88,9 +94,8 @@ export function NewsManageClient() {
         .single()
       setSaving(false)
       if (error) return setFormError(error.message)
-      await mutate(
-        (prev) => [...(prev ?? []), data as Post].sort((a, b) => (a.posted_on < b.posted_on ? 1 : -1)),
-        { revalidate: false }
+      setPosts((prev) =>
+        [...prev, data as Post].sort((a, b) => (a.posted_on < b.posted_on ? 1 : -1))
       )
       setEditingId(null)
       return
@@ -104,7 +109,7 @@ export function NewsManageClient() {
       .single()
     setSaving(false)
     if (error) return setFormError(error.message)
-    await mutate((prev) => prev?.map((p) => (p.id === editingId ? (data as Post) : p)), { revalidate: false })
+    setPosts((prev) => prev.map((p) => (p.id === editingId ? (data as Post) : p)))
     setEditingId(null)
   }
 
@@ -112,10 +117,10 @@ export function NewsManageClient() {
     const supabase = createClient()
     const { error } = await supabase.from('news_posts').delete().eq('id', id)
     if (error) {
-      setActionError(error.message)
+      setLoadError(error.message)
       return
     }
-    await mutate((prev) => prev?.filter((p) => p.id !== id), { revalidate: false })
+    setPosts((prev) => prev.filter((p) => p.id !== id))
     if (editingId === id) setEditingId(null)
   }
 
@@ -139,12 +144,12 @@ export function NewsManageClient() {
             <div className="card">
               <div className="skel skel--text" />
             </div>
-          ) : (posts ?? []).length === 0 ? (
+          ) : posts.length === 0 ? (
             <div className="card card--quiet">
               <p className="t-subtle">Nothing posted yet.</p>
             </div>
           ) : (
-            (posts ?? []).map((p) => (
+            posts.map((p) => (
               <div className="card" key={p.id}>
                 {editingId === p.id ? (
                   <PostForm
