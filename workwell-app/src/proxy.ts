@@ -42,7 +42,14 @@ export async function proxy(request: NextRequest) {
   // fetches before checking sits on a loading state forever when signed
   // out, and each new page would have to remember its own guard.
   const path = request.nextUrl.pathname
-  const isPublic = path === '/' || path.startsWith('/sign-in')
+  // /offline.html is the service worker's cached fallback. It has to be
+  // public or the worker caches whatever this redirects to instead — which
+  // is the sign-in page, served forever after as "you are offline". The
+  // matcher below excludes static assets by extension but not .html, so
+  // this is the exemption that keeps it reachable. It reads no data and
+  // names nobody: there is nothing on it to protect.
+  const isPublic =
+    path === '/' || path.startsWith('/sign-in') || path === '/offline.html'
 
   if (!data && !isPublic) {
     const url = request.nextUrl.clone()

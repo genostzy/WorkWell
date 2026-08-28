@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Offline · WorkWell</title>
+<!--
+  The offline fallback, served by sw.js when a navigation cannot reach the
+  network.
+
+  Deliberately one self-contained file rather than a Next route. A page
+  reached with no network can only use what the service worker already
+  holds, and caching a Next page means caching its CSS and JS chunks too —
+  whose filenames are hashed per build, so the cache would need rebuilding
+  and re-versioning on every deploy to avoid serving an offline page with
+  no styling. One file with its styles and script inline has none of that:
+  the worker caches exactly one thing and it cannot half-work.
+
+  The cost is that the tokens below are a copy of the handful this page
+  needs from styles/tokens.css, not a reference to them. They are the
+  neutral ramp, which is the stable part of that file — but a palette
+  change there will not reach here on its own.
+-->
+<style>
+  :root {
+    --bg: #F5F7FA;
+    --surface: rgba(255, 255, 255, .55);
+    --surface-2: rgba(255, 255, 255, .36);
+    --border: rgba(30, 41, 59, .10);
+    --text: #0F172A;
+    --text-muted: rgba(15, 23, 42, .70);
+    --text-subtle: rgba(15, 23, 42, .62);
+    --accent-text: #0F172A;
+    --accent-quiet: rgba(15, 23, 42, .06);
+    --accent-border: rgba(15, 23, 42, .20);
+    --text-on-accent: #FFFFFF;
+    --accent: #0F172A;
+    --ink: #0F172A;
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0B1120;
+      --surface: rgba(255, 255, 255, .06);
+      --surface-2: rgba(255, 255, 255, .04);
+      --border: rgba(255, 255, 255, .12);
+      --text: #F1F5F9;
+      --text-muted: rgba(241, 245, 249, .78);
+      --text-subtle: rgba(241, 245, 249, .65);
+      --accent-text: #F1F5F9;
+      --accent-quiet: rgba(241, 245, 249, .10);
+      --accent-border: rgba(241, 245, 249, .26);
+      --text-on-accent: #0B1120;
+      --accent: #F1F5F9;
+      --ink: #F1F5F9;
+      color-scheme: dark;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    font-family: "Nunito", "Quicksand", "Segoe UI Variable Text", "Segoe UI",
+      system-ui, -apple-system, sans-serif;
+    color: var(--text);
+    background:
+      radial-gradient(120% 90% at 12% 8%, var(--accent-quiet) 0%, transparent 60%),
+      var(--bg);
+  }
+
+  .wrap { width: 100%; max-width: 34rem; }
+
+  .brand {
+    display: flex; align-items: center; justify-content: center;
+    gap: 10px; margin-bottom: 20px;
+  }
+  .brand__name { font-size: 20px; font-weight: 800; letter-spacing: -0.03em; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px 20px 22px;
+    text-align: center;
+  }
+
+  h1 { font-size: 20px; font-weight: 800; margin: 0 0 8px; }
+  p  { font-size: 15px; color: var(--text-muted); margin: 0 auto; max-width: 42ch; line-height: 1.55; }
+
+  .game {
+    margin: 20px 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-2);
+    overflow: hidden;
+    /* The canvas is decoration until someone chooses to play, and a
+       decoration should not steal the keyboard. */
+    position: relative;
+  }
+  canvas { display: block; width: 100%; height: auto; touch-action: manipulation; }
+
+  .hint {
+    font-size: 12px;
+    color: var(--text-subtle);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    margin-top: 10px;
+  }
+
+  .score {
+    position: absolute; top: 8px; right: 12px;
+    font-size: 12px; font-weight: 700; color: var(--text-subtle);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 8px; padding: 9px 16px; margin-top: 14px;
+    border-radius: 999px; border: 1px solid var(--accent-border);
+    background: var(--accent); color: var(--text-on-accent);
+    font: inherit; font-size: 14px; font-weight: 700;
+    cursor: pointer;
+  }
+  .btn:focus-visible { outline: 2px solid var(--accent-border); outline-offset: 2px; }
+
+  .code {
+    margin-top: 16px; font-size: 12px; color: var(--text-subtle);
+    letter-spacing: .08em; text-transform: uppercase;
+  }
+
+  /* The game only ever moves after a deliberate keypress, so there is no
+     ambient motion to switch off — but the retry button pulses while it
+     waits, and that should not. */
+  @media (prefers-reduced-motion: reduce) {
+    .btn { transition: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand">
+      <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="3.4" style="fill: var(--accent-quiet)"/>
+        <path d="M7 10 L11 22 L16 13 L21 22 L25 10" fill="none"
+              style="stroke: var(--ink)" stroke-width="2.4"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="brand__name">WorkWell</span>
+    </div>
+
+    <div class="card">
+      <h1>You are offline</h1>
+      <p>
+        WorkWell cannot reach the network. Nothing you have saved is affected —
+        this is the connection, not your data. The page will return on its own
+        once you are back.
+      </p>
+
+      <div class="game">
+        <span class="score" id="score"></span>
+        <canvas id="run" width="640" height="180" aria-label="A small game: get across the office without walking into anything."></canvas>
+      </div>
+      <p class="hint" id="hint">Press space to play</p>
+
+      <button class="btn" id="retry" type="button">Try again</button>
+
+      <p class="code">ERR_INTERNET_DISCONNECTED</p>
+    </div>
+  </div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---------------------------------------------------------------- retry
+  var retry = document.getElementById('retry');
+  retry.addEventListener('click', function () { location.reload(); });
+
+  // Coming back online is the thing the reader is actually waiting for, so
+  // the page reloads itself rather than making them notice and press.
+  window.addEventListener('online', function () { location.reload(); });
+
+  // ----------------------------------------------------------------- game
+  //
+  // The office equivalent of the dinosaur: you are crossing the floor and
+  // the floor has things on it. Same one-button mechanic, because a
+  // one-button game is the only kind worth putting on a page somebody
+  // reached by accident.
+  var canvas = document.getElementById('run');
+  var hint = document.getElementById('hint');
+  var scoreEl = document.getElementById('score');
+  var ctx = canvas.getContext('2d');
+
+  var W = canvas.width, H = canvas.height;
+  var GROUND = H - 34;
+  var GRAVITY = 0.62;
+  var JUMP = -11.2;
+
+  var css = getComputedStyle(document.documentElement);
+  function tone(name, fallback) {
+    var v = css.getPropertyValue(name).trim();
+    return v || fallback;
+  }
+  var INK = tone('--text', '#0F172A');
+  var MUTED = tone('--text-subtle', 'rgba(15,23,42,.62)');
+
+  var running = false, over = false, raf = 0;
+  var y, vy, obstacles, speed, score, best, tick;
+
+  try { best = Number(localStorage.getItem('ww-offline-best')) || 0; }
+  catch (e) { best = 0; }   // Private windows throw rather than return null.
+
+  function reset() {
+    y = GROUND; vy = 0; obstacles = []; speed = 4.2; score = 0; tick = 0;
+    over = false;
+  }
+
+  /* A desk chair, a plant, a stack of boxes — the room's own furniture,
+     drawn at the size a one-button game can read at a glance. */
+  function obstacle(kind, x) {
+    // Widths match what drawObstacle actually paints. A hitbox wider than
+    // the drawing is the exact thing that makes a jumping game feel rigged.
+    return { kind: kind, x: x, w: kind === 'boxes' ? 24 : 16, h: kind === 'plant' ? 34 : 26 };
+  }
+
+  function spawn() {
+    var kinds = ['chair', 'plant', 'boxes'];
+    var kind = kinds[(Math.random() * kinds.length) | 0];
+    obstacles.push(obstacle(kind, W + 20));
+  }
+
+  function drawFigure(px, py) {
+    ctx.strokeStyle = INK; ctx.fillStyle = INK;
+    ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.arc(px, py - 26, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(px, py - 20); ctx.lineTo(px, py - 8);
+    // Legs stride while on the ground and tuck while in the air.
+    var airborne = py < GROUND - 0.5;
+    var swing = airborne ? 3 : Math.sin(tick / 4) * 5;
+    ctx.moveTo(px, py - 8); ctx.lineTo(px - swing, py);
+    ctx.moveTo(px, py - 8); ctx.lineTo(px + swing, py);
+    ctx.moveTo(px, py - 17); ctx.lineTo(px - 7, py - 12);
+    ctx.moveTo(px, py - 17); ctx.lineTo(px + 7, py - 13);
+    ctx.stroke();
+  }
+
+  function drawObstacle(o) {
+    ctx.strokeStyle = INK; ctx.fillStyle = INK; ctx.lineWidth = 2.2;
+    var b = GROUND;
+    if (o.kind === 'chair') {
+      ctx.beginPath();
+      ctx.moveTo(o.x, b); ctx.lineTo(o.x, b - 12);
+      ctx.lineTo(o.x + 16, b - 12); ctx.lineTo(o.x + 16, b);
+      ctx.moveTo(o.x + 16, b - 12); ctx.lineTo(o.x + 16, b - 26);
+      ctx.stroke();
+    } else if (o.kind === 'plant') {
+      ctx.beginPath();
+      ctx.moveTo(o.x + 2, b); ctx.lineTo(o.x + 4, b - 12);
+      ctx.lineTo(o.x + 14, b - 12); ctx.lineTo(o.x + 16, b);
+      ctx.closePath(); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(o.x + 9, b - 12); ctx.lineTo(o.x + 9, b - 24);
+      ctx.moveTo(o.x + 9, b - 20); ctx.lineTo(o.x + 1, b - 30);
+      ctx.moveTo(o.x + 9, b - 20); ctx.lineTo(o.x + 17, b - 30);
+      ctx.stroke();
+    } else {
+      ctx.strokeRect(o.x, b - 14, 24, 14);
+      ctx.strokeRect(o.x + 4, b - 24, 15, 10);
+    }
+  }
+
+  function frame() {
+    ctx.clearRect(0, 0, W, H);
+
+    // The floor line, and the skirting behind it.
+    ctx.strokeStyle = MUTED; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(0, GROUND); ctx.lineTo(W, GROUND); ctx.stroke();
+
+    if (running) {
+      tick++;
+      vy += GRAVITY; y += vy;
+      if (y > GROUND) { y = GROUND; vy = 0; }
+
+      speed += 0.0016;
+      if (tick % Math.max(52, (110 - speed * 6) | 0) === 0) spawn();
+
+      for (var i = obstacles.length - 1; i >= 0; i--) {
+        var o = obstacles[i];
+        o.x -= speed;
+        if (o.x + o.w < -10) { obstacles.splice(i, 1); score++; continue; }
+        // Boxes are the widest, so the hitbox is the drawn width, inset a
+        // little — a pixel-tight box on a stick figure reads as unfair.
+        if (o.x < 46 && o.x + o.w > 26 && y > GROUND - o.h) {
+          running = false; over = true;
+          if (score > best) {
+            best = score;
+            try { localStorage.setItem('ww-offline-best', String(best)); } catch (e) {}
+          }
+          hint.textContent = 'Caught by the ' + o.kind + ' — press space to try again';
+        }
+      }
+    }
+
+    for (var j = 0; j < obstacles.length; j++) drawObstacle(obstacles[j]);
+    drawFigure(36, y);
+
+    scoreEl.textContent = running || over
+      ? score + (best ? '  ·  best ' + best : '')
+      : (best ? 'best ' + best : '');
+
+    raf = requestAnimationFrame(frame);
+  }
+
+  function press() {
+    if (!running) {
+      if (over || obstacles === undefined) reset();
+      running = true;
+      hint.textContent = 'Space to jump';
+      return;
+    }
+    if (y >= GROUND) vy = JUMP;
+  }
+
+  reset();
+  frame();
+
+  document.addEventListener('keydown', function (e) {
+    if (e.code === 'Space' || e.key === ' ' || e.code === 'ArrowUp') {
+      // Space scrolls the page and, on the retry button, activates it.
+      if (document.activeElement === retry) return;
+      e.preventDefault();
+      press();
+    }
+  });
+  canvas.addEventListener('pointerdown', function (e) { e.preventDefault(); press(); });
+})();
+</script>
+</body>
+</html>

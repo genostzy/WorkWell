@@ -1220,3 +1220,29 @@ a, button {
 }
 
 .state__actions { display: flex; gap: var(--s-3); flex-wrap: wrap; justify-content: center; }
+
+/* The offline strip. Fixed to the top and above everything, because it is
+   the one message on screen that explains why nothing else is responding.
+   It does not cover the topbar's controls — it pushes into the space above
+   them and the page scrolls under it — since a bar that hides the way out
+   is worse than the state it is reporting. */
+.offline-bar {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  background: var(--sys-error-bg, var(--surface-2));
+  color: var(--text);
+  border-bottom: 1px solid var(--border-strong, var(--border));
+  font-size: var(--fs-sm);
+  text-align: center;
+  backdrop-filter: var(--glass-filter-1);
+}
+
+@media (max-width: 640px) {
+  .offline-bar { font-size: var(--fs-xs); }
+}
