@@ -1,9 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { fmtDate } from '@/lib/format-date'
+import {
+  RECEIPTS_BUCKET,
+  RECEIPT_MAX_BYTES,
+  RECEIPT_TYPES,
+  signReceipts,
+} from '@/lib/receipts'
 
 type Claim = {
   id: string
@@ -12,6 +18,7 @@ type Claim = {
   spent_on: string
   note: string | null
   status: 'Submitted' | 'Approved' | 'Reimbursed' | 'Declined'
+  receipt_path: string | null
 }
 
 const CATEGORIES = ['Travel', 'Meals', 'Equipment', 'Training', 'Other'] as const
@@ -34,6 +41,11 @@ export default function ExpensesClient() {
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
 
+  const [receipt, setReceipt] = useState<File | null>(null)
+  const receiptRef = useRef<HTMLInputElement>(null)
+  // path → signed URL. Signed in one batch per load rather than per row.
+  const [receiptUrls, setReceiptUrls] = useState<Map<string, string>>(new Map())
+
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -52,12 +64,21 @@ export default function ExpensesClient() {
 
       const { data, error } = await supabase
         .from('expenses')
-        .select('id, category, amount, spent_on, note, status')
+        .select('id, category, amount, spent_on, note, status, receipt_path')
         .order('created_at', { ascending: false })
       if (cancelled) return
-      if (error) setLoadError(error.message)
-      else setClaims((data ?? []) as Claim[])
+      if (error) {
+        setLoadError(error.message)
+        setLoading(false)
+        return
+      }
+
+      const rows = (data ?? []) as Claim[]
+      setClaims(rows)
       setLoading(false)
+
+      const urls = await signReceipts(supabase, rows.map((r) => r.receipt_path))
+      if (!cancelled) setReceiptUrls(urls)
     })()
     return () => {
       cancelled = true
@@ -71,6 +92,12 @@ export default function ExpensesClient() {
     const value = Number(amount)
     if (!amount || Number.isNaN(value) || value <= 0) return setError('Enter an amount greater than zero.')
     if (!date) return setError('Choose the date of the expense.')
+    if (receipt) {
+      if (!RECEIPT_TYPES.includes(receipt.type as (typeof RECEIPT_TYPES)[number]))
+        return setError('A receipt must be a PNG, JPEG, WebP, or PDF.')
+      if (receipt.size > RECEIPT_MAX_BYTES)
+        return setError('Keep the receipt under 5MB.')
+    }
 
     setSending(true)
     const supabase = createClient()
@@ -83,17 +110,46 @@ export default function ExpensesClient() {
         spent_on: date,
         note: note.trim() || null,
       })
-      .select('id, category, amount, spent_on, note, status')
+      .select('id, category, amount, spent_on, note, status, receipt_path')
       .single()
+
+    if (error) {
+      setSending(false)
+      return setError(error.message)
+    }
+
+    let claim = data as Claim
+
+    // The claim goes in first and the file is named for it, because the
+    // bucket's policy checks the object name against a real, undecided
+    // claim of yours — there is nothing to attach a receipt to until the
+    // claim exists. A claim whose receipt fails to upload is still a
+    // claim: it is submitted either way, and saying so is more honest than
+    // rolling back work the person has already done.
+    if (receipt) {
+      const path = `${personId}/${claim.id}`
+      const { error: uploadError } = await supabase.storage
+        .from(RECEIPTS_BUCKET)
+        .upload(path, receipt, { upsert: true, contentType: receipt.type })
+
+      if (uploadError) {
+        setError(`Claim submitted, but the receipt did not upload: ${uploadError.message}`)
+      } else {
+        await supabase.from('expenses').update({ receipt_path: path }).eq('id', claim.id)
+        claim = { ...claim, receipt_path: path }
+        const urls = await signReceipts(supabase, [path])
+        setReceiptUrls((m) => new Map([...m, ...urls]))
+      }
+    }
+
     setSending(false)
-
-    if (error) return setError(error.message)
-
-    setClaims((c) => [data as Claim, ...c])
+    setClaims((c) => [claim, ...c])
     setCategory(CATEGORIES[0])
     setAmount('')
     setDate('')
     setNote('')
+    setReceipt(null)
+    if (receiptRef.current) receiptRef.current.value = ''
     setSent(true)
   }
 
@@ -130,6 +186,7 @@ export default function ExpensesClient() {
                       <th scope="col">Category</th>
                       <th scope="col">Date</th>
                       <th scope="col">Amount</th>
+                      <th scope="col">Receipt</th>
                       <th scope="col">Status</th>
                     </tr>
                   </thead>
@@ -139,6 +196,21 @@ export default function ExpensesClient() {
                         <th scope="row" style={{ fontWeight: 600 }}>{c.category}</th>
                         <td>{fmtDate(c.spent_on)}</td>
                         <td className="t-num">{peso(c.amount)}</td>
+                        <td>
+                          {c.receipt_path && receiptUrls.get(c.receipt_path) ? (
+                            <a
+                              href={receiptUrls.get(c.receipt_path)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              View
+                            </a>
+                          ) : (
+                            <span className="t-subtle" aria-label="No receipt attached">
+                              —
+                            </span>
+                          )}
+                        </td>
                         <td>
                           <span className={c.status === 'Reimbursed' || c.status === 'Approved' ? 'chip chip--accent' : 'chip'}>
                             {c.status}
@@ -202,6 +274,21 @@ export default function ExpensesClient() {
             <div className="mt-4">
               <label className="field__label" htmlFor="enote">Note (optional)</label>
               <textarea id="enote" className="textarea" value={note} placeholder="What it was for." onChange={(e) => setNote(e.target.value)} />
+            </div>
+
+            <div className="mt-4">
+              <label className="field__label" htmlFor="ercpt">Receipt (optional)</label>
+              <input
+                id="ercpt"
+                ref={receiptRef}
+                className="input"
+                type="file"
+                accept={RECEIPT_TYPES.join(',')}
+                onChange={(e) => setReceipt(e.target.files?.[0] ?? null)}
+              />
+              <p className="t-subtle mt-2">
+                Photo or PDF, up to 5MB. Can be replaced until HR decides.
+              </p>
             </div>
 
             <div className="mt-4">
