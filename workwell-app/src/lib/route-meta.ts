@@ -23,6 +23,7 @@ export const ROUTE_META: Record<string, { title: string; plane: Plane }> = {
   '/profile': { title: 'Profile settings', plane: 'private' },
 
   '/leave': { title: 'Leave', plane: 'work' },
+  '/tasks': { title: 'Tasks', plane: 'work' },
   '/holidays': { title: 'Holidays', plane: 'work' },
   '/attendance': { title: 'Attendance', plane: 'work' },
   '/payroll': { title: 'Payroll', plane: 'work' },
