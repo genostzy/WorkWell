@@ -41,13 +41,7 @@ export default function RecognitionClient() {
 
   const [to, setTo] = useState('')
   const [message, setMessage] = useState('')
-  const [visibility, setVisibility] = useState<'private' | 'team' | 'everyone'>(
-    'private'
-  )
   const [sent, setSent] = useState(false)
-  const [sentVisibility, setSentVisibility] = useState<
-    'private' | 'team' | 'everyone'
-  >('private')
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
 
@@ -157,18 +151,22 @@ export default function RecognitionClient() {
 
     setSending(true)
     const supabase = createClient()
+    // No visibility. The column exists and accepts 'team' and 'everyone',
+    // but the read policy on private.appreciations only ever admits the
+    // sender and the recipient, so those two values changed a stored word
+    // and nothing else — a control that promised a widening the database
+    // had no way to perform. It is gone until there is a consent step and
+    // a feed to widen into; the column's own default says 'private'.
     const { error } = await supabase.from('appreciations').insert({
       from_person: me,
       to_person: to,
       message: message.trim(),
-      visibility,
     })
     setSending(false)
 
     if (error) setSendError(error.message)
     else {
       setSent(true)
-      setSentVisibility(visibility)
       setMessage('')
       load()
     }
@@ -274,20 +272,13 @@ export default function RecognitionClient() {
             <form className="card" onSubmit={sendAppreciation}>
               <h2 className="card__title mb-2">Appreciate someone</h2>
               <p className="card__sub mb-4">
-                Private unless you both choose otherwise
+                Between you and them
               </p>
 
               {sent && (
                 <p className="confirmed mb-4" role="status">
                   <span aria-hidden="true">✓</span>
-                  <span>
-                    Sent.{' '}
-                    {sentVisibility === 'everyone'
-                      ? 'Everyone can see it.'
-                      : sentVisibility === 'team'
-                        ? 'Only them and their team can see it.'
-                        : 'Only they will see it.'}
-                  </span>
+                  <span>Sent. Only they will see it.</span>
                 </p>
               )}
 
@@ -333,29 +324,6 @@ export default function RecognitionClient() {
                     setSent(false)
                   }}
                 />
-              </div>
-
-              <div className="field mt-4">
-                <span className="field__label">Who else can see it</span>
-                <div className="segmented" role="group" aria-label="Visibility">
-                  {(['private', 'team', 'everyone'] as const).map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      aria-pressed={visibility === v}
-                      onClick={() => setVisibility(v)}
-                    >
-                      {v === 'private'
-                        ? 'Just them'
-                        : v === 'team'
-                          ? 'Their team'
-                          : 'Everyone'}
-                    </button>
-                  ))}
-                </div>
-                <span className="field__hint">
-                  Anything wider needs their agreement.
-                </span>
               </div>
 
               <button
