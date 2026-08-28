@@ -2,17 +2,11 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { readIsHr } from '@/lib/role'
 import { Empty, LoadError, PageHead, PlaneBadge, PrivacyNote, RoleLocked } from '@/components/chrome'
+import { TrendCharts } from './trend-charts'
 
 /** The PRD is explicit that we say "not enough data yet" rather than
  *  guess. Four entries cannot describe a pattern. */
 const ENOUGH = 5
-
-const METRICS = [
-  { key: 'mood' as const, label: 'Mood' },
-  { key: 'energy' as const, label: 'Energy' },
-  { key: 'pressure' as const, label: 'Pressure' },
-  { key: 'workload' as const, label: 'Workload' },
-]
 
 type Metric = 'mood' | 'energy' | 'pressure' | 'workload'
 
@@ -72,17 +66,6 @@ function patternSignals(rows: Row[]) {
     if (r != null && b != null && r - b >= PATTERN_THRESHOLD) signals.push(key)
   }
   return signals
-}
-
-function Bar({ value }: { value: number | null }) {
-  return (
-    <span className="meter__track">
-      <span
-        className="meter__fill"
-        style={{ width: value ? `${(value / 5) * 100}%` : '0%' }}
-      />
-    </span>
-  )
 }
 
 export default async function Trends() {
@@ -178,29 +161,7 @@ export default async function Trends() {
       )}
 
       {enough ? (
-        <div className="card">
-          <div className="card__head">
-            <div>
-              <h2 className="card__title">Your typical day</h2>
-              <div className="card__sub">
-                Averaged across everything you have recorded
-              </div>
-            </div>
-          </div>
-          <p className="t-subtle mb-4">
-            There is no score here, and no comparison to anyone else.
-          </p>
-          {METRICS.map((m) => {
-            const avg = average(rows, m.key)
-            return (
-              <div className="metric" key={m.key}>
-                <span>{m.label}</span>
-                <Bar value={avg} />
-                <b className="t-num">{avg ? avg.toFixed(1) : '—'}</b>
-              </div>
-            )
-          })}
-        </div>
+        <TrendCharts rows={rows} />
       ) : (
         <div className="card card--quiet">
           <h2 className="card__title mb-2">Not enough data yet</h2>

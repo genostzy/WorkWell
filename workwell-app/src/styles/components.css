@@ -717,6 +717,54 @@ button.chip[aria-pressed="true"] {
 .viz-tip__row { display: flex; justify-content: space-between; gap: var(--s-4); color: var(--text-muted); }
 .viz-tip__row b { color: var(--text); font-variant-numeric: tabular-nums; }
 
+/* Trend sparklines - four small multiples sharing one cursor.
+   The wrapper takes the focus and the keyboard, so arrow keys step the
+   marker on all four charts at once rather than four separate tab stops. */
+.trends { border-radius: var(--r-sm); outline-offset: 4px; }
+.trends:focus-visible { outline: 2px solid var(--accent); }
+
+.trends__cell { display: flex; flex-direction: column; gap: var(--s-1); min-width: 0; }
+.trends__label {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+/* Tabular figures and a fixed line box: the number swaps between an average
+   (3.4) and one answer (4) on every hover, and neither may shift the chart
+   underneath it. */
+.trends__value {
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-heavy);
+  line-height: 1.15;
+  color: var(--text);
+}
+
+/* pathLength="1" makes the dash length independent of the real path, so one
+   keyframe draws every line whatever its shape.
+
+   Two guards, because the thing being animated is the data itself and an
+   entrance animation that starts from hidden takes the data with it if the
+   animation never advances. The resting state here is the drawn line, and
+   the keyframe runs from hidden rather than to it; and the modifier that
+   turns it on is only added once a frame has actually been painted, so a
+   document that is never rendered simply shows the finished chart. */
+.trends__draw { stroke-dasharray: 1; stroke-dashoffset: 0; }
+.trends--drawing .trends__draw {
+  animation: trends-draw var(--dur-slow) var(--ease);
+}
+@keyframes trends-draw { from { stroke-dashoffset: 1; } }
+
+/* The four are meant to be read against each other, so they hold two columns
+   further down than the app's usual four-up grid, which drops to one at 860.
+   Two 165px cells still carry a 240-wide viewBox legibly; a four-tall stack
+   does not read as a comparison at all. */
+@media (max-width: 860px) {
+  .trends .grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4); }
+}
+
+
 /* Table view — the always-available non-visual equivalent.
    Wide tables scroll inside their own container so the page body never does. */
 /* min-width:0 defeats the flex/grid `min-width:auto` default, which would
