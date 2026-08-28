@@ -32,6 +32,10 @@ jobs:
 
       - run: npm ci
 
+      # `npm run typecheck` runs `next typegen` first. LayoutProps and
+      # PageProps are globals Next generates into .next/types, and tsconfig
+      # includes them — on a fresh checkout there is no .next, so tsc alone
+      # fails here while passing on any machine that has ever built.
       - name: Typecheck
         run: npm run typecheck
 
@@ -42,11 +46,11 @@ jobs:
         run: npm test
 
       # Last, because it is the slowest and the three above localise a failure
-      # far better than a build log does. The Supabase keys are public
-      # (publishable, RLS-guarded) but still come from repo secrets rather than
-      # being pinned here, so a project move does not need a code change.
+      # far better than a build log does.
+      #
+      # No Supabase env is set, and none is needed: every page that reads the
+      # database is dynamic, so nothing connects at build time. A page that
+      # ever becomes statically generated *and* reads Supabase would break
+      # here first — which is the right place to find out.
       - name: Build
         run: npm run build
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
