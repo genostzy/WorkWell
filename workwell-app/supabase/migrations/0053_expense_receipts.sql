@@ -124,3 +124,9 @@ create policy receipt_delete on storage.objects
 -- subqueries above lean on that table's own RLS rather than bypassing it —
 -- a claim you cannot select is a claim these cannot find either, so this is
 -- not a way to probe for other people's claim ids.
+
+-- PostgREST caches the schema it exposes, and adding a column to a view is
+-- invisible to it until it is told. Without this the app asks for
+-- receipt_path and is told the column does not exist, which is true only of
+-- the cache and not of the database.
+notify pgrst, 'reload schema';

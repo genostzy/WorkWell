@@ -9,6 +9,7 @@ import { DecideComplaint } from '../../hr/decide-complaint'
 import { DecideResignation } from '../../hr/decide-resignation'
 import { DecideSupportRequest } from '../../hr/decide-support-request'
 import { signReceipts } from '@/lib/receipts'
+import { Directory, type DirectoryRow } from '../../hr/directory'
 
 function fmt(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', {
@@ -45,7 +46,11 @@ export default async function Hr() {
     { data: supportRequests, error: supportRequestsError },
   ] = await Promise.all([
     supabase.from('people').select('id, full_name, status').order('full_name'),
-    supabase.from('employment').select('person_id, job_title, department'),
+    supabase
+      .from('employment')
+      .select(
+        'person_id, job_title, department, team, manager_id, manager_name, contract_type, location, started_on, entitlement'
+      ),
     supabase
       .from('leave_requests')
       .select('id, person_id, kind, starts_on, ends_on, note, status')
@@ -95,6 +100,27 @@ export default async function Hr() {
 
   const byPerson = new Map((employment ?? []).map((e) => [e.person_id, e]))
   const names = new Map((people ?? []).map((p) => [p.id, p.full_name]))
+
+  // One row per person, employment folded in. Someone with no employment
+  // record still appears — that is precisely the case the editor exists to
+  // fix, and leaving them out would hide it.
+  const directoryRows: DirectoryRow[] = (people ?? []).map((p) => {
+    const e = byPerson.get(p.id)
+    return {
+      id: p.id,
+      full_name: p.full_name,
+      status: p.status,
+      job_title: e?.job_title ?? null,
+      department: e?.department ?? null,
+      team: e?.team ?? null,
+      manager_id: e?.manager_id ?? null,
+      manager_name: e?.manager_name ?? null,
+      contract_type: e?.contract_type ?? null,
+      location: e?.location ?? null,
+      started_on: e?.started_on ?? null,
+      entitlement: e?.entitlement ?? null,
+    }
+  })
   const pending = (leave ?? []).filter((l) => l.status === 'pending')
 
   const pendingResets = (resets ?? []).filter((r) => r.status === 'pending')
@@ -368,59 +394,19 @@ export default async function Hr() {
         )}
       </div>
 
-      <div className="card card--flush mt-5">
-        <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-          <h2 className="card__title">Directory</h2>
-          <div className="card__sub">
-            {(people ?? []).length === 1
-              ? '1 person'
-              : `${(people ?? []).length} people`}
+      {(people ?? []).length === 0 ? (
+        <div className="card card--flush mt-5">
+          <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
+            <h2 className="card__title">Directory</h2>
           </div>
-        </div>
-        {(people ?? []).length === 0 ? (
           <p className="t-subtle" style={{ padding: '0 var(--s-5) var(--s-5)' }}>
             Nobody has been added yet. Approve someone on{' '}
             <Link href="/hr/accounts">Accounts</Link> and they appear here.
           </p>
-        ) : (
-        <div className="table-scroll">
-          <table className="data-table">
-            <caption className="sr-only">Employee directory</caption>
-            <thead>
-              <tr>
-                <th scope="col">Name</th>
-                <th scope="col">Title</th>
-                <th scope="col">Department</th>
-                <th scope="col">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(people ?? []).map((p) => {
-                const e = byPerson.get(p.id)
-                return (
-                  <tr key={p.id}>
-                    <th scope="row" style={{ fontWeight: 600 }}>
-                      {p.full_name}
-                    </th>
-                    <td>{e?.job_title ?? '—'}</td>
-                    <td>{e?.department ?? '—'}</td>
-                    <td>
-                      <span
-                        className={
-                          p.status === 'active' ? 'chip chip--accent' : 'chip'
-                        }
-                      >
-                        {p.status}
-                      </span>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
         </div>
-        )}
-      </div>
+      ) : (
+        <Directory rows={directoryRows} />
+      )}
 
       <PrivacyNote
         plane="work"

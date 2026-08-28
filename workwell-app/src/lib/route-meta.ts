@@ -14,8 +14,13 @@ import type { Plane } from '@/components/chrome'
  * not a repeat of the page's own heading.
  */
 export const ROUTE_META: Record<string, { title: string; plane: Plane }> = {
-  '/trends': { title: 'Your trends', plane: 'private' },
-  '/check-in': { title: 'Daily check-in', plane: 'private' },
+  // Four merged pages carry more than one former screen each, so their
+  // titles name the question rather than one of the sections under them —
+  // "Check-in" over "Daily check-in", "Time" over "Attendance". The old
+  // paths are still listed: each one is now a redirect, and it renders this
+  // layout for the instant before it fires.
+  '/check-in': { title: 'Check-in', plane: 'private' },
+  '/trends': { title: 'Check-in', plane: 'private' },
   '/nudges': { title: 'Health nudges', plane: 'private' },
   '/boundaries': { title: 'Boundary assistant', plane: 'private' },
   '/recognition': { title: 'Recognition & connection', plane: 'private' },
@@ -23,15 +28,18 @@ export const ROUTE_META: Record<string, { title: string; plane: Plane }> = {
   '/profile': { title: 'Profile settings', plane: 'private' },
 
   '/leave': { title: 'Leave', plane: 'work' },
-  '/holidays': { title: 'Holidays', plane: 'work' },
-  '/attendance': { title: 'Attendance', plane: 'work' },
-  '/payroll': { title: 'Payroll', plane: 'work' },
-  '/expenses': { title: 'Expenses', plane: 'work' },
+  '/attendance': { title: 'Time', plane: 'work' },
+  '/holidays': { title: 'Time', plane: 'work' },
+  '/shifts': { title: 'Time', plane: 'work' },
+  '/payroll': { title: 'Pay', plane: 'work' },
+  '/expenses': { title: 'Pay', plane: 'work' },
   '/assets': { title: 'Assets', plane: 'work' },
   '/company-policies': { title: 'Company policies', plane: 'work' },
   '/news': { title: 'News', plane: 'work' },
-  '/complaints': { title: 'Complaints', plane: 'work' },
-  '/resignations': { title: 'Resignations', plane: 'work' },
+  '/cases': { title: 'Cases', plane: 'work' },
+  '/complaints': { title: 'Cases', plane: 'work' },
+  '/resignations': { title: 'Cases', plane: 'work' },
+  '/warnings': { title: 'Cases', plane: 'work' },
 
   // Each of these matches the plane its own page.tsx already passes to
   // PlaneBadge — org is reserved for anonymous, aggregate data (structural
@@ -44,5 +52,4 @@ export const ROUTE_META: Record<string, { title: string; plane: Plane }> = {
   '/letter-heads': { title: 'Letter heads', plane: 'work' },
   '/custom-fields': { title: 'Data fields', plane: 'work' },
   '/offboarding': { title: 'Offboarding', plane: 'work' },
-  '/warnings': { title: 'Warnings', plane: 'work' },
 }

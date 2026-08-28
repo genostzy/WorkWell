@@ -44,7 +44,7 @@ export function DecideExpense({
       kind: 'expense_decided',
       title: 'Expense claim ' + next.toLowerCase(),
       body: 'Your expense claim has been ' + next.toLowerCase() + '.',
-      link: '/expenses',
+      link: '/payroll?tab=expenses',
     })
 
     setBusy(false)
