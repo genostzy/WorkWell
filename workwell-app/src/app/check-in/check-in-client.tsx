@@ -167,7 +167,9 @@ export default function CheckInClient() {
   })
   const [labels, setLabels] = useState<Partial<Record<Key, string>>>({})
   const [note, setNote] = useState('')
-  const [existing, setExisting] = useState(false)
+  /** How many are already recorded today. Drives the note above the
+   *  questions; zero is the ordinary case. */
+  const [earlierToday, setEarlierToday] = useState(0)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -181,25 +183,21 @@ export default function CheckInClient() {
     const supabase = createClient()
     const today = new Date().toISOString().slice(0, 10)
 
+    // A count, not the answers. Since 0056 a day can hold several
+    // check-ins and each one is its own moment, so the questions start
+    // blank every time rather than pre-filled with the last set — going
+    // through again records how it is now, and reopening this morning's
+    // numbers would invite editing them into something that was never
+    // true. maybeSingle() also had to go: it errors outright the moment a
+    // day has more than one row.
     supabase
       .from('check_ins')
-      .select('mood, energy, pressure, workload, note')
+      .select('id', { count: 'exact', head: true })
       .eq('day', today)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        // No row for today is the normal case. A failed read is not, and
-        // starting blank over answers that exist would overwrite them.
+      .then(({ count, error }) => {
+        // None today is the normal case. A failed read is not.
         if (error) setError(error.message)
-        else if (data) {
-          setExisting(true)
-          setAnswers({
-            mood: data.mood,
-            energy: data.energy,
-            pressure: data.pressure,
-            workload: data.workload,
-          })
-          setNote(data.note ?? '')
-        }
+        else setEarlierToday(count ?? 0)
         setLoading(false)
       })
   }, [])
@@ -359,12 +357,17 @@ export default function CheckInClient() {
         </div>
       )}
 
-      {existing && !done && (oneAtATime ? step === 0 : true) && (
+      {earlierToday > 0 && !done && (oneAtATime ? step === 0 : true) && (
         <div className="banner banner--info mb-5" role="status">
           <span aria-hidden="true">✓</span>
           <span>
-            <b>You already checked in today.</b> Going through again amends
-            it — one a day is plenty.
+            <b>
+              {earlierToday === 1
+                ? 'You checked in once already today.'
+                : `You have checked in ${earlierToday} times today.`}
+            </b>{' '}
+            This adds another rather than replacing it — a day is not one
+            mood, and both are true.
           </span>
         </div>
       )}

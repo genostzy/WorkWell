@@ -6,7 +6,7 @@ import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { ToggleRow } from '@/components/controls'
 import { fmtDate } from '@/lib/format-date'
 
-type Policy = { id: string; title: string; updated_on: string }
+type Policy = { id: string; title: string; updated_on: string; body: string | null }
 
 export default function CompanyPoliciesClient() {
   const [personId, setPersonId] = useState<string | null>(null)
@@ -15,6 +15,9 @@ export default function CompanyPoliciesClient() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  /** Which policy is open. Only one at a time: these are documents, not
+   *  rows to skim side by side. */
+  const [reading, setReading] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -30,7 +33,7 @@ export default function CompanyPoliciesClient() {
       setPersonId(me?.id ?? null)
 
       const [{ data: ps, error: psError }, { data: acks, error: acksError }] = await Promise.all([
-        supabase.from('policies').select('id, title, updated_on').order('title'),
+        supabase.from('policies').select('id, title, updated_on, body').order('title'),
         supabase.from('policy_acks').select('policy_id'),
       ])
       if (cancelled) return
@@ -105,6 +108,38 @@ export default function CompanyPoliciesClient() {
                     if (next && !ack[p.id] && busy !== p.id) acknowledge(p.id)
                   }}
                 />
+
+                {/* The policy itself. Open and shut in place rather than on
+                    its own screen: the switch that says you have read it is
+                    right here, and sending somebody elsewhere to read the
+                    thing means coming back to a list to find their row
+                    again. Absent entirely when HR has not written the text
+                    yet — an empty reader is worse than no button. */}
+                {p.body ? (
+                  <>
+                    <div className="row mt-3">
+                      <button
+                        type="button"
+                        className="btn btn--secondary btn--sm"
+                        aria-expanded={reading === p.id}
+                        onClick={() => setReading((id) => (id === p.id ? null : p.id))}
+                      >
+                        {reading === p.id ? 'Close' : 'View policy'}
+                      </button>
+                    </div>
+                    {reading === p.id && (
+                      <div className="policy-body mt-3">
+                        {p.body.split(/\n{2,}/).map((para, i) => (
+                          <p key={i}>{para}</p>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="t-subtle mt-3">
+                    The text of this one has not been added yet.
+                  </p>
+                )}
               </div>
             ))}
           </div>

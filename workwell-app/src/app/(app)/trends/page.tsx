@@ -17,6 +17,8 @@ const METRICS = [
 type Metric = 'mood' | 'energy' | 'pressure' | 'workload'
 
 type Row = {
+  id: string
+  created_at: string
   day: string
   mood: number | null
   energy: number | null
@@ -92,8 +94,9 @@ export default async function Trends() {
     readIsHr(supabase),
     supabase
       .from('check_ins')
-      .select('day, mood, energy, pressure, workload, note')
+      .select('id, created_at, day, mood, energy, pressure, workload, note')
       .order('day', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(30),
   ])
 
@@ -230,12 +233,25 @@ export default async function Trends() {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.day}>
+                // Keyed on the entry, not the day: a day can hold more
+                // than one check-in since 0056, and two rows sharing a key
+                // is how React starts reusing the wrong one.
+                <tr key={r.id}>
                   <th scope="row" style={{ fontWeight: 600 }}>
                     {new Date(r.day + 'T00:00:00').toLocaleDateString('en-GB', {
                       day: 'numeric',
                       month: 'short',
                     })}
+                    {/* The time, under the date. Two entries on one day
+                        would otherwise be two identical-looking rows with
+                        different numbers in them, which reads as a fault
+                        rather than as two moments. */}
+                    <div className="t-subtle" style={{ fontWeight: 400 }}>
+                      {new Date(r.created_at).toLocaleTimeString('en-PH', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}
+                    </div>
                   </th>
                   <td className="t-num">{r.mood ?? '—'}</td>
                   <td className="t-num">{r.energy ?? '—'}</td>

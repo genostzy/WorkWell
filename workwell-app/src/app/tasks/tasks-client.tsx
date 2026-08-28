@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import Link from 'next/link'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { fmtDate } from '@/lib/format-date'
+import { TaskComments } from './task-comments'
 
 type Task = {
   id: string
@@ -59,6 +61,11 @@ export default function TasksClient() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [showDone, setShowDone] = useState(false)
+  const [names, setNames] = useState<Map<string, string>>(new Map())
+  /** The two things the day asks for, worked out rather than stored — see
+   *  DailyRow below. null while still being read. */
+  const [checkedInToday, setCheckedInToday] = useState<boolean | null>(null)
+  const [timedInToday, setTimedInToday] = useState<boolean | null>(null)
 
   const [title, setTitle] = useState('')
   const [due, setDue] = useState('')
@@ -83,9 +90,13 @@ export default function TasksClient() {
       }
       setPersonId(me?.id ?? null)
 
-      const [own, given] = await Promise.all([
+      const today = todayISO()
+      const [own, given, people, checkIns, attendance] = await Promise.all([
         supabase.from('tasks').select('id, title, note, due_on, done_at'),
         supabase.from('assigned_tasks').select('id, title, note, due_on, done_at'),
+        supabase.from('people').select('id, full_name'),
+        supabase.from('check_ins').select('id', { count: 'exact', head: true }).eq('day', today),
+        supabase.from('attendance').select('time_in').eq('day', today).maybeSingle(),
       ])
       if (cancelled) return
       if (own.error || given.error) {
@@ -94,6 +105,14 @@ export default function TasksClient() {
         setMine(((own.data ?? []) as Task[]).sort(order))
         setAssigned(((given.data ?? []) as Task[]).sort(order))
       }
+      if (people.data) {
+        setNames(new Map(people.data.map((p) => [p.id, p.full_name as string])))
+      }
+      // A failed read leaves these null, which renders as "not sure yet"
+      // rather than as "not done" — telling somebody they have not checked
+      // in when the query simply failed is the worse of the two.
+      if (!checkIns.error) setCheckedInToday((checkIns.count ?? 0) > 0)
+      if (!attendance.error) setTimedInToday(Boolean(attendance.data?.time_in))
       setLoading(false)
     })()
     return () => {
@@ -216,8 +235,31 @@ export default function TasksClient() {
         </div>
       )}
 
-      {/* Assigned first: it is the half somebody else is waiting on. */}
+      {/* Today first: these two are due again tomorrow whatever happens,
+          and they are the only things here with a deadline of "today". */}
       <div className="card card--flush">
+        <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
+          <h2 className="card__title">Today</h2>
+          <div className="card__sub">Once a day, every working day</div>
+        </div>
+        <ul className="task-list">
+          <DailyRow
+            title="Check in"
+            note="How the day is going. Yours alone."
+            href="/check-in"
+            done={checkedInToday}
+          />
+          <DailyRow
+            title="Time in"
+            note="Start the day on the record."
+            href="/attendance"
+            done={timedInToday}
+          />
+        </ul>
+      </div>
+
+      {/* Then the half somebody else is waiting on. */}
+      <div className="card card--flush mt-5">
         <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
           <div className="row row--between">
             <div>
@@ -246,7 +288,12 @@ export default function TasksClient() {
         ) : (
           <ul className="task-list">
             {assigned.map((t) => (
-              <TaskRow key={t.id} task={t} onToggle={() => toggleAssigned(t)} />
+              <TaskRow
+                key={t.id}
+                task={t}
+                onToggle={() => toggleAssigned(t)}
+                thread={<TaskComments taskId={t.id} meId={personId} names={names} />}
+              />
             ))}
           </ul>
         )}
@@ -369,11 +416,15 @@ function TaskRow({
   onToggle,
   onEdit,
   onDelete,
+  thread,
 }: {
   task: Task
   onToggle: () => void
   onEdit?: () => void
   onDelete?: () => void
+  /** The comment thread, for the tasks that have one. Passed in rather
+   *  than built here so this row stays the same row on both lists. */
+  thread?: React.ReactNode
 }) {
   const done = Boolean(task.done_at)
   const due = task.due_on ? dueLabel(task.due_on, done) : null
@@ -414,6 +465,61 @@ function TaskRow({
           )}
         </span>
       )}
+
+      {thread && <div className="task__thread">{thread}</div>}
+    </li>
+  )
+}
+
+/**
+ * One of the day's standing jobs, shown as a task without being one.
+ *
+ * Nothing is stored for these and nothing needs to be: "have you checked
+ * in today" is already answerable from the check-ins themselves, and
+ * writing two rows into everybody's task list every morning would need a
+ * scheduled job, a rule for weekends and holidays, and a pile of rows
+ * nobody asked for. They are ticked by doing the thing, not by pressing
+ * the box, so the box is a state and the row is a link.
+ */
+function DailyRow({
+  title,
+  note,
+  href,
+  done,
+}: {
+  title: string
+  note: string
+  href: string
+  /** null while it is still being read — reported as unknown rather than
+   *  as not done, because those are different things. */
+  done: boolean | null
+}) {
+  return (
+    <li className={done ? 'task is-done' : 'task'}>
+      <span
+        className="task__check"
+        role="img"
+        aria-label={done === null ? 'Not known yet' : done ? 'Done' : 'Not done yet'}
+        data-daily="true"
+        data-state={done === null ? 'unknown' : done ? 'done' : 'open'}
+      >
+        <span aria-hidden="true">{done ? '✓' : ''}</span>
+      </span>
+
+      <div className="task__body">
+        <span className="task__title">{title}</span>
+        <span className="task__note">{note}</span>
+      </div>
+
+      <span className={done ? 'chip chip--accent task__due' : 'chip task__due'}>
+        {done === null ? 'Checking…' : done ? 'Done today' : 'Due today'}
+      </span>
+
+      <span className="task__actions">
+        <Link className="btn btn--ghost btn--sm" href={href}>
+          {done ? 'Open' : 'Do it'}
+        </Link>
+      </span>
     </li>
   )
 }

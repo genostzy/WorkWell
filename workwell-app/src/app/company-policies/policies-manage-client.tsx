@@ -6,19 +6,22 @@ import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { ConfirmButton } from '@/components/controls'
 import { fmtDate } from '@/lib/format-date'
 
-type Policy = { id: string; title: string; updated_on: string }
+type Policy = { id: string; title: string; updated_on: string; body: string | null }
 
 function today() {
   return new Date().toISOString().slice(0, 10)
 }
 
-const EMPTY_DRAFT = { title: '', updated_on: today() }
+const EMPTY_DRAFT = { title: '', updated_on: today(), body: '' }
 
 /**
  * HR's side of Company policies: the list employees acknowledge, minus the
- * acknowledging. A policy here is a title and a date — the document itself
- * lives wherever HR actually keeps it; this just tracks that everyone has
- * seen it exists and agreed to read it.
+ * acknowledging.
+ *
+ * A policy is a title, a date and its text. The text is new — until 0057
+ * the table held a heading and nothing else, so people were acknowledging
+ * a name and the document itself lived somewhere this system could not
+ * show them. An acknowledgement of something unreadable is not worth much.
  *
  * Deleting one takes everybody's acknowledgement of it with it (the table's
  * own foreign key cascades that), so a fresh acknowledgement record is the
@@ -42,7 +45,7 @@ export function PoliciesManageClient() {
       const supabase = createClient()
       const [{ data: me, error: meError }, { data, error }] = await Promise.all([
         supabase.from('me').select('org_id').maybeSingle(),
-        supabase.from('policies').select('id, title, updated_on').order('title'),
+        supabase.from('policies').select('id, title, updated_on, body').order('title'),
       ])
       if (cancelled) return
       if (meError ?? error) setLoadError((meError ?? error)!.message)
@@ -63,7 +66,7 @@ export function PoliciesManageClient() {
 
   function startEdit(p: Policy) {
     setEditingId(p.id)
-    setDraft({ title: p.title, updated_on: p.updated_on })
+    setDraft({ title: p.title, updated_on: p.updated_on, body: p.body ?? '' })
     setFormError(null)
   }
 
@@ -91,8 +94,15 @@ export function PoliciesManageClient() {
       }
       const { data, error } = await supabase
         .from('policies')
-        .insert({ org_id: orgId, title, updated_on: draft.updated_on })
-        .select('id, title, updated_on')
+        .insert({
+          org_id: orgId,
+          title,
+          updated_on: draft.updated_on,
+          // Empty stays null rather than '', so "no text yet" is one
+          // state and not two.
+          body: draft.body.trim() || null,
+        })
+        .select('id, title, updated_on, body')
         .single()
       setSaving(false)
       if (error) return setFormError(error.message)
@@ -105,9 +115,9 @@ export function PoliciesManageClient() {
 
     const { data, error } = await supabase
       .from('policies')
-      .update({ title, updated_on: draft.updated_on })
+      .update({ title, updated_on: draft.updated_on, body: draft.body.trim() || null })
       .eq('id', editingId)
-      .select('id, title, updated_on')
+      .select('id, title, updated_on, body')
       .single()
     setSaving(false)
     if (error) return setFormError(error.message)
@@ -235,8 +245,8 @@ function PolicyForm({
   error,
   submitLabel,
 }: {
-  draft: { title: string; updated_on: string }
-  setDraft: (d: { title: string; updated_on: string }) => void
+  draft: { title: string; updated_on: string; body: string }
+  setDraft: (d: { title: string; updated_on: string; body: string }) => void
   onSave: () => void
   onCancel: () => void
   saving: boolean
@@ -273,6 +283,23 @@ function PolicyForm({
           value={draft.updated_on}
           onChange={(e) => setDraft({ ...draft, updated_on: e.target.value })}
         />
+      </div>
+      <div className="field">
+        <label className="field__label" htmlFor="policy-body">
+          The policy
+        </label>
+        <textarea
+          id="policy-body"
+          className="textarea"
+          rows={10}
+          value={draft.body}
+          placeholder="Paste or write the policy here. Blank lines start a new paragraph."
+          onChange={(e) => setDraft({ ...draft, body: e.target.value })}
+        />
+        <p className="t-subtle mt-2">
+          What people read when they open it. Leaving it empty keeps the old
+          behaviour — a title with nothing behind it.
+        </p>
       </div>
       <div className="row" style={{ gap: 'var(--s-2)' }}>
         <button

@@ -17,7 +17,7 @@ const PRIVATE_SPOTS: Spot[] = [
   { id: 'desk', href: '/trends', label: 'Your desk', sub: 'Trends' },
   { id: 'journal', href: '/check-in', label: 'Journal', sub: 'Check in' },
   { id: 'cooler', href: '/nudges', label: 'Water cooler', sub: 'Nudges' },
-  { id: 'clock', href: '/boundaries', label: 'The clock', sub: '' },
+  { id: 'clock', href: '/boundaries', label: 'The clock', sub: 'Boundaries' },
   { id: 'lounge', href: '/recognition', label: 'The sofa', sub: 'Recognition' },
   { id: 'shelf', href: '/workspace', label: 'Your shelf', sub: 'Workspace' },
 ]
@@ -43,6 +43,7 @@ const WORK_SPOTS: Spot[] = [
  *  locked, this list simply never renders for them at all. */
 const ADMIN_SPOTS: Spot[] = [
   { id: 'org', href: '/org', label: 'Structural load', sub: 'Anonymous patterns' },
+  { id: 'workspace', href: '/workspace', label: 'Your shelf', sub: 'Workspace' },
   { id: 'hr', href: '/hr', label: 'People', sub: 'Employment records' },
   { id: 'tasks', href: '/tasks', label: 'Tasks', sub: 'Assign & track' },
   { id: 'accounts', href: '/hr/accounts', label: 'Accounts', sub: 'Access & sign-in' },

@@ -1325,3 +1325,76 @@ a, button {
   }
   .task__due, .task__actions { grid-column: 2; justify-self: start; }
 }
+
+/* The text of a policy, opened in place under its row. Measured rather
+   than full width: a policy is prose, and prose set the width of a card is
+   prose nobody finishes. */
+.policy-body {
+  padding: var(--s-4);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  max-height: 26rem;
+  overflow-y: auto;
+}
+.policy-body p {
+  margin: 0 0 var(--s-3);
+  max-width: 70ch;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  line-height: var(--lh-body);
+  white-space: pre-wrap;
+}
+.policy-body p:last-child { margin-bottom: 0; }
+
+/* A comment thread under a task. Spans the row's full width rather than
+   sitting in the title column, because it is a conversation and not a
+   field of the task. */
+.task__thread { grid-column: 1 / -1; }
+
+.task-thread__panel {
+  padding: var(--s-3);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.task-thread__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.task-thread__item {
+  padding-bottom: var(--s-3);
+  border-bottom: 1px solid var(--border);
+}
+.task-thread__item:last-child { border-bottom: none; padding-bottom: 0; }
+
+.task-thread__who { font-size: var(--fs-sm); }
+.task-thread__when { font-size: var(--fs-xs); white-space: nowrap; }
+
+.task-thread__body {
+  margin: var(--s-2) 0 0;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  line-height: var(--lh-body);
+  /* Somebody pasting an error message or a long path should not push the
+     whole thread sideways. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* The daily rows are a state, not a control — no pointer, no hover. */
+.task__check[data-daily="true"] { cursor: default; }
+.task__check[data-daily="true"][data-state="done"] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.task__check[data-daily="true"][data-state="unknown"] {
+  border-style: dashed;
+  opacity: .6;
+}

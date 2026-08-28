@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { fmtDate } from '@/lib/format-date'
+import { TaskComments } from './task-comments'
 
 type Assigned = {
   id: string
@@ -40,6 +41,9 @@ export default function AssignTasksClient() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [showDone, setShowDone] = useState(false)
+  /** Which task's thread is open. One at a time: a table of open threads
+   *  stops being a table. */
+  const [openThread, setOpenThread] = useState<string | null>(null)
 
   const [personId, setPersonId] = useState('')
   const [title, setTitle] = useState('')
@@ -199,7 +203,11 @@ export default function AssignTasksClient() {
                   <tbody>
                     {visible.map((t) => {
                       const overdue = Boolean(!t.done_at && t.due_on && t.due_on < today)
-                      return (
+                      // Two rows per task when the thread is open: the row
+                      // itself, then a full-width row under it. A <tr> can
+                      // only live inside <tbody>, so this returns a list
+                      // rather than wrapping them in anything.
+                      return [
                         <tr key={t.id}>
                           <th scope="row" style={{ fontWeight: 600 }}>
                             {names.get(t.person_id) ?? 'Someone'}
@@ -223,16 +231,35 @@ export default function AssignTasksClient() {
                             </span>
                           </td>
                           <td>
-                            <button
-                              type="button"
-                              className="btn btn--ghost btn--sm"
-                              onClick={() => remove(t)}
-                            >
-                              Remove
-                            </button>
+                            <div className="row" style={{ gap: 'var(--s-1)' }}>
+                              <button
+                                type="button"
+                                className="btn btn--ghost btn--sm"
+                                aria-expanded={openThread === t.id}
+                                onClick={() =>
+                                  setOpenThread((id) => (id === t.id ? null : t.id))
+                                }
+                              >
+                                {openThread === t.id ? 'Close' : 'Comments'}
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn--ghost btn--sm"
+                                onClick={() => remove(t)}
+                              >
+                                Remove
+                              </button>
+                            </div>
                           </td>
-                        </tr>
-                      )
+                        </tr>,
+                        openThread === t.id ? (
+                          <tr key={`${t.id}-thread`}>
+                            <td colSpan={5} style={{ background: 'var(--surface-2)' }}>
+                              <TaskComments taskId={t.id} meId={meId} names={names} />
+                            </td>
+                          </tr>
+                        ) : null,
+                      ]
                     })}
                   </tbody>
                 </table>
