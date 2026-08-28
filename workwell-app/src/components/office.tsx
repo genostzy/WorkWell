@@ -8,6 +8,7 @@ import { hideSky, showSky } from '@/lib/sky'
 import { Wordmark } from '@/components/brandmark'
 import { ShiftRing } from '@/components/shift-ring'
 import { usePrefs } from '@/lib/use-prefs'
+import { createClient } from '@/lib/supabase/client'
 
 /** The prototype's room is vendored unmodified from workwell-prototype, so
  *  it stays easy to re-sync. It still speaks in the prototype's filenames,
@@ -25,6 +26,7 @@ export const ROUTES: Record<string, string> = {
   'workspace.html': '/workspace',
   'hr-people.html': '/hr',
   'org-diagnostics.html': '/org',
+  'tasks.html': '/tasks',
   'holidays.html': '/holidays',
   'attendance.html': '/attendance',
   'payroll.html': '/payroll',
@@ -97,6 +99,160 @@ export function initialsOf(name: string) {
 const useIsomorphicLayoutEffect =
   typeof window !== 'undefined' ? useLayoutEffect : useEffect
 
+/** What the board can hold before it starts hiding things. Four rows, two
+ *  under each heading — set by the drawn geometry in room.js, not by taste,
+ *  so the two have to be changed together. */
+const BOARD_ROWS = 4
+
+/** How wide a row's text may be, in the room's own units: the board panel's
+ *  right edge (x 930 in room.js) less where the text starts (x 722) and a
+ *  little air. Both numbers live in room.js's drawn geometry — move the
+ *  board and this moves with it. */
+const BOARD_TEXT_WIDTH = 196
+
+/**
+ * Put a title on a row, trimmed to what the board can actually hold.
+ *
+ * Measured rather than counted. A character limit is the obvious way to do
+ * this and it does not work: the type is proportional, so 22 narrow letters
+ * fit comfortably while 22 wide ones run 60-odd units past the edge of the
+ * board and out over the wall. getComputedTextLength asks the renderer what
+ * it actually drew, which is the only thing that answers the question.
+ *
+ * It throws when the text is not being rendered — the room is in list view,
+ * say — so a failure here falls back to a rough character cap and leaves the
+ * next rebuild to do it properly, exactly as placeMarks does in shift-ring.
+ */
+function fitBoardText(el: SVGTextElement, title: string) {
+  el.textContent = title
+  let width: number
+  try {
+    width = el.getComputedTextLength()
+  } catch {
+    el.textContent = title.length > 22 ? `${title.slice(0, 21)}…` : title
+    return
+  }
+  if (width <= BOARD_TEXT_WIDTH) return
+
+  // Shorten a character at a time. Titles are a line long, so this is a
+  // handful of measurements, and the alternative — guessing an average
+  // glyph width — is the thing that was wrong in the first place.
+  let cut = title.length
+  while (cut > 1) {
+    cut -= 1
+    el.textContent = `${title.slice(0, cut).trimEnd()}…`
+    try {
+      if (el.getComputedTextLength() <= BOARD_TEXT_WIDTH) return
+    } catch {
+      return
+    }
+  }
+}
+
+type BoardTask = { title: string; done: boolean; overdue: boolean; assigned: boolean }
+
+/**
+ * Write the day's tasks onto the board room.js drew empty.
+ *
+ * Runs after every rebuild rather than once, because build() replaces the
+ * room's whole innerHTML on the clock tick and takes the board with it.
+ * That is also why nothing here holds a reference between calls: the nodes
+ * it writes into are new every time.
+ *
+ * Open tasks only, and assigned before your own — the board is a reminder,
+ * not a record, and the half somebody else is waiting on is the half worth
+ * the space. Anything that will not fit is counted rather than dropped
+ * silently, so the board never quietly under-reports the day.
+ *
+ * The rows are drawn at fixed positions but laid out here, because a
+ * heading belongs to the rows under it and neither half is always present.
+ * Filling the drawn rows in order and hiding the empty ones put "Yours"
+ * underneath its own tasks the moment nothing was assigned. Each visible
+ * section is placed in turn instead, from the top of the board down.
+ */
+function paintTaskBoard(root: HTMLElement, tasks: BoardTask[]) {
+  const board = root.querySelector('.taskboard')
+  if (!board) return
+
+  const heads = board.querySelectorAll<SVGTextElement>('.taskboard__head')
+  const rows = board.querySelectorAll<SVGGElement>('.taskboard__row')
+  const more = board.querySelector<SVGTextElement>('.taskboard__more')
+  if (heads.length < 2 || rows.length < BOARD_ROWS || !more) return
+
+  const open = tasks.filter((t) => !t.done)
+  const assigned = open.filter((t) => t.assigned)
+  const own = open.filter((t) => !t.assigned)
+
+  // Each side keeps at least half the board when it can fill it, and gives
+  // up what it cannot use — a half-empty board beside a hidden task would
+  // be the wrong trade.
+  const half = Math.floor(BOARD_ROWS / 2)
+  const takeAssigned = Math.min(
+    assigned.length,
+    own.length >= half ? half : BOARD_ROWS - Math.min(own.length, half)
+  )
+  const takeOwn = Math.min(own.length, BOARD_ROWS - takeAssigned)
+
+  const sections = [
+    { head: heads[0], items: assigned.slice(0, takeAssigned) },
+    { head: heads[1], items: own.slice(0, takeOwn) },
+  ].filter((sec) => sec.items.length > 0)
+
+  /* Vertical rhythm, in the room's units. These match the positions room.js
+     draws the empty board at, so the untouched board and a fully laid-out
+     one sit at exactly the same place. */
+  const TOP = 466 // first heading's baseline
+  const HEAD_TO_ROW = 10 // heading baseline down to the first box's top
+  const ROW_PITCH = 24
+  const SECTION_GAP = 22 // past the last box, down to the next heading
+
+  /** Slide an element from where it was drawn to where it belongs. The
+   *  drawn y is never mutated, so this stays correct on a repaint. */
+  const place = (el: Element, natural: number, target: number) => {
+    const dy = target - natural
+    if (dy === 0) el.removeAttribute('transform')
+    else el.setAttribute('transform', `translate(0 ${dy})`)
+  }
+
+  heads.forEach((h) => h.classList.add('is-empty'))
+  rows.forEach((r) => r.classList.add('is-empty'))
+
+  let y = TOP
+  let used = 0
+  for (const section of sections) {
+    section.head.classList.remove('is-empty')
+    place(section.head, Number(section.head.getAttribute('y')), y)
+    y += HEAD_TO_ROW
+
+    for (const task of section.items) {
+      const row = rows[used]
+      const box = row?.querySelector<SVGRectElement>('.taskboard__box')
+      const text = row?.querySelector<SVGTextElement>('.taskboard__text')
+      if (!row || !box || !text) break
+
+      row.classList.remove('is-empty')
+      row.setAttribute('data-done', String(task.done))
+      row.setAttribute('data-overdue', String(task.overdue))
+      // Trimmed here rather than by CSS: SVG text has no ellipsis, and an
+      // untrimmed title runs straight off the board and over the wall.
+      fitBoardText(text, task.title)
+      place(row, Number(box.getAttribute('y')), y)
+
+      y += ROW_PITCH
+      used += 1
+    }
+    y += SECTION_GAP
+  }
+
+  const hidden = open.length - used
+  more.textContent =
+    open.length === 0 ? 'Nothing open' : hidden > 0 ? `+${hidden} more` : ''
+  // Straight under the last row, or at the top of an empty board rather
+  // than floating in the middle of nothing.
+  place(more, Number(more.getAttribute('y')), sections.length ? y - SECTION_GAP : TOP)
+}
+
+
 export function Office({
   name,
   initials,
@@ -154,6 +310,7 @@ export function Office({
   )
   const [phase, setPhase] = useState<string | null>(null)
   const [clock, setClock] = useState<string | null>(null)
+  const [boardTasks, setBoardTasks] = useState<BoardTask[]>([])
   const [confirmingSignOut, setConfirmingSignOut] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const doorRef = useRef<Element | null>(null)
@@ -233,6 +390,8 @@ export function Office({
       avatarGroup.appendChild(fo)
     }
 
+    paintTaskBoard(roomRef.current, boardTasks)
+
     if (listRef.current) {
       listRef.current.innerHTML = WW.room.roomList('employee', false, caps)
     }
@@ -240,7 +399,50 @@ export function Office({
     setPhase(WW.room.phaseAt(minutes))
     setClock(WW.room.formatTime(minutes))
     setLoaded(true)
-  }, [name, initials, colour, avatarUrl, avatarOffsetX, avatarOffsetY])
+  }, [name, initials, colour, avatarUrl, avatarOffsetX, avatarOffsetY, boardTasks])
+
+  // Read once on arrival. The board is a glance at the day, not a live
+  // view of it — and the room already rebuilds itself every minute, which
+  // would make a subscription here the second thing keeping this component
+  // busy for a picture nobody is watching.
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const supabase = createClient()
+      const today = new Date()
+      const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+
+      const [own, given] = await Promise.all([
+        supabase.from('tasks').select('title, due_on, done_at'),
+        supabase.from('assigned_tasks').select('title, due_on, done_at'),
+      ])
+      if (cancelled) return
+
+      // A board that cannot be drawn is left blank rather than made into an
+      // error: nothing else in the room can fail loudly, and this is the
+      // one piece that reads from a table.
+      if (own.error || given.error) return
+
+      const shape = (
+        rows: { title: string; due_on: string | null; done_at: string | null }[],
+        assigned: boolean
+      ) =>
+        rows.map((r) => ({
+          title: r.title,
+          done: Boolean(r.done_at),
+          overdue: Boolean(!r.done_at && r.due_on && r.due_on < iso),
+          assigned,
+        }))
+
+      setBoardTasks([
+        ...shape(given.data ?? [], true),
+        ...shape(own.data ?? [], false),
+      ])
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useIsomorphicLayoutEffect(() => {
     const mq = window.matchMedia('(max-width: 860px)')

@@ -100,6 +100,8 @@ const SPOTS = [
      furniture in the picture itself. `plane: 'org'` here means what it
      means everywhere else in this list: locked to anyone without the org
      capability, shown locked rather than hidden, same as the meeting room. */
+  { id: 'tasks',      href: 'tasks.html',      plane: 'private',
+    label: 'Task board',      sub: 'Yours & assigned' },
   { id: 'holidays',   href: 'holidays.html',   plane: 'private',
     label: 'Holidays',        sub: 'Calendar' },
   { id: 'attendance', href: 'attendance.html', plane: 'private',
@@ -273,19 +275,54 @@ function roomSVG(opts) {
     <line class="ink" x1="418" y1="96" x2="446" y2="96"/>
     <circle class="accent-soft" cx="432" cy="66" r="4"/>`;
 
-  /* --- reading nook, right floor —  x660-976/y270-696 has nothing below
-     the sofa at y355, so the bottom third of the room read as bare floor.
-     Pure scenery, same as the lamps: no tabindex, no data-go. --- */
-  const nook = `
-    <rect class="rug" x="700" y="470" width="220" height="150" rx="16" aria-hidden="true"/>
-    <g aria-hidden="true">
-      <rect class="furn" x="770" y="500" width="80" height="96" rx="10"/>
-      <line class="ink" x1="778" y1="524" x2="842" y2="524"/>
-      <line class="ink" x1="778" y1="548" x2="842" y2="548"/>
-      <line class="ink" x1="778" y1="572" x2="842" y2="572"/>
-      <circle class="plant" cx="880" cy="600" r="24"/>
-      <circle class="plant-2" cx="866" cy="586" r="12"/>
-      <circle class="plant-2" cx="894" cy="588" r="10"/>
+  /* --- task board, right floor —— x660-976/y270-696 had nothing below the
+     sofa at y355, so the bottom third of the room read as bare floor. It
+     used to hold a reading nook that was pure scenery; this is the same
+     footprint doing a job.
+
+     Unlike every other spot, this one carries live content: the rows below
+     are drawn empty and office.tsx fills in the titles and ticks after the
+     room is built (see paintTaskBoard there). That keeps this file free of
+     any data access — it still renders standalone in the prototype, just
+     with an empty board — and it is why the row parts carry stable classes
+     rather than being anonymous shapes.
+
+     Two headings, because the two kinds of task are not interchangeable:
+     what somebody asked of you, and what you set yourself. The second
+     never leaves your own plane, and a board that ran them together would
+     be the one place in this room that implied otherwise.
+
+     The ticks here are drawn, not pressed. The room is a way of getting to
+     things; the dock's time-in button is the single exception, and it
+     exists only because clocking in has nowhere else to live. Ticking a
+     task has a whole screen of its own two clicks away. --- */
+  const taskboard = `
+    <rect class="rug" x="668" y="428" width="278" height="196" rx="16"/>
+    <rect class="furn" x="684" y="440" width="246" height="172" rx="12"/>
+    <g class="taskboard" aria-hidden="true">
+      <text class="taskboard__head" x="700" y="466">Assigned</text>
+      <g class="taskboard__row" data-row="0">
+        <rect class="taskboard__box" x="700" y="476" width="13" height="13" rx="3"/>
+        <path class="taskboard__tick" d="M 703 483 l 3 3.5 l 6.5 -7.5"/>
+        <text class="taskboard__text" x="722" y="487"></text>
+      </g>
+      <g class="taskboard__row" data-row="1">
+        <rect class="taskboard__box" x="700" y="500" width="13" height="13" rx="3"/>
+        <path class="taskboard__tick" d="M 703 507 l 3 3.5 l 6.5 -7.5"/>
+        <text class="taskboard__text" x="722" y="511"></text>
+      </g>
+      <text class="taskboard__head" x="700" y="546">Yours</text>
+      <g class="taskboard__row" data-row="2">
+        <rect class="taskboard__box" x="700" y="556" width="13" height="13" rx="3"/>
+        <path class="taskboard__tick" d="M 703 563 l 3 3.5 l 6.5 -7.5"/>
+        <text class="taskboard__text" x="722" y="567"></text>
+      </g>
+      <g class="taskboard__row" data-row="3">
+        <rect class="taskboard__box" x="700" y="580" width="13" height="13" rx="3"/>
+        <path class="taskboard__tick" d="M 703 587 l 3 3.5 l 6.5 -7.5"/>
+        <text class="taskboard__text" x="722" y="591"></text>
+      </g>
+      <text class="taskboard__more" x="700" y="604"></text>
     </g>`;
 
   /* --- meeting room contents (org) --- */
@@ -467,7 +504,7 @@ function roomSVG(opts) {
     ${spotOpen(by('journal'), journal, 270, 369)}
     ${spotOpen(by('cooler'), cooler, 450, 510)}
     ${spotOpen(by('lounge'), lounge, 730, 382)}
-    ${nook}
+    ${spotOpen(by('tasks'), taskboard, 807, 646)}
     ${hrKit}`;
 
   return `
