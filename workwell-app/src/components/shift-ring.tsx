@@ -3,14 +3,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
+  dockState,
+  hoursLeft,
   labelTime,
   mealFraction,
   ringState,
-  timeInWindow,
-  toHHMM,
   workingMinutes,
   type DayLog,
-  type RingState,
   type Shift,
 } from '@/lib/shift'
 
@@ -58,61 +57,6 @@ const BTN_H = 38
 const DOCK_X = 500
 const BTN_Y = 606
 const HOURS_Y = 572
-
-/** 465 → '7h 45m left'. Minutes alone read as a stopwatch, not a day. */
-function hoursLeft(mins: number) {
-  if (mins <= 0) return 'Shift complete'
-  const h = Math.floor(mins / 60)
-  const m = mins % 60
-  return h ? `${h}h ${m}m left` : `${m}m left`
-}
-
-type DockState = {
-  label: string
-  /** null when there is nothing to press — the button still says why. */
-  action: 'in' | 'out' | null
-  mode: 'ready' | 'working' | 'paused' | 'done' | 'shut'
-}
-
-/**
- * What the one button says and does right now.
- *
- * One button rather than two, because at any moment exactly one of them
- * would have been pressable — a permanently dead "Time out" sitting next to
- * "Time in" is a control that spends most of the day lying about what you
- * can do. When there is nothing to press it keeps the space and explains
- * itself instead of vanishing, so the dock never changes shape under the
- * cursor.
- */
-function dockState(
-  shift: Shift,
-  s: RingState,
-  log: DayLog,
-  now: Date,
-  timeZone: string | null
-): DockState {
-  // Keyed on the time-out stamp, not on RingState.done — that also goes true
-  // the moment the ring fills, and someone who has worked their whole shift
-  // without clocking out still has to be able to clock out. Reading it here
-  // would have replaced their only way to do that with "Done for today".
-  if (log.timeOut) return { label: 'Done for today', action: null, mode: 'done' }
-  if (log.timeIn) {
-    return {
-      label: 'Time out',
-      action: 'out',
-      mode: s.paused ? 'paused' : 'working',
-    }
-  }
-  const window_ = timeInWindow(shift, now, timeZone)
-  if (!window_.open) {
-    return {
-      label: `Opens ${labelTime(toHHMM(window_.opensAt ?? 0))}`,
-      action: null,
-      mode: 'shut',
-    }
-  }
-  return { label: 'Time in', action: 'in', mode: 'ready' }
-}
 
 /** Built once per injection; everything that changes is set as an attribute
  *  afterwards, so nothing here is re-parsed on a tick. */
@@ -185,7 +129,7 @@ function skeleton(shift: Shift) {
           </g>
           <rect class="shift-dock__edge" x="${-BTN_W / 2}" y="${-BTN_H / 2}"
                 width="${BTN_W}" height="${BTN_H}" rx="${BTN_H / 2}"/>
-          <text class="shift-dock__label" y="1"></text>
+          <text class="shift-dock__label" y="1" aria-live="polite"></text>
         </g>
       </g>
     </g>`
@@ -298,6 +242,9 @@ export function ShiftRing({ roomRef }: { roomRef: React.RefObject<HTMLDivElement
   // leaving the room a minute behind the press that changed it.
   const readRef = useRef<(() => Promise<void>) | null>(null)
   const busyRef = useRef(false)
+  // Holds a failed press()'s message on screen for a few seconds instead of
+  // letting the very next paint tick silently revert it.
+  const errorRef = useRef<{ text: string; until: number } | null>(null)
 
   // One read on mount, then a re-read every minute: the two RPCs that stamp
   // the meal pause fire from the attendance screen, so this view has to pick
@@ -373,20 +320,27 @@ export function ShiftRing({ roomRef }: { roomRef: React.RefObject<HTMLDivElement
       const { action } = dockState(shift, s, log, new Date(), zoneRef.current)
       if (!action) return
 
+      // Held through the re-read too, not just the RPC: clearing it the
+      // moment the RPC settles left a window where logRef.current was still
+      // stale and a fast second press could re-derive the same action and
+      // fire a duplicate RPC before the refresh caught up.
       busyRef.current = true
-      const supabase = createClient()
-      const { error } = await supabase.rpc(
-        action === 'in' ? 'attendance_time_in' : 'attendance_time_out'
-      )
-      busyRef.current = false
-      if (error) {
-        // The room has nowhere to put a sentence, so the button says it —
-        // and the next read puts the real state back either way.
-        const label = roomRef.current?.querySelector('.shift-dock__label')
-        if (label) label.textContent = "Couldn't save"
-        return
+      try {
+        const supabase = createClient()
+        const { error } = await supabase.rpc(
+          action === 'in' ? 'attendance_time_in' : 'attendance_time_out'
+        )
+        if (error) {
+          // The room has nowhere to put a sentence, so the button says it —
+          // held for a few seconds (paint() checks errorRef) rather than
+          // being overwritten by the very next tick.
+          errorRef.current = { text: "Couldn't save", until: Date.now() + 4000 }
+          return
+        }
+        await readRef.current?.()
+      } finally {
+        busyRef.current = false
       }
-      await readRef.current?.()
     }
 
     const paint = () => {
@@ -416,7 +370,10 @@ export function ShiftRing({ roomRef }: { roomRef: React.RefObject<HTMLDivElement
         btn?.addEventListener('click', () => void press())
         btn?.addEventListener('keydown', (e) => {
           const k = (e as KeyboardEvent).key
-          if (k !== 'Enter' && k !== ' ') return
+          // 'Spacebar' is how older browsers/some assistive tech still
+          // report Space — the room's other controls (office.tsx's onKey,
+          // room.js's wireRoom) already check for it; this one should too.
+          if (k !== 'Enter' && k !== ' ' && k !== 'Spacebar') return
           // Space scrolls the page otherwise, which on a bottom-of-the-room
           // control moves the thing you just aimed at.
           e.preventDefault()
@@ -436,9 +393,14 @@ export function ShiftRing({ roomRef }: { roomRef: React.RefObject<HTMLDivElement
       const s = ringState(shift, log, new Date())
       const offset = String(1 - s.progress)
 
+      // s.clockedOut, not s.done: done also goes true at full progress with
+      // no time-out stamped, which is exactly when the dock below still
+      // needs to say "Time out" — reading s.done here would have put the
+      // ring and the dock's own data-mode in open disagreement at that
+      // moment (ring "done", dock still "working").
       ring.setAttribute(
         'data-mode',
-        s.done ? 'done' : s.paused ? 'paused' : s.running ? 'running' : 'waiting'
+        s.clockedOut ? 'done' : s.paused ? 'paused' : s.running ? 'running' : 'waiting'
       )
       ring
         .querySelectorAll<SVGPathElement>(
@@ -478,13 +440,21 @@ export function ShiftRing({ roomRef }: { roomRef: React.RefObject<HTMLDivElement
       const btnFill = ring.querySelector<SVGRectElement>('.shift-dock__fill')
 
       if (dockEl && btn && hours && label && btnFill) {
+        // Its own state machine, independent of .shift-ring's data-mode
+        // above — ready/working/paused/done/shut here, waiting/running/
+        // paused/done there. A selector written for one is not guaranteed
+        // to mean the same thing on the other.
         dockEl.setAttribute('data-mode', dock.mode)
         hours.textContent = hoursLeft(s.remaining)
 
-        // Only touch the label when it actually changes: writing the same
-        // string every second would restart the cross-fade forever and leave
-        // it permanently mid-transition.
-        if (label.textContent !== dock.label) label.textContent = dock.label
+        // Holding a just-failed press()'s message, or the normal label
+        // otherwise. Only touch textContent when it actually changes:
+        // writing the same string every second would restart the
+        // cross-fade forever and leave it permanently mid-transition.
+        const showingError = errorRef.current && Date.now() < errorRef.current.until
+        if (!showingError) errorRef.current = null
+        const nextLabel = showingError ? errorRef.current!.text : dock.label
+        if (label.textContent !== nextLabel) label.textContent = nextLabel
 
         const pressable = dock.action !== null
         btn.setAttribute('aria-disabled', String(!pressable))
@@ -502,7 +472,25 @@ export function ShiftRing({ roomRef }: { roomRef: React.RefObject<HTMLDivElement
 
     paint()
     const id = window.setInterval(paint, 1000)
+
+    // office.tsx rebuilds the room by replacing roomRef.current's innerHTML
+    // wholesale on its own 60s timer, uncoordinated with the interval above
+    // — that took the shift-ring group (dock included) with it every time,
+    // and paint()'s own "recreate if missing" check only noticed on the next
+    // 1s tick, leaving the room's one real control briefly gone on every
+    // rebuild. Watching roomRef.current itself (which survives the
+    // innerHTML swap, unlike the <svg> inside it) and repainting the moment
+    // the group disappears closes that window instead of polling through it.
+    let observer: MutationObserver | null = null
+    if (roomRef.current) {
+      observer = new MutationObserver(() => {
+        if (!roomRef.current?.querySelector('.shift-ring')) paint()
+      })
+      observer.observe(roomRef.current, { childList: true, subtree: true })
+    }
+
     return () => {
+      observer?.disconnect()
       window.clearInterval(id)
       // Leaving the room: take the ring with it, so a rebuild for someone
       // else's view never inherits this one's stale fill.

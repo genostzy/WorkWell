@@ -1,3 +1,5 @@
+import { InfoTip } from '@/components/info-tip'
+
 export type Page = 'home' | 'check-in' | 'trends' | 'leave' | 'hr' | 'org'
 
 /** Which plane a screen belongs to. Drives the accent — teal-green for the
@@ -29,25 +31,6 @@ export const BADGE: Record<Plane, { icon: string; label: string; sub: string }> 
     label: 'Organisation plane',
     sub: 'Anonymous group patterns. Never a person.',
   },
-}
-
-/**
- * A "?" that reveals a short sentence on hover or focus — no JS, no state,
- * just `.tip:hover`/`.tip:focus-within` in components.css. Kept out of the
- * flow of the label it explains, so what stays permanently on screen is the
- * label alone, not the label plus a paragraph justifying it.
- */
-function InfoTip({ text }: { text: string }) {
-  return (
-    <span className="tip">
-      <button type="button" className="tip__trigger" aria-label={text}>
-        ?
-      </button>
-      <span className="tip__bubble" role="tooltip">
-        {text}
-      </span>
-    </span>
-  )
 }
 
 /** The plane identity, kept to the two things that matter at a glance — the
@@ -91,7 +74,7 @@ export function PrivacyNote({
           // swallow half the screen. A tap that expands in place is the
           // right control for a paragraph; InfoTip is for a sentence.
           <details style={{ display: 'inline' }}>
-            <summary className="privacy-more" aria-label="What this means">
+            <summary className="info-dot privacy-more" aria-label="What this means">
               ?
             </summary>
             <span className="privacy-detail">{detail}</span>
