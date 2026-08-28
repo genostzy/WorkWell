@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Nunito } from 'next/font/google'
 import { CursorGlass } from '@/components/cursor-glass'
+import { ConnectionWatch } from '@/components/connection-watch'
 
 // Order matters: tokens define the variables everything else reads, base
 // resets and sets typography, layout builds the shell, components sit on
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
     <html lang="en" className={nunito.variable}>
       <body>
         <CursorGlass />
+        <ConnectionWatch />
         {children}
       </body>
     </html>
