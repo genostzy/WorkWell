@@ -45,6 +45,14 @@ export function labelTime(t: string) {
   return d.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })
 }
 
+/** 465 → '7h 45m left'. Minutes alone read as a stopwatch, not a day. */
+export function hoursLeft(mins: number) {
+  if (mins <= 0) return 'Shift complete'
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  return h ? `${h}h ${m}m left` : `${m}m left`
+}
+
 /** Minutes from `start` forward to `end`, taking the wrap when end <= start.
  *  A shift that ends at the same clock time it starts is a 24-hour shift,
  *  not a zero-length one — nobody is rostered for zero minutes. */
@@ -159,8 +167,14 @@ export type RingState = {
   paused: boolean
   /** Timed in and still working. */
   running: boolean
-  /** Timed out, or the full shift is behind them. */
+  /** The ring reads as full: either timed out, or the full shift's worth of
+   *  time has elapsed. NOT the same as being timed out — someone can reach
+   *  100% progress and still owe a real time-out stamp. A caller deciding
+   *  whether there is still an action to take (e.g. offering "Time out")
+   *  wants `clockedOut`, not this. */
   done: boolean
+  /** Actually timed out. The one field that means "nothing left to do". */
+  clockedOut: boolean
   /** Whole minutes of the shift still owed. */
   remaining: number
 }
@@ -178,7 +192,14 @@ export function ringState(shift: Shift, log: DayLog, now: Date): RingState {
   const totalMs = workingMinutes(shift) * 60000
 
   if (!log.timeIn) {
-    return { progress: 0, paused: false, running: false, done: false, remaining: workingMinutes(shift) }
+    return {
+      progress: 0,
+      paused: false,
+      running: false,
+      done: false,
+      clockedOut: false,
+      remaining: workingMinutes(shift),
+    }
   }
 
   const start = +new Date(log.timeIn)
@@ -200,6 +221,58 @@ export function ringState(shift: Shift, log: DayLog, now: Date): RingState {
     paused,
     running: Boolean(!log.timeOut && !paused),
     done: Boolean(log.timeOut) || progress >= 1,
+    clockedOut: Boolean(log.timeOut),
     remaining: Math.max(0, Math.round((totalMs - worked) / 60000)),
   }
+}
+
+export type DockState = {
+  label: string
+  /** null when there is nothing to press — the button still says why. */
+  action: 'in' | 'out' | null
+  mode: 'ready' | 'working' | 'paused' | 'done' | 'shut'
+}
+
+/**
+ * What the room's one attendance button says and does right now.
+ *
+ * One button rather than two, because at any moment exactly one of them
+ * would have been pressable — a permanently dead "Time out" sitting next to
+ * "Time in" is a control that spends most of the day lying about what you
+ * can do. When there is nothing to press it keeps the space and explains
+ * itself instead of vanishing, so the dock never changes shape under the
+ * cursor.
+ *
+ * Lives here rather than beside the SVG that draws it: it touches no DOM,
+ * only the same day-shape maths as everything else in this file, and being
+ * here is what lets it be tested without a browser.
+ */
+export function dockState(
+  shift: Shift,
+  s: RingState,
+  log: DayLog,
+  now: Date,
+  timeZone: string | null
+): DockState {
+  // Keyed on the time-out stamp, not on RingState.done — that also goes true
+  // the moment the ring fills, and someone who has worked their whole shift
+  // without clocking out still has to be able to clock out. Reading it here
+  // would have replaced their only way to do that with "Done for today".
+  if (log.timeOut) return { label: 'Done for today', action: null, mode: 'done' }
+  if (log.timeIn) {
+    return {
+      label: 'Time out',
+      action: 'out',
+      mode: s.paused ? 'paused' : 'working',
+    }
+  }
+  const window_ = timeInWindow(shift, now, timeZone)
+  if (!window_.open) {
+    return {
+      label: `Opens ${labelTime(toHHMM(window_.opensAt ?? 0))}`,
+      action: null,
+      mode: 'shut',
+    }
+  }
+  return { label: 'Time in', action: 'in', mode: 'ready' }
 }

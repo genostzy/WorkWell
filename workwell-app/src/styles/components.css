@@ -188,30 +188,38 @@ button.chip[aria-pressed="true"] {
 .privacy-note svg { width: 16px; height: 16px; flex: none; margin-top: 2px; color: var(--accent-text); }
 .privacy-note b { color: var(--accent-text); font-weight: var(--fw-bold); }
 
+/* Shared by .privacy-more and .tip__trigger below: the same round "?" badge
+   (invert on hover, focus-visible ring), which used to be hand-duplicated in
+   both places and had already drifted apart. Apply alongside the per-use
+   class that sets size/cursor/background. */
+.info-dot {
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--accent-border);
+  color: var(--accent-text);
+  font-weight: var(--fw-bold);
+  line-height: 1;
+}
+.info-dot:hover { background: var(--accent-hover); color: var(--text-on-accent); }
+.info-dot:focus-visible { outline: 2px solid var(--accent-border); outline-offset: 2px; }
+
 /* Progressive disclosure: the claim stays one line; the proof is one tap away.
    A privacy promise has to be available, but it should not shout on every
    screen — that is how people stop reading it. A round "?" rather than the
    words "What this means" repeated on every card: the label already told
-   you there is more; the icon just says where. */
+   you there is more; the icon just says where. 24px, not smaller: WCAG
+   2.5.8's AA minimum target size. */
 .privacy-more {
-  display: inline-grid;
-  place-items: center;
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   margin-left: 2px;
-  vertical-align: -3px;
-  border-radius: 50%;
-  border: 1px solid var(--accent-border);
-  color: var(--accent-text);
-  font-size: 11px;
-  font-weight: var(--fw-bold);
-  line-height: 1;
+  vertical-align: -6px;
+  font-size: 13px;
   cursor: pointer;
   list-style: none;
 }
 .privacy-more::-webkit-details-marker { display: none; }
-.privacy-more:hover { background: var(--accent-hover); color: var(--text-on-accent); }
-.privacy-more:focus-visible { outline: 2px solid var(--accent-border); outline-offset: 2px; }
 .privacy-detail { display: block; margin-top: var(--s-2); }
 /* `display` beats the hidden attribute, so restore it explicitly. */
 .privacy-detail[hidden] { display: none; }
@@ -886,9 +894,10 @@ details.table-view summary:hover { color: var(--text); }
 .locked__title { font-size: var(--fs-sm); font-weight: var(--fw-heavy); color: var(--text-muted); }
 .locked__text { font-size: var(--fs-xs); color: var(--text-subtle); max-width: 34ch; line-height: 1.5; }
 
-/* Tooltip: a "?" that reveals one sentence on hover or keyboard focus, and
-   on tap wherever tapping focuses a button (most touch browsers). No JS —
-   :hover and :focus-within alone decide whether .tip__bubble shows. */
+/* Tooltip: a "?" that reveals one sentence on hover, keyboard focus, or a
+   click — InfoTip (info-tip.tsx) toggles the tip--open class on click,
+   since :hover/:focus-within alone never open on iOS Safari (tapping a
+   plain button there doesn't reliably move focus to it). */
 .tip { position: relative; display: inline-flex; vertical-align: middle; }
 .tip__bubble {
   position: absolute;
@@ -911,28 +920,21 @@ details.table-view summary:hover { color: var(--text); }
   transition: opacity var(--dur-fast) var(--ease);
 }
 .tip:hover .tip__bubble,
-.tip:focus-within .tip__bubble { opacity: 1; }
+.tip:focus-within .tip__bubble,
+.tip.tip--open .tip__bubble { opacity: 1; }
 
 /* The trigger itself — small enough to sit inline after a label without
-   throwing off its line height, round so it never reads as a text button. */
+   throwing off its line height. Shares its round-badge look with
+   .privacy-more via .info-dot; only size/cursor/background differ here. */
 .tip__trigger {
   width: 16px;
   height: 16px;
   flex: none;
-  display: inline-grid;
-  place-items: center;
-  border-radius: 50%;
-  border: 1px solid var(--accent-border);
   background: var(--accent-quiet);
-  color: var(--accent-text);
   font-size: 10px;
-  line-height: 1;
-  font-weight: var(--fw-bold);
   cursor: help;
   padding: 0;
 }
-.tip__trigger:hover { background: var(--accent-hover); color: var(--text-on-accent); }
-.tip__trigger:focus-visible { outline: 2px solid var(--accent-border); outline-offset: 2px; }
 
 /* ------------------------------------------------------------- Feed list */
 

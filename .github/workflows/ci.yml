@@ -1,0 +1,56 @@
+name: CI
+
+# Every push to a branch and every pull request into main. The app lives in a
+# subdirectory of this repo, so every step below runs from there rather than
+# from the repo root.
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+
+concurrency:
+  # A second push to the same branch makes the first run's answer worthless.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: workwell-app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: workwell-app/package-lock.json
+
+      - run: npm ci
+
+      # `npm run typecheck` runs `next typegen` first. LayoutProps and
+      # PageProps are globals Next generates into .next/types, and tsconfig
+      # includes them — on a fresh checkout there is no .next, so tsc alone
+      # fails here while passing on any machine that has ever built.
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      # Last, because it is the slowest and the three above localise a failure
+      # far better than a build log does.
+      #
+      # No Supabase env is set, and none is needed: every page that reads the
+      # database is dynamic, so nothing connects at build time. A page that
+      # ever becomes statically generated *and* reads Supabase would break
+      # here first — which is the right place to find out.
+      - name: Build
+        run: npm run build

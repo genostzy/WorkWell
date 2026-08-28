@@ -8,6 +8,7 @@ import { DecidePayrollRequest } from '../../hr/decide-payroll-request'
 import { DecideComplaint } from '../../hr/decide-complaint'
 import { DecideResignation } from '../../hr/decide-resignation'
 import { DecideSupportRequest } from '../../hr/decide-support-request'
+import { signReceipts } from '@/lib/receipts'
 
 function fmt(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', {
@@ -56,7 +57,7 @@ export default async function Hr() {
     supabase.from('attendance').select('person_id, day, time_in, lunch_start, lunch_end, time_out'),
     supabase
       .from('expenses')
-      .select('id, person_id, category, amount, spent_on, note, status')
+      .select('id, person_id, category, amount, spent_on, note, status, receipt_path')
       .order('created_at', { ascending: false }),
     supabase
       .from('payroll_requests')
@@ -106,6 +107,12 @@ export default async function Hr() {
   // which are the two states nothing more ever happens to.
   const openExpenses = (expenses ?? []).filter(
     (e) => e.status === 'Submitted' || e.status === 'Approved'
+  )
+  // Only the claims actually on screen, signed in one batch. Signing every
+  // claim ever filed would be a request paid for rows nobody is looking at.
+  const receiptUrls = await signReceipts(
+    supabase,
+    openExpenses.map((e) => e.receipt_path)
   )
   const pendingPayrollRequests = (payrollRequests ?? []).filter(
     (r) => r.status === 'Pending'
@@ -242,6 +249,21 @@ export default async function Hr() {
                   {fmt(e.spent_on)} · ₱{Number(e.amount).toLocaleString('en-PH')}
                 </p>
                 {e.note && <p className="t-subtle">{e.note}</p>}
+                {/* Said either way. A claim with nothing behind it is a
+                    thing HR should notice before approving, not a blank. */}
+                {e.receipt_path && receiptUrls.get(e.receipt_path) ? (
+                  <p className="mt-2">
+                    <a
+                      href={receiptUrls.get(e.receipt_path)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      View receipt
+                    </a>
+                  </p>
+                ) : (
+                  <p className="t-subtle mt-2">No receipt attached.</p>
+                )}
                 <DecideExpense id={e.id} personId={e.person_id} status={e.status} />
               </div>
             ))}
