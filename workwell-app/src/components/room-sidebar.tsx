@@ -14,7 +14,7 @@ type Spot = {
 
 /** Private-space items — only the employee sees these. */
 const PRIVATE_SPOTS: Spot[] = [
-  { id: 'desk', href: '/check-in?tab=trends', label: 'Your desk', sub: 'Trends' },
+  { id: 'desk', href: '/trends', label: 'Your desk', sub: 'Trends' },
   { id: 'journal', href: '/check-in', label: 'Journal', sub: 'Check in' },
   { id: 'cooler', href: '/nudges', label: 'Water cooler', sub: 'Nudges' },
   { id: 'clock', href: '/boundaries', label: 'The clock', sub: '' },
@@ -25,16 +25,16 @@ const PRIVATE_SPOTS: Spot[] = [
 /** Workplace items — self-service, private-plane accounts only. An HR/admin
  *  account never has these: it has no employment record of its own to see. */
 const WORK_SPOTS: Spot[] = [
-  { id: 'holidays', href: '/attendance?tab=holidays', label: 'Holidays', sub: 'Calendar' },
+  { id: 'holidays', href: '/holidays', label: 'Holidays', sub: 'Calendar' },
   { id: 'attendance', href: '/attendance', label: 'Attendance', sub: 'Check-ins' },
   { id: 'payroll', href: '/payroll', label: 'Payroll', sub: 'Payslips' },
-  { id: 'expenses', href: '/payroll?tab=expenses', label: 'Expenses', sub: 'Claims' },
+  { id: 'expenses', href: '/expenses', label: 'Expenses', sub: 'Claims' },
   { id: 'assets', href: '/assets', label: 'Assets', sub: 'On loan' },
   { id: 'company-policies', href: '/company-policies', label: 'Policies', sub: 'Read once' },
   { id: 'news', href: '/news', label: 'News', sub: 'Notices' },
-  { id: 'complaints', href: '/cases', label: 'Complaints', sub: 'File a case' },
-  { id: 'resignations', href: '/cases?tab=resignation', label: 'Resignations', sub: 'Give notice' },
-  { id: 'warnings', href: '/cases?tab=warnings', label: 'Warnings', sub: 'Your file' },
+  { id: 'complaints', href: '/complaints', label: 'Complaints', sub: 'File a case' },
+  { id: 'resignations', href: '/resignations', label: 'Resignations', sub: 'Give notice' },
+  { id: 'warnings', href: '/warnings', label: 'Warnings', sub: 'Your file' },
 ]
 
 /** Administration — the whole of the HR/admin account's plane. There is no
@@ -50,11 +50,11 @@ const ADMIN_SPOTS: Spot[] = [
   { id: 'news', href: '/news', label: 'News', sub: 'Post & manage' },
   { id: 'company-policies', href: '/company-policies', label: 'Policies', sub: 'Add & manage' },
   { id: 'payroll', href: '/payroll', label: 'Payroll', sub: 'Issue payslips' },
-  { id: 'shifts', href: '/attendance', label: 'Working hours', sub: 'Shifts & who’s on' },
-  { id: 'holidays', href: '/attendance?tab=holidays', label: 'Holidays', sub: 'Add & manage' },
+  { id: 'shifts', href: '/shifts', label: 'Working hours', sub: 'Shifts & who’s on' },
+  { id: 'holidays', href: '/holidays', label: 'Holidays', sub: 'Add & manage' },
   { id: 'assets', href: '/assets', label: 'Assets', sub: 'Issue & resolve' },
   { id: 'offboarding', href: '/offboarding', label: 'Offboarding', sub: 'Checklist' },
-  { id: 'warnings', href: '/cases', label: 'Warnings', sub: 'Records' },
+  { id: 'warnings', href: '/warnings', label: 'Warnings', sub: 'Records' },
 ]
 
 function SidebarTile({

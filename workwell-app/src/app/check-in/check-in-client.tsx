@@ -376,7 +376,7 @@ export default function CheckInClient() {
               <span className="stepper__label">
                 Step {step + 1} of {STEPS.length}
               </span>
-              <Link className="btn btn--ghost btn--sm" href="/check-in?tab=trends">
+              <Link className="btn btn--ghost btn--sm" href="/trends">
                 Skip today
               </Link>
             </div>
@@ -395,7 +395,7 @@ export default function CheckInClient() {
         {!done && !oneAtATime && (
           <div className="row row--between mb-5">
             <span className="stepper__label">All four questions</span>
-            <Link className="btn btn--ghost btn--sm" href="/check-in?tab=trends">
+            <Link className="btn btn--ghost btn--sm" href="/trends">
               Skip today
             </Link>
           </div>
@@ -553,7 +553,7 @@ export default function CheckInClient() {
               className="state__actions row"
               style={{ justifyContent: 'center' }}
             >
-              <Link className="btn btn--primary" href="/check-in?tab=trends">
+              <Link className="btn btn--primary" href="/trends">
                 See your trends
               </Link>
               <button
