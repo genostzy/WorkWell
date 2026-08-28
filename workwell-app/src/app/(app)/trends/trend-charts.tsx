@@ -205,10 +205,8 @@ export function TrendCharts({ rows }: { rows: TrendRow[] }) {
       </div>
 
       <p className="chart__caption">
-        Point at any chart, or use the arrow keys, to read one check-in. There
-        is no score here, and no comparison to anyone else — the only thing
-        each line is measured against is the rest of your own record. Every
-        entry is listed below as well.
+        Point at a chart, or use the arrow keys, to read one check-in. Nothing
+        here is a score, and nothing is compared to anyone else.
       </p>
     </div>
   )
