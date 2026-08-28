@@ -111,6 +111,12 @@
     letter-spacing: .06em;
     text-transform: uppercase;
     margin-top: 10px;
+    /* Two lines' worth, always. The game-over line is longer than the
+       others and wraps where they do not; without a reserved height the
+       card grows by a line at exactly the moment the reader is reaching
+       for Try again, and the button moves out from under the cursor. */
+    line-height: 1.4;
+    min-height: 2.8em;
   }
 
   .score {
