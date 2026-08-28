@@ -1,7 +1,21 @@
-import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import { readIsHr } from '@/lib/role'
+import { LoadError, PageHead } from '@/components/chrome'
+import HolidaysClient from '../../holidays/holidays-client'
+import HolidaysManageClient from '../../holidays/holidays-manage-client'
 
-/** The calendar is now a tab of the attendance page. Kept as a redirect so
- *  existing links keep landing somewhere real — see trends/page.tsx. */
-export default async function HolidaysMoved() {
-  redirect('/attendance?tab=holidays')
+export default async function Holidays() {
+  const supabase = await createClient()
+  const { isHr, error } = await readIsHr(supabase)
+
+  if (error) {
+    return (
+      <>
+        <PageHead title="Holidays" />
+        <LoadError what="Your account" detail={error} />
+      </>
+    )
+  }
+
+  return isHr ? <HolidaysManageClient /> : <HolidaysClient />
 }
