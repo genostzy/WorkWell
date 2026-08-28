@@ -1174,3 +1174,49 @@ a, button {
 @media (prefers-reduced-motion: reduce) {
   :root:where(:not([data-motion="full"])) .hub { animation: none; }
 }
+
+/* Standalone notice screens — 404 and the error boundaries that fall
+   outside the app shell. There is no sidebar or topbar to sit inside on
+   these, so they carry their own centred frame and repeat the sign-in
+   screen's accent wash, which is the app's other chrome-less surface.
+   Everything inside is the ordinary .card + .state pairing used by
+   LoadError and Empty: a page that has gone wrong is not the moment to
+   introduce a look nothing else on the site has. */
+.notice {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--s-6);
+  background:
+    radial-gradient(120% 90% at 12% 8%, var(--accent-quiet) 0%, transparent 60%),
+    var(--bg);
+}
+
+.notice__inner { width: 100%; max-width: 34rem; }
+
+.notice__brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-3);
+  margin-bottom: var(--s-5);
+}
+
+.notice__wordmark {
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-heavy);
+  letter-spacing: -0.03em;
+}
+
+/* The status code, said quietly. It is the one piece here worth quoting to
+   somebody else, and the one piece that means nothing to most readers, so
+   it sits under the sentence rather than replacing it. */
+.notice__code {
+  margin-top: var(--s-4);
+  font-size: var(--fs-xs);
+  color: var(--text-subtle);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.state__actions { display: flex; gap: var(--s-3); flex-wrap: wrap; justify-content: center; }
