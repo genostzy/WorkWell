@@ -25,6 +25,7 @@ const PRIVATE_SPOTS: Spot[] = [
 /** Workplace items — self-service, private-plane accounts only. An HR/admin
  *  account never has these: it has no employment record of its own to see. */
 const WORK_SPOTS: Spot[] = [
+  { id: 'tasks', href: '/tasks', label: 'Tasks', sub: 'Yours & assigned' },
   { id: 'holidays', href: '/holidays', label: 'Holidays', sub: 'Calendar' },
   { id: 'attendance', href: '/attendance', label: 'Attendance', sub: 'Check-ins' },
   { id: 'payroll', href: '/payroll', label: 'Payroll', sub: 'Payslips' },
@@ -43,6 +44,7 @@ const WORK_SPOTS: Spot[] = [
 const ADMIN_SPOTS: Spot[] = [
   { id: 'org', href: '/org', label: 'Structural load', sub: 'Anonymous patterns' },
   { id: 'hr', href: '/hr', label: 'People', sub: 'Employment records' },
+  { id: 'tasks', href: '/tasks', label: 'Tasks', sub: 'Assign & track' },
   { id: 'accounts', href: '/hr/accounts', label: 'Accounts', sub: 'Access & sign-in' },
   { id: 'decisions', href: '/hr/decisions', label: 'Decisions', sub: 'Audit trail' },
   { id: 'letter-heads', href: '/letter-heads', label: 'Letter heads', sub: 'Templates' },

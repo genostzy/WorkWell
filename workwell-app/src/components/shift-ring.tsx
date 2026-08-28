@@ -145,10 +145,44 @@ const SVG_NS = 'http://www.w3.org/2000/svg'
  * a mark on the *bottom* wall would sit outside the room entirely, which is
  * exactly the mistake the ring itself started out making. Bounds are
  * room.js's floor rect: x 24–976, y 24–696.
+ *
+ * The ordinary bottom-wall lift (37px/20px) only clears the wall itself. A
+ * meal that falls anywhere near the gap's own centre — any shift whose
+ * break isn't at the working midpoint, which is most of them once HR is
+ * writing shifts by hand rather than reusing the two seeded ones — lands
+ * that lift directly on the dock's button and the front door's tag below
+ * it (values from shift-ring.tsx's own BTN_Y/BTN_H and room.js's
+ * `tag(500, 640, 'Front door', ...)`). There is no vertical gap between
+ * those two to fit two lines of text into, so this case does not try:
+ * it clears the whole dock instead, landing above HOURS_Y in the open
+ * floor rather than squeezed into a band that was never wide enough.
+ *
+ * The top wall has the same shape of problem for the opposite reason: a
+ * meal at exactly the working midpoint — which the Night shift's is —
+ * lands dead centre here, and the ordinary 26px/43px drop has nowhere to
+ * go either. room.js's own HR-kit furniture (`kit.receipt(460, 90)`,
+ * `kit.board(460, 195)`, and the matching pair at x 660 and 860) starts
+ * at y 69, a few px past the fixed room-clock header floating above the
+ * room at y 55 — no room to squeeze into, and nowhere to lift the label
+ * that clears the clock without landing on the furniture beneath it.
+ * Centred points drop past both furniture rows instead, landing around
+ * y 300–320: past their tag bottoms (~262) and short of the mid-floor
+ * cooler (y 390, same source). Off-centre points still tuck under the
+ * wall as before — the furniture only spans roughly x 380–940.
  */
 function lean(pt: { x: number; y: number }) {
-  if (pt.y <= 26) return { label: [0, 26], hour: [0, 43], anchor: 'middle' }
-  if (pt.y >= 694) return { label: [0, -37], hour: [0, -20], anchor: 'middle' }
+  if (pt.y <= 26) {
+    const underRow = pt.x > 380 && pt.x < 940
+    return underRow
+      ? { label: [0, 276], hour: [0, 293], anchor: 'middle' }
+      : { label: [0, 26], hour: [0, 43], anchor: 'middle' }
+  }
+  if (pt.y >= 694) {
+    const overDock = pt.x > DOCK_X - BTN_W / 2 - 20 && pt.x < DOCK_X + BTN_W / 2 + 20
+    return overDock
+      ? { label: [0, -170], hour: [0, -153], anchor: 'middle' }
+      : { label: [0, -37], hour: [0, -20], anchor: 'middle' }
+  }
   if (pt.x <= 26) return { label: [19, -4], hour: [19, 13], anchor: 'start' }
   if (pt.x >= 974) return { label: [-19, -4], hour: [-19, 13], anchor: 'end' }
   // A corner arc — "inward" is diagonal and ambiguous, so drop below.
