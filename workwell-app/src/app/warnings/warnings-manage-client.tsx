@@ -93,7 +93,7 @@ export default function WarningsManageClient() {
       kind: 'warning_issued',
       title: 'A warning has been placed on your file',
       body: `Category: ${category}`,
-      link: '/warnings',
+      link: '/cases?tab=warnings',
     })
 
     setSending(false)

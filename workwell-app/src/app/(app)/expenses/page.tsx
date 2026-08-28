@@ -1,29 +1,8 @@
-import { createClient } from '@/lib/supabase/server'
-import { readIsHr } from '@/lib/role'
-import { LoadError, PageHead, RoleLocked } from '@/components/chrome'
-import ExpensesClient from '../../expenses/expenses-client'
+import { redirect } from 'next/navigation'
 
-export default async function Expenses() {
-  const supabase = await createClient()
-  const { isHr, error } = await readIsHr(supabase)
-
-  if (error) {
-    return (
-      <>
-        <PageHead title="Expenses" />
-        <LoadError what="Your account" detail={error} />
-      </>
-    )
-  }
-
-  if (isHr) {
-    return (
-      <>
-        <PageHead title="Not available on this account" />
-        <RoleLocked audience="employee" />
-      </>
-    )
-  }
-
-  return <ExpensesClient />
+/** Claims are now a tab of the pay page. Kept as a redirect so existing
+ *  links — including the expense-decided notification HR sends — keep
+ *  landing somewhere real. See trends/page.tsx. */
+export default async function ExpensesMoved() {
+  redirect('/payroll?tab=expenses')
 }

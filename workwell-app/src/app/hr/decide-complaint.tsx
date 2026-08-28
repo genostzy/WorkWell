@@ -40,7 +40,7 @@ export function DecideComplaint({
       kind: 'complaint_updated',
       title: 'Your case is ' + next.toLowerCase(),
       body: 'HR has updated the case you filed.',
-      link: '/complaints',
+      link: '/cases',
     })
 
     setBusy(false)

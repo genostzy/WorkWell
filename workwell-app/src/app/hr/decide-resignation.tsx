@@ -32,7 +32,7 @@ export function DecideResignation({ id, personId }: { id: string; personId: stri
       kind: 'resignation_updated',
       title: 'Your notice has been acknowledged',
       body: 'HR has acknowledged the resignation notice you submitted.',
-      link: '/resignations',
+      link: '/cases?tab=resignation',
     })
 
     setBusy(false)

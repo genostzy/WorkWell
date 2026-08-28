@@ -1,7 +1,16 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { readIsHr } from '@/lib/role'
-import { Empty, LoadError, PageHead, PlaneBadge, PrivacyNote, RoleLocked } from '@/components/chrome'
+import { Empty, LoadError, PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
+
+/**
+ * The Trends section of the check-in page.
+ *
+ * Was its own route until check-in and trends were merged: they read the
+ * same table on the same plane, and being two rooms for one dataset meant
+ * the page that records a check-in and the page that shows what those
+ * check-ins say could never be looked at together. The account check that
+ * used to live here now happens once, in the page that owns both tabs.
+ */
 
 /** The PRD is explicit that we say "not enough data yet" rather than
  *  guess. Four entries cannot describe a pattern. */
@@ -83,37 +92,14 @@ function Bar({ value }: { value: number | null }) {
   )
 }
 
-export default async function Trends() {
+export async function TrendsView() {
   const supabase = await createClient()
 
-  // Independent reads — run together rather than paying two round trips
-  // for a page that used to need only one.
-  const [{ isHr, error: roleError }, { data, error }] = await Promise.all([
-    readIsHr(supabase),
-    supabase
-      .from('check_ins')
-      .select('day, mood, energy, pressure, workload, note')
-      .order('day', { ascending: false })
-      .limit(30),
-  ])
-
-  if (roleError) {
-    return (
-      <>
-        <PageHead title="Your trends" />
-        <LoadError what="Your account" detail={roleError} />
-      </>
-    )
-  }
-
-  if (isHr) {
-    return (
-      <>
-        <PageHead title="Not available on this account" />
-        <RoleLocked audience="employee" />
-      </>
-    )
-  }
+  const { data, error } = await supabase
+    .from('check_ins')
+    .select('day, mood, energy, pressure, workload, note')
+    .order('day', { ascending: false })
+    .limit(30)
 
   if (error) {
     return (

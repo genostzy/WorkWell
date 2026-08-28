@@ -1174,3 +1174,44 @@ a, button {
 @media (prefers-reduced-motion: reduce) {
   :root:where(:not([data-motion="full"])) .hub { animation: none; }
 }
+
+/* Page sections, as links rather than as a scripted tablist — see
+   page-tabs.tsx for why. Scrolls sideways rather than wrapping: a merged
+   page's sections read as one row, and a strip that reflows to two lines on
+   a phone stops looking like a strip at all. */
+.tabs {
+  display: flex;
+  gap: var(--s-2);
+  margin-bottom: var(--s-4);
+  overflow-x: auto;
+  scrollbar-width: none;
+  /* Room for the active tab's outline, which the overflow would clip. */
+  padding-bottom: 2px;
+}
+.tabs::-webkit-scrollbar { display: none; }
+
+.tabs__tab {
+  flex: none;
+  padding: var(--s-2) var(--s-4);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.tabs__tab:hover { color: var(--text); border-color: var(--accent-border); }
+
+.tabs__tab.is-active {
+  background: var(--accent-quiet);
+  border-color: var(--accent-border);
+  color: var(--accent-text);
+}
+
+.tabs__tab:focus-visible {
+  outline: 2px solid var(--accent-border);
+  outline-offset: 2px;
+}

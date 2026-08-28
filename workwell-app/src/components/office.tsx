@@ -15,7 +15,7 @@ import { usePrefs } from '@/lib/use-prefs'
  *  here and its spot is rendered as coming soon rather than as a dead
  *  link — a room object that does nothing is worse than one that says so. */
 export const ROUTES: Record<string, string> = {
-  'trends.html': '/trends',
+  'trends.html': '/check-in?tab=trends',
   'check-in.html': '/check-in',
   'onboarding.html': '/check-in',
   'my-leave.html': '/leave',
@@ -25,19 +25,19 @@ export const ROUTES: Record<string, string> = {
   'workspace.html': '/workspace',
   'hr-people.html': '/hr',
   'org-diagnostics.html': '/org',
-  'holidays.html': '/holidays',
+  'holidays.html': '/attendance?tab=holidays',
   'attendance.html': '/attendance',
   'payroll.html': '/payroll',
-  'expenses.html': '/expenses',
+  'expenses.html': '/payroll?tab=expenses',
   'assets.html': '/assets',
   'news.html': '/news',
-  'complaints.html': '/complaints',
+  'complaints.html': '/cases',
   'company-policies.html': '/company-policies',
-  'resignations.html': '/resignations',
+  'resignations.html': '/cases?tab=resignation',
   'letter-heads.html': '/letter-heads',
   'custom-fields.html': '/custom-fields',
   'offboarding.html': '/offboarding',
-  'warnings.html': '/warnings',
+  'warnings.html': '/cases?tab=warnings',
 }
 
 declare global {
