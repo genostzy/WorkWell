@@ -788,6 +788,12 @@ details.table-view summary:hover { color: var(--text); }
   display: grid; place-items: center;
   background: var(--surface-2);
   color: var(--text-subtle);
+  /* The svg rule below sized the icons that are drawn; the ones that are
+     emoji had nothing sizing them at all and inherited body text, which
+     put a ~15px glyph in the middle of a 52px well — small enough that a
+     door read as a plain bar. Matches the 25px the SVGs get. */
+  font-size: 25px;
+  line-height: 1;
 }
 .state__icon svg { width: 25px; height: 25px; }
 .state__title { font-size: var(--fs-lg); font-weight: var(--fw-heavy); }
