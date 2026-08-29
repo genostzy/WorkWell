@@ -1,8 +1,8 @@
 import { createBrowserClient } from '@supabase/ssr'
 
 export function createClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!url || !key) {
     // Don't throw in the browser — that crashes the whole page with a white
     // screen (see 2hml4iembow74.js:24). Log once and return a client that will
