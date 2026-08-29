@@ -522,6 +522,24 @@ export function Office({
     return () => window.clearInterval(id)
   }, [build])
 
+  // React to Boundary assistant saves immediately — Boundaries writes to
+  // private.boundaries (via usePrefs) and mirrors to localStorage +
+  // dispatches ww:quiet-change. Listening here makes the dashboard's
+  // "Kkena · 10:35 am · quiet hours" + banner appear without waiting for
+  // the next 60s tick or a navigation.
+  useEffect(() => {
+    const handler = () => build()
+    window.addEventListener('ww:quiet-change', handler)
+    const onStorage = (e: StorageEvent) => {
+      if (e.key && e.key.startsWith('ww.quiet')) handler()
+    }
+    window.addEventListener('storage', onStorage)
+    return () => {
+      window.removeEventListener('ww:quiet-change', handler)
+      window.removeEventListener('storage', onStorage)
+    }
+  }, [build])
+
   /**
    * Walk the avatar to a spot.
    *
@@ -695,6 +713,31 @@ export function Office({
                   }`
                 : ' '}
             </p>
+            {phase === 'quiet' && (
+              <div
+                className="banner banner--info"
+                role="status"
+                style={{ margin: 'var(--s-2) auto', maxWidth: 480, justifyContent: 'center', textAlign: 'center' }}
+              >
+                <span aria-hidden="true">🌙</span>{' '}
+                Quiet hours{' '}
+                {(() => {
+                  try {
+                    const b = boundaryPrefs as unknown as { quiet_from?: string; quiet_to?: string }
+                    if (!b?.quiet_from || !b?.quiet_to) return '— notifications paused'
+                    const fmt = (t: string) => {
+                      const [h, m] = t.slice(0, 5).split(':').map(Number)
+                      const d = new Date()
+                      d.setHours(h, m, 0, 0)
+                      return d.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })
+                    }
+                    return `${fmt(b.quiet_from)} – ${fmt(b.quiet_to)} · notifications paused`
+                  } catch {
+                    return '— notifications paused'
+                  }
+                })()}
+              </div>
+            )}
             <div
               className="room"
               data-room

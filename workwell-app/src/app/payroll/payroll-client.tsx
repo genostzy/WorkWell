@@ -27,9 +27,11 @@ export default function PayrollClient() {
       supabase.from('payslips').select('period_start, gross, net, status').order('period_start', { ascending: false }),
       supabase.from('salary_requests').select('id, kind, detail, status').order('created_at', { ascending: false })
     ]).then(([{ data: ps, error: e1 }, { data: sr, error: e2 }]) => {
-      if (e1) setError(e1.message)
+      // Schema cache can be stale right after a deploy — treat as empty rather than a blocking error.
+      const isCacheMiss = (e: { message?: string } | null) => e?.message?.includes('schema cache')
+      if (e1 && !isCacheMiss(e1)) setError(e1.message)
       else if (ps) setPayslips(ps.map((r: { period_start: string; gross: number; net: number; status: string }) => ({ month: r.period_start.slice(0,7), gross: Number(r.gross ?? 0), net: Number(r.net ?? 0), status: r.status })))
-      if (e2) setError(e2.message)
+      if (e2 && !isCacheMiss(e2)) setError(e2.message)
       else if (sr) setRequests(sr.map((r: { id: string; kind: string; detail: string; status: string }) => ({ id: r.id, kind: r.kind, note: r.detail ?? '', status: r.status })))
       setLoading(false)
     })
@@ -37,11 +39,15 @@ export default function PayrollClient() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
+    setError(null)
     const supabase = createClient()
     const { data: me } = await supabase.from('me').select('id').maybeSingle()
     if (!me) return setError('Not linked to a person.')
     const { data, error } = await supabase.from('salary_requests').insert({ person_id: me.id, kind, detail: note.trim() || null, status: 'pending' }).select('id, kind, detail, status').single()
-    if (error) return setError(error.message)
+    if (error) {
+      if (error.message.includes('schema cache')) return setError('Payroll is updating — please refresh and try again in a moment.')
+      return setError(error.message)
+    }
     if (data) setRequests((r) => [{ id: data.id, kind: data.kind, note: data.detail ?? '', status: data.status }, ...r])
     setNote('')
   }
