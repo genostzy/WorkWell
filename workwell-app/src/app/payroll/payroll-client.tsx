@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 type Payslip = { month: string; gross: number; net: number; status: string }
 type Request = { id: string; kind: string; note: string; status: string }
 
-const KINDS = ['advance', 'increment', 'promotion'] as const
+const KINDS = ['Pay advance', 'Increment review', 'Payslip correction'] as const
 
 function peso(n: number) {
   return `₱${n.toLocaleString('en-PH')}`
@@ -24,15 +24,15 @@ export default function PayrollClient() {
   useEffect(() => {
     const supabase = createClient()
     Promise.all([
-      supabase.from('payslips').select('period_start, gross, net, status').order('period_start', { ascending: false }),
-      supabase.from('salary_requests').select('id, kind, detail, status').order('created_at', { ascending: false })
+      supabase.from('payslips').select('period_month, gross, net, status').order('period_month', { ascending: false }),
+      supabase.from('payroll_requests').select('id, kind, note, status').order('created_at', { ascending: false })
     ]).then(([{ data: ps, error: e1 }, { data: sr, error: e2 }]) => {
       // Schema cache can be stale right after a deploy — treat as empty rather than a blocking error.
       const isCacheMiss = (e: { message?: string } | null) => e?.message?.includes('schema cache')
       if (e1 && !isCacheMiss(e1)) setError(e1.message)
-      else if (ps) setPayslips(ps.map((r: { period_start: string; gross: number; net: number; status: string }) => ({ month: r.period_start.slice(0,7), gross: Number(r.gross ?? 0), net: Number(r.net ?? 0), status: r.status })))
+      else if (ps) setPayslips(ps.map((r: { period_month: string; gross: number; net: number; status: string }) => ({ month: r.period_month.slice(0,7), gross: Number(r.gross ?? 0), net: Number(r.net ?? 0), status: r.status })))
       if (e2 && !isCacheMiss(e2)) setError(e2.message)
-      else if (sr) setRequests(sr.map((r: { id: string; kind: string; detail: string; status: string }) => ({ id: r.id, kind: r.kind, note: r.detail ?? '', status: r.status })))
+      else if (sr) setRequests(sr.map((r: { id: string; kind: string; note: string; status: string }) => ({ id: r.id, kind: r.kind, note: r.note ?? '', status: r.status })))
       setLoading(false)
     })
   }, [])
@@ -40,15 +40,16 @@ export default function PayrollClient() {
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    if (!note.trim()) return setError('Please add a note — what you need and by when.')
     const supabase = createClient()
     const { data: me } = await supabase.from('me').select('id').maybeSingle()
     if (!me) return setError('Not linked to a person.')
-    const { data, error } = await supabase.from('salary_requests').insert({ person_id: me.id, kind, detail: note.trim() || null, status: 'pending' }).select('id, kind, detail, status').single()
+    const { data, error } = await supabase.from('payroll_requests').insert({ person_id: me.id, kind, note: note.trim(), status: 'Pending' }).select('id, kind, note, status').single()
     if (error) {
       if (error.message.includes('schema cache')) return setError('Payroll is updating — please refresh and try again in a moment.')
       return setError(error.message)
     }
-    if (data) setRequests((r) => [{ id: data.id, kind: data.kind, note: data.detail ?? '', status: data.status }, ...r])
+    if (data) setRequests((r) => [{ id: data.id, kind: data.kind, note: data.note ?? '', status: data.status }, ...r])
     setNote('')
   }
 

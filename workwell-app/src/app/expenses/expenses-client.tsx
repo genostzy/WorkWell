@@ -32,9 +32,9 @@ export default function ExpensesClient() {
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.from('expenses').select('id, category, amount, created_at, description, status').order('created_at', { ascending: false }).then(({ data, error }) => {
+    supabase.from('expenses').select('id, category, amount, spent_on, note, status, created_at').order('created_at', { ascending: false }).then(({ data, error }) => {
       if (error && !error.message.includes('schema cache')) setError(error.message)
-      else if (data) setClaims(data.map((r: { id: string; category: string; amount: number; created_at: string; description: string; status: string }) => ({ id: r.id, category: r.category, amount: Number(r.amount), date: r.created_at.slice(0,10), note: r.description, status: r.status })))
+      else if (data) setClaims(data.map((r: { id: string; category: string; amount: number; spent_on: string; note: string | null; status: string }) => ({ id: r.id, category: r.category, amount: Number(r.amount), date: r.spent_on.slice(0,10), note: r.note ?? '', status: r.status })))
       setLoading(false)
     })
   }, [])
@@ -49,12 +49,12 @@ export default function ExpensesClient() {
     const supabase = createClient()
     const { data: me } = await supabase.from('me').select('id').maybeSingle()
     if (!me) return setError('Not linked to a person.')
-    const { data, error } = await supabase.from('expenses').insert({ person_id: me.id, category, amount: value, description: note.trim() || category, status: 'pending' }).select('id, category, amount, created_at, description, status').single()
+    const { data, error } = await supabase.from('expenses').insert({ person_id: me.id, category, amount: value, spent_on: date, note: note.trim() || null }).select('id, category, amount, spent_on, note, status').single()
     if (error) {
-      if (error.message.includes('schema cache') || error.message.includes("'description'")) return setError('Expenses is updating — please refresh and try again in a moment.')
+      if (error.message.includes('schema cache') || error.message.includes('description')) return setError('Expenses is updating — please refresh and try again in a moment.')
       return setError(error.message)
     }
-    if (data) setClaims((c) => [{ id: data.id, category: data.category, amount: Number(data.amount), date: data.created_at.slice(0,10), note: data.description, status: data.status }, ...c])
+    if (data) setClaims((c) => [{ id: data.id, category: data.category, amount: Number(data.amount), date: data.spent_on.slice(0,10), note: data.note ?? '', status: data.status }, ...c])
     setCategory(CATEGORIES[0])
     setAmount('')
     setDate('')
