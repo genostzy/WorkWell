@@ -1,6 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 import { Empty, LoadError, PageHead, PlaneBadge, PrivacyNote, RoleLocked } from '@/components/chrome'
-import { OrgFilter } from '@/app/org/org-filter'
+
+const METRICS = [
+  { key: 'mood', label: 'Mood' },
+  { key: 'energy', label: 'Energy' },
+  { key: 'pressure', label: 'Pressure' },
+  { key: 'workload', label: 'Workload' },
+]
+
+const CONCERN = { key: 'concern', label: 'Team concern raised' }
 
 export default async function Org() {
   const supabase = await createClient()
@@ -42,6 +50,9 @@ export default async function Org() {
   const all = cohorts ?? []
   const shown = all.filter((c) => !c.suppressed)
   const hidden = all.filter((c) => c.suppressed)
+
+  const valueFor = (cohort: string, metric: string) =>
+    (metrics ?? []).find((m) => m.cohort === cohort && m.metric === metric)
 
   return (
     <>
@@ -89,7 +100,73 @@ export default async function Org() {
         </Empty>
       )}
 
-      <OrgFilter cohorts={all} metrics={metrics ?? []} />
+      {shown.map((c) => (
+        <div className="card" key={c.cohort}>
+          <div className="card__head">
+            <div>
+              <h2 className="card__title">{c.cohort}</h2>
+              <div className="card__sub">{c.headcount} people contributing</div>
+            </div>
+            <span className="chip chip--accent">Reporting</span>
+          </div>
+          {METRICS.map((m) => {
+            const v = valueFor(c.cohort, m.key)
+            return (
+              <div className="metric" key={m.key}>
+                <span>{m.label}</span>
+                <span className="meter__track" role="meter" aria-valuenow={v ? Number(v.value) : 0} aria-valuemin={0} aria-valuemax={5} aria-label={`${m.label} ${v ? Number(v.value).toFixed(1) : 'no data'}`}>
+                  <span
+                    className="meter__fill"
+                    style={{
+                      width: v ? `${(Number(v.value) / 5) * 100}%` : '0%',
+                    }}
+                  />
+                </span>
+                <b className="t-num">
+                  {v ? Number(v.value).toFixed(1) : '—'}
+                </b>
+              </div>
+            )
+          })}
+          {(() => {
+            const v = valueFor(c.cohort, CONCERN.key)
+            return (
+              <div className="metric">
+                <span>{CONCERN.label}</span>
+                <span className="meter__track" role="meter" aria-valuenow={v ? Number(v.value) : 0} aria-valuemin={0} aria-valuemax={1} aria-label={`${CONCERN.label} ${v ? Math.round(Number(v.value) * 100)+'%' : 'no data'}`}>
+                  <span
+                    className="meter__fill"
+                    style={{ width: v ? `${Number(v.value) * 100}%` : '0%' }}
+                  />
+                </span>
+                <b className="t-num">
+                  {v ? `${Math.round(Number(v.value) * 100)}%` : '—'}
+                </b>
+              </div>
+            )
+          })()}
+        </div>
+      ))}
+
+      {hidden.length > 0 && (
+        <div className="card card--quiet">
+          <h2 className="card__title mb-2">Hidden: too few people</h2>
+          <p className="t-subtle mb-4">
+            Named so that a gap is never mistaken for a signal. No figures exist
+            for these groups.
+          </p>
+          <div className="stack stack--tight">
+            {hidden.map((c) => (
+              <div className="row row--between" key={c.cohort}>
+                <b>{c.cohort}</b>
+                <span className="chip">
+                  {c.headcount} {c.headcount === 1 ? 'person' : 'people'} — under 8
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <PrivacyNote
         plane="org"
