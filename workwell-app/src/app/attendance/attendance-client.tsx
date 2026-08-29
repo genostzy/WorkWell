@@ -6,11 +6,18 @@ import { ConfirmButton } from '@/components/controls'
 import { createClient } from '@/lib/supabase/client'
 import { fmtDate } from '@/lib/format-date'
 
-// Lunch is not something you clock — the app pauses it for you. Two fixed
-// hours, matching the standard PH lunch block; a real rollout would read
-// this from company policy instead of a constant.
-const LUNCH_START_MIN = 12 * 60
-const LUNCH_END_MIN = 13 * 60
+// Lunch is not something you clock — the app pauses it for you. Read from
+// the rostered shift's own meal window (wall-clock minutes), not a fixed
+// 12:00-13:00 that was wrong for every non-day shift (night is 19:00-20:00,
+// graveyard is 21:00-22:00, morning is 12:00-13:00). Falls back to 12-13
+// only until the shift loads.
+const FALLBACK_LUNCH_START = 12 * 60
+const FALLBACK_LUNCH_END = 13 * 60
+
+function toMinutes(t: string) {
+  const [h, m] = t.split(':').map(Number)
+  return h * 60 + (m || 0)
+}
 
 type DayLog = {
   timeIn: string | null
@@ -84,6 +91,7 @@ export default function AttendanceClient() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [mealWindow, setMealWindow] = useState<{ start: number; end: number }>({ start: FALLBACK_LUNCH_START, end: FALLBACK_LUNCH_END })
 
   const [resetRequests, setResetRequests] = useState<ResetRequest[]>([])
   const [resetDay, setResetDay] = useState(today?.iso ?? week[0].iso)
@@ -127,7 +135,7 @@ export default function AttendanceClient() {
 
     ;(async () => {
       const supabase = createClient()
-      const [{ data, error }, { data: resets, error: resetsError }] = await Promise.all([
+      const [{ data, error }, { data: resets, error: resetsError }, { data: shiftRow }] = await Promise.all([
         supabase
           .from('attendance')
           .select('day, time_in, lunch_start, lunch_end, time_out')
@@ -137,7 +145,19 @@ export default function AttendanceClient() {
           .from('attendance_reset_requests')
           .select('id, day, reason, status')
           .order('created_at', { ascending: false }),
+        supabase
+          .from('shift_assignments')
+          .select('shifts(meal_start, meal_end)')
+          .maybeSingle(),
       ])
+      if (!cancelled && shiftRow) {
+        const s = (shiftRow as unknown as { shifts?: { meal_start: string; meal_end: string } | null })?.shifts
+        // Supabase may return shifts as array if relationship not singular; handle both.
+        const meal = Array.isArray(s) ? (s as unknown as { meal_start: string; meal_end: string }[])[0] : s
+        if (meal?.meal_start && meal?.meal_end) {
+          setMealWindow({ start: toMinutes(meal.meal_start), end: toMinutes(meal.meal_end) })
+        }
+      }
 
       if (cancelled) return
       if (error) {
@@ -165,25 +185,32 @@ export default function AttendanceClient() {
   useEffect(() => { logsRef.current = logs }, [logs])
 
   // The auto-pause: nothing to click, nothing to forget. While timed in and
-  // not yet out, the tick checks the wall clock against the lunch window
-  // and asks the server to stamp the pause and its resume. The RPCs guard
+  // not yet out, the tick checks the wall clock against the rostered meal
+  // window and asks the server to stamp the pause and its resume. The RPCs guard
   // their own idempotency, so a tick firing again before the reload lands
-  // is harmless.
+  // is harmless. Handles wrap-around (e.g. 19:00-20:00) and updates when the
+  // shift assignment does.
   useEffect(() => {
     if (!today) return
     const supabase = createClient()
+    const inWindow = (mins: number, start: number, end: number) => {
+      if (start === end) return false
+      if (start < end) return mins >= start && mins < end
+      return mins >= start || mins < end
+    }
     const tick = async () => {
       const log = (logsRef.current as Record<string, DayLog>)[today.iso]
       if (!log?.timeIn || log.timeOut) return
       const mins = minutesSinceMidnight(new Date())
+      const { start, end } = mealWindow
 
-      if (!log.lunchStart && mins >= LUNCH_START_MIN && mins < LUNCH_END_MIN) {
+      if (!log.lunchStart && inWindow(mins, start, end)) {
         const { error } = await supabase.rpc('attendance_lunch_start')
         if (error) setActionError(error.message)
         else reloadToday()
         return
       }
-      if (log.lunchStart && !log.lunchEnd && mins >= LUNCH_END_MIN) {
+      if (log.lunchStart && !log.lunchEnd && !inWindow(mins, start, end)) {
         const { error } = await supabase.rpc('attendance_lunch_end')
         if (error) setActionError(error.message)
         else reloadToday()
@@ -192,7 +219,7 @@ export default function AttendanceClient() {
     tick()
     const id = window.setInterval(tick, 30000)
     return () => window.clearInterval(id)
-  }, [today?.iso, reloadToday, logsRef])
+  }, [today?.iso, reloadToday, logsRef, mealWindow])
 
   async function timeIn() {
     setActionError(null)
@@ -427,7 +454,7 @@ export default function AttendanceClient() {
 
       <PrivacyNote
         plane="work"
-        detail="A per-minute time record is a real change from the confirmation-only design this screen used to mock — worth knowing it's here. Lunch is paused automatically between 12:00 pm and 1:00 pm rather than clocked, so it never counts as worked time and never needs a separate button. This record is yours alone by default — never visible to HR, individually or aggregated. The one exception: if you request a reset with a reason below, HR can see and correct that single day while your request is open, and nothing else. Approve, decline, or withdraw it and the door closes again."
+        detail="A per-minute time record is a real change from the confirmation-only design this screen used to mock — worth knowing it's here. Lunch is paused automatically during your rostered meal window rather than clocked, so it never counts as worked time and never needs a separate button. This record is yours alone by default — never visible to HR, individually or aggregated. The one exception: if you request a reset with a reason below, HR can see and correct that single day while your request is open, and nothing else. Approve, decline, or withdraw it and the door closes again."
       >
         <b>Self-only, with one narrow exception you control.</b>{' '}
       </PrivacyNote>
