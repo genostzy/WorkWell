@@ -202,6 +202,7 @@ export default async function Trends() {
                     {new Date(r.day + 'T00:00:00').toLocaleDateString('en-GB', {
                       day: 'numeric',
                       month: 'short',
+                      timeZone: 'Asia/Manila',
                     })}
                     {/* The time, under the date. Two entries on one day
                         would otherwise be two identical-looking rows with
@@ -211,6 +212,7 @@ export default async function Trends() {
                       {new Date(r.created_at).toLocaleTimeString('en-PH', {
                         hour: 'numeric',
                         minute: '2-digit',
+                        timeZone: 'Asia/Manila',
                       })}
                     </div>
                   </th>

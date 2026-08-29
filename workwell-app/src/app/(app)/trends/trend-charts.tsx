@@ -19,6 +19,55 @@ const METRICS = [
   { key: 'workload', label: 'Workload' },
 ] as const
 
+const SCALE_LABELS: Record<string, string[]> = {
+  mood: ['Low', 'Not great', 'OK', 'Good', 'Great'],
+  energy: ['Empty', 'Low', 'Steady', 'Good', 'High'],
+  pressure: ['Calm', 'Settled', 'Noticeable', 'High', 'Very high'],
+  workload: ['Light', 'Manageable', 'About right', 'Heavy', 'Too much'],
+}
+
+function levelLabel(key: string, mean: number | null) {
+  if (mean == null) return 'no data'
+  // Pressure/Workload are inverted: lower is better
+  const inverted = key === 'pressure' || key === 'workload'
+  if (inverted) {
+    if (mean <= 1.8) return 'Calm / light'
+    if (mean <= 2.6) return 'Settled'
+    if (mean <= 3.4) return 'Noticeable'
+    if (mean <= 4.2) return 'High'
+    return 'Very high'
+  }
+  if (mean <= 1.8) return 'Low'
+  if (mean <= 2.6) return 'Low-moderate'
+  if (mean <= 3.4) return 'Okay / steady'
+  if (mean <= 4.2) return 'Good'
+  return 'Great / high'
+}
+
+function trendSummary(key: string, stat: { mean: number; n: number } | null, chron: TrendRow[]) {
+  if (!stat || stat.n < 5) return 'Not enough data yet — check in a few more times.'
+  const recent = chron.slice(-5)
+  const baseline = chron.slice(-10, -5)
+  if (baseline.length < 5) return `${levelLabel(key, stat.mean)} · ${stat.mean.toFixed(1)} average — building your baseline.`
+  const avg = (rows: TrendRow[], k: string) => {
+    const vals = rows.map((r) => (r as unknown as Record<string, number | null>)[k]).filter((v): v is number => v !== null)
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null
+  }
+  const r = avg(recent, key)
+  const b = avg(baseline, key)
+  if (r == null || b == null) return `${levelLabel(key, stat.mean)} · ${stat.mean.toFixed(1)} average`
+  const diff = r - b
+  const abs = Math.abs(diff)
+  const dir = abs < 0.35 ? 'Stable' : diff > 0 ? 'Rising' : 'Falling'
+  const vsBase = abs < 0.35 ? 'near your usual' : diff > 0 ? `above your usual ${b.toFixed(1)}` : `below your usual ${b.toFixed(1)}`
+  const inverted = key === 'pressure' || key === 'workload'
+  // For pressure/workload, rising is worsening
+  const tone = inverted
+    ? diff > 0.35 ? 'higher than usual' : diff < -0.35 ? 'lower than usual' : 'around usual'
+    : diff > 0.35 ? 'higher than usual' : diff < -0.35 ? 'lower than usual' : 'around usual'
+  return `${levelLabel(key, stat.mean)} · ${stat.mean.toFixed(1)} average — ${dir}, ${tone} (${vsBase}).`
+}
+
 type Metric = (typeof METRICS)[number]['key']
 
 // One chart's box. Small on purpose: four of these side by side is what
@@ -88,10 +137,12 @@ function when(row: TrendRow) {
   const date = new Date(row.day + 'T00:00:00').toLocaleDateString('en-GB', {
     day: 'numeric',
     month: 'short',
+    timeZone: 'Asia/Manila',
   })
   const time = new Date(row.created_at).toLocaleTimeString('en-PH', {
     hour: 'numeric',
     minute: '2-digit',
+    timeZone: 'Asia/Manila',
   })
   return `${date}, ${time}`
 }
@@ -202,6 +253,40 @@ export function TrendCharts({ rows }: { rows: TrendRow[] }) {
           <span className="legend__swatch legend__swatch--band" aria-hidden="true" />
           Where most of your entries sit
         </span>
+      </div>
+
+      {/* 1-5 scale legend per metric — what each number actually means */}
+      <div className="card card--quiet mt-4" style={{ padding: 'var(--s-4)' }}>
+        <h3 className="card__title" style={{ fontSize: 'var(--fs-sm)', marginBottom: 'var(--s-3)' }}>What 1–5 means</h3>
+        <div className="grid grid--4" style={{ gap: 'var(--s-3)' }}>
+          {METRICS.map((m) => (
+            <div key={m.key}>
+              <div style={{ fontWeight: 600, fontSize: 'var(--fs-sm)', marginBottom: 4 }}>{m.label}</div>
+              <div style={{ fontSize: 'var(--fs-xs)', lineHeight: 1.6, color: 'var(--text-muted)' }}>
+                {SCALE_LABELS[m.key].map((lbl, i) => (
+                  <span key={i} style={{ display: 'inline-block', marginRight: 8 }}>
+                    <b className="t-num" style={{ fontWeight: 700 }}>{i + 1}</b> {lbl}
+                    {i < 4 ? ' ·' : ''}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="field__hint" style={{ marginTop: 'var(--s-3)' }}>
+          1–5 is the scale you answer on. Higher is better for Mood/Energy; lower is calmer/lighter for Pressure/Workload.
+        </p>
+      </div>
+
+      {/* Per-metric trend summary — low/stable/improving/declining vs baseline */}
+      <div className="stack mt-4">
+        {summary.map(({ key, label, stat }) => (
+          <div key={key} className="row row--between" style={{ gap: 'var(--s-3)', padding: 'var(--s-2) 0', borderTop: '1px solid var(--border)' }}>
+            <div style={{ fontWeight: 600, minWidth: 90 }}>{label}</div>
+            <div className="t-subtle" style={{ flex: 1, fontSize: 'var(--fs-sm)' }}>{trendSummary(key, stat, chron)}</div>
+            <div className="chip t-num">{stat ? stat.mean.toFixed(1) : '—'}</div>
+          </div>
+        ))}
       </div>
 
       <p className="chart__caption">

@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { SaveState, ToggleRow } from '@/components/controls'
 import { usePrefs } from '@/lib/use-prefs'
@@ -42,6 +43,25 @@ export default function BoundariesClient() {
 
   // <input type="time"> wants HH:MM; Postgres hands back HH:MM:SS.
   const hhmm = (t: string) => (t ?? '').slice(0, 5)
+
+  const toMins = (t: string) => {
+    const [h, m] = hhmm(t).split(':').map(Number)
+    return (Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0)
+  }
+
+  // Keep the prototype room in sync: it reads quiet hours from localStorage,
+  // while this page is the DB-backed source of truth. Writing both keeps the
+  // dashboard indicator (Kkena · 10:55 pm · quiet hours) appearing immediately
+  // after save without a refresh, and keeps other prototype screens consistent.
+  useEffect(() => {
+    if (loading) return
+    try {
+      localStorage.setItem('ww.quietFrom', String(toMins(value.quiet_from)))
+      localStorage.setItem('ww.quietTo', String(toMins(value.quiet_to)))
+      localStorage.setItem('ww.quietDays', JSON.stringify(value.quiet_days ?? DEFAULTS.quiet_days))
+      window.dispatchEvent(new Event('ww:quiet-change'))
+    } catch {}
+  }, [value.quiet_from, value.quiet_to, value.quiet_days, loading])
 
   return (
     <>
