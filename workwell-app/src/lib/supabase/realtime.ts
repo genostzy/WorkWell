@@ -75,7 +75,17 @@ export function watchTable<T extends Record<string, unknown>>(
         if (r) handlers.onDelete?.(r)
       }
     )
-    .subscribe()
+    // Unhandled, a failed join is invisible: nothing throws, nothing
+    // rejects, the caller's cleanup function still works, and the screen
+    // just quietly never updates. Logged rather than swallowed so a
+    // dropped or errored subscription shows up as a message pointing at
+    // the table involved, not as "realtime doesn't work" with nothing to
+    // go on.
+    .subscribe((status, err) => {
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        console.error(`Realtime subscription to ${where.schema}.${where.table} failed (${status})`, err)
+      }
+    })
 
   return () => {
     supabase.removeChannel(channel)
