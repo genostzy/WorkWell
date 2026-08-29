@@ -23,8 +23,10 @@ export function createAdminClient() {
         'add it to .env.local from Supabase → Project Settings → API.'
     )
   }
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+  if (!url) throw new Error('SUPABASE_URL / NEXT_PUBLIC_SUPABASE_URL is not set — add it to .env.local from Supabase → Project Settings → API.')
 
-  return createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key, {
+  return createSupabaseClient(url, key, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 }

@@ -58,6 +58,19 @@ const DOCK_X = 500
 const BTN_Y = 606
 const HOURS_Y = 572
 
+function nowWithOverride(): Date {
+  try {
+    const q = new URLSearchParams(window.location.search).get('time')
+    const m = q && /^\d{1,2}:\d{2}$/.test(q) ? q.split(':') : null
+    if (m) {
+      const d = new Date()
+      d.setHours(Number(m[0]) % 24, Number(m[1]) % 60, 0, 0)
+      return d
+    }
+  } catch { /* ignore */ }
+  return new Date()
+}
+
 /** Built once per injection; everything that changes is set as an attribute
  *  afterwards, so nothing here is re-parsed on a tick. */
 function skeleton(shift: Shift) {
@@ -290,7 +303,8 @@ export function ShiftRing({ roomRef }: { roomRef: React.RefObject<HTMLDivElement
 
     const read = async () => {
       const supabase = createClient()
-      const today = new Date().toISOString().slice(0, 10)
+      const now = nowWithOverride()
+      const today = now.toISOString().slice(0, 10)
 
       const [{ data: assignment }, { data: attendance }, { data: org }] = await Promise.all([
         supabase
@@ -332,6 +346,9 @@ export function ShiftRing({ roomRef }: { roomRef: React.RefObject<HTMLDivElement
       window.clearInterval(id)
     }
   }, [])
+
+  // Track last shift id so meal/hour marks are rebuilt when the roster changes.
+  const lastShiftIdRef = useRef<string | null>(null)
 
   // Draws and re-draws. Runs every second so the fill creeps rather than
   // stepping, and so a rebuild by room.js is repaired within a second of it
@@ -419,12 +436,15 @@ export function ShiftRing({ roomRef }: { roomRef: React.RefObject<HTMLDivElement
       // on a path that isn't being rendered, which is the case if the list
       // view was showing when the ring was built. Retrying while it is still
       // unplaced costs one attribute read a second and means switching back
-      // to the room finds the mark there.
-      if (ring.querySelector('.shift-ring__meal')?.hasAttribute('hidden')) {
+      // to the room finds the mark there. Also rebuild when the shift changes.
+      const needsMarks = ring.querySelector('.shift-ring__meal')?.hasAttribute('hidden') || lastShiftIdRef.current !== shift.id
+      if (needsMarks) {
         placeMarks(ring, shift)
+        lastShiftIdRef.current = shift.id
       }
 
-      const s = ringState(shift, log, new Date())
+      const now = nowWithOverride()
+      const s = ringState(shift, log, now)
       const offset = String(1 - s.progress)
 
       // s.clockedOut, not s.done: done also goes true at full progress with
@@ -465,7 +485,6 @@ export function ShiftRing({ roomRef }: { roomRef: React.RefObject<HTMLDivElement
 
       /* ---------------------------------------------------------- the dock */
 
-      const now = new Date()
       const dock = dockState(shift, s, log, now, zoneRef.current)
       const dockEl = ring.querySelector<SVGGElement>('.shift-dock')
       const btn = ring.querySelector<SVGGElement>('.shift-dock__btn')

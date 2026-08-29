@@ -35,7 +35,7 @@ export function Notifications() {
     const supabase = createClient()
     supabase
       .from('notifications')
-      .select('*')
+      .select('id, kind, title, body, link, read, created_at')
       .eq('read', false)
       .order('created_at', { ascending: false })
       .then(({ data }) => setNotifications(data ?? []))

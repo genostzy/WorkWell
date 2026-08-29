@@ -1,67 +1,41 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { PageHead, PlaneBadge } from '@/components/chrome'
 import { createClient } from '@/lib/supabase/client'
-import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { fmtDate } from '@/lib/format-date'
 
 type Asset = {
   id: string
   tag: string
-  asset_type: string
-  issued_on: string
-  condition: 'Good' | 'Fair' | 'Poor'
-  issue_reported: boolean
-  issue_note: string | null
+  type: string
+  issued: string
+  condition: string
+  issueReported: boolean
 }
 
 export default function AssetsClient() {
   const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
-
+  const [error, setError] = useState<string|null>(null)
   const [reporting, setReporting] = useState<string | null>(null)
   const [note, setNote] = useState('')
-  const [sending, setSending] = useState(false)
 
   useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from('assets')
-        .select('id, tag, asset_type, issued_on, condition, issue_reported, issue_note')
-        .order('issued_on')
-      if (cancelled) return
-      if (error) setLoadError(error.message)
-      setAssets((data ?? []) as Asset[])
+    const supabase = createClient()
+    supabase.from('assets').select('id, name, serial_number, issued_on, status, notes').order('issued_on', { ascending: false }).then(({ data, error }) => {
+      if (error) { setError(error.message); setLoading(false); return }
+      const rows = (data ?? []) as { id: string; name: string; serial_number: string | null; issued_on: string; status: string; notes: string | null }[]
+      setAssets(rows.map(r => ({ id: r.id, tag: r.serial_number ?? r.id.slice(0,8), type: r.name, issued: r.issued_on, condition: r.status, issueReported: !!r.notes })))
       setLoading(false)
-    })()
-    return () => {
-      cancelled = true
-    }
+    })
   }, [])
 
-  function cancelReport() {
-    setReporting(null)
-    setNote('')
-  }
-
   async function report(id: string) {
-    if (!note.trim()) return
-    setSending(true)
     const supabase = createClient()
-    const { error } = await supabase
-      .from('assets')
-      .update({ issue_reported: true, issue_note: note.trim() || null })
-      .eq('id', id)
-    setSending(false)
-
-    if (error) return setLoadError(error.message)
-
-    setAssets((a) =>
-      a.map((x) => (x.id === id ? { ...x, issue_reported: true, issue_note: note.trim() || null } : x))
-    )
+    const { error } = await supabase.from('assets').update({ notes: note.trim() || 'Issue reported' }).eq('id', id)
+    if (error) { setError(error.message); return }
+    setAssets((a) => a.map((x) => (x.id === id ? { ...x, issueReported: true } : x)))
     setReporting(null)
     setNote('')
   }
@@ -76,94 +50,59 @@ export default function AssetsClient() {
 
       <div className="card card--flush">
         <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-          <h2 className="card__title">Issued to you</h2>
+          <div className="card__title">Issued to you</div>
         </div>
-        {loadError && (
-          <div className="banner banner--error" style={{ margin: '0 var(--s-5) var(--s-5)' }} role="alert">
-            {loadError}
-          </div>
-        )}
-        {loading ? (
-          <div style={{ padding: '0 var(--s-5) var(--s-5)' }}>
-            <div className="skel skel--text" />
-          </div>
-        ) : assets.length === 0 ? (
-          <p className="t-subtle" style={{ padding: '0 var(--s-5) var(--s-5)' }}>
-            Nothing issued to you yet.
-          </p>
-        ) : (
-          <div className="table-scroll">
-            <table className="data-table">
-              <caption className="sr-only">Assets issued to you</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Item</th>
-                  <th scope="col">Tag</th>
-                  <th scope="col">Issued</th>
-                  <th scope="col">Condition</th>
-                  <th scope="col"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {assets.map((a) => (
-                  <tr key={a.id}>
-                    <th scope="row" style={{ fontWeight: 600 }}>{a.asset_type}</th>
-                    <td className="t-subtle">{a.tag}</td>
-                    <td>{fmtDate(a.issued_on)}</td>
-                    <td>
-                      <span className={a.condition === 'Good' ? 'chip chip--accent' : 'chip'}>
-                        {a.condition}
-                      </span>
-                    </td>
-                    <td>
-                      {a.issue_reported ? (
-                        <span className="t-subtle">Issue reported</span>
-                      ) : reporting === a.id ? (
-                        <div className="row" style={{ gap: 'var(--s-2)' }}>
-                          <input
-                            className="input"
-                            style={{ maxWidth: 200 }}
-                            placeholder="What's wrong?"
-                            value={note}
-                            onChange={(e) => setNote(e.target.value)}
-                          />
-                          <button
-                            className="btn btn--primary btn--sm"
-                            type="button"
-                            disabled={sending || !note.trim()}
-                            onClick={() => report(a.id)}
-                          >
-                            Send
-                          </button>
-                          <button
-                            className="btn btn--ghost btn--sm"
-                            type="button"
-                            disabled={sending}
-                            onClick={cancelReport}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
-                        <button className="btn btn--ghost btn--sm" type="button" onClick={() => setReporting(a.id)}>
-                          Report an issue
+        <div className="table-scroll">
+          <table className="data-table">
+            <caption className="sr-only">Assets issued to you</caption>
+            <thead>
+              <tr>
+                <th scope="col">Item</th>
+                <th scope="col">Tag</th>
+                <th scope="col">Issued</th>
+                <th scope="col">Condition</th>
+                <th scope="col"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {assets.map((a) => (
+                <tr key={a.id}>
+                  <th scope="row" style={{ fontWeight: 600 }}>{a.type}</th>
+                  <td className="t-subtle">{a.tag}</td>
+                  <td>{fmtDate(a.issued)}</td>
+                  <td>
+                    <span className={a.condition === 'Good' ? 'chip chip--accent' : 'chip'}>
+                      {a.condition}
+                    </span>
+                  </td>
+                  <td>
+                    {a.issueReported ? (
+                      <span className="t-subtle">Issue reported</span>
+                    ) : reporting === a.id ? (
+                      <div className="row" style={{ gap: 'var(--s-2)' }}>
+                        <input
+                          className="input"
+                          style={{ maxWidth: 200 }}
+                          placeholder="What's wrong?"
+                          value={note}
+                          onChange={(e) => setNote(e.target.value)}
+                        />
+                        <button className="btn btn--primary btn--sm" type="button" onClick={() => report(a.id)}>
+                          Send
                         </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                      </div>
+                    ) : (
+                      <button className="btn btn--ghost btn--sm" type="button" onClick={() => setReporting(a.id)}>
+                        Report an issue
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-
-      <PrivacyNote
-        plane="work"
-        detail="Equipment records are tied to your employment, not your private plane — HR who manage inventory can see what's issued to you and any issue you report, the same as leave or expense records. Nothing here touches check-ins, mood, or anything else you track privately."
-      >
-        <b>Seen by HR who manage inventory.</b>{' '}
-      </PrivacyNote>
     </>
   )
 }

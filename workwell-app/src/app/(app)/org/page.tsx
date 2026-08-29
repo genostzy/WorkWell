@@ -5,6 +5,7 @@ const METRICS = [
   { key: 'mood', label: 'Mood' },
   { key: 'energy', label: 'Energy' },
   { key: 'pressure', label: 'Pressure' },
+  { key: 'workload', label: 'Workload' },
 ]
 
 const CONCERN = { key: 'concern', label: 'Team concern raised' }
@@ -77,11 +78,12 @@ export default async function Org() {
         </div>
         <div className="stat">
           <span className="stat__label">People counted</span>
-          <span className="stat__value t-num">
-            {all.reduce((s, c) => s + c.headcount, 0)}
+          <span className="stat__value t-num" title={hidden.length > 0 ? "Total hidden when any group is suppressed — prevents subtraction" : undefined}>
+            {hidden.length > 0 ? "—" : all.reduce((s, c) => s + c.headcount, 0)}
           </span>
         </div>
       </div>
+      {hidden.length > 0 && <p className="t-subtle mb-4" style={{ fontSize: 'var(--fs-sm)' }}>Totals hidden while any group is suppressed — this prevents inferring a hidden group by subtraction.</p>}
 
       {all.length === 0 && (
         <Empty icon="&#x1f465;" title="No groups yet">
@@ -112,7 +114,7 @@ export default async function Org() {
             return (
               <div className="metric" key={m.key}>
                 <span>{m.label}</span>
-                <span className="meter__track">
+                <span className="meter__track" role="meter" aria-valuenow={v ? Number(v.value) : 0} aria-valuemin={0} aria-valuemax={5} aria-label={`${m.label} ${v ? Number(v.value).toFixed(1) : 'no data'}`}>
                   <span
                     className="meter__fill"
                     style={{
@@ -131,7 +133,7 @@ export default async function Org() {
             return (
               <div className="metric">
                 <span>{CONCERN.label}</span>
-                <span className="meter__track">
+                <span className="meter__track" role="meter" aria-valuenow={v ? Number(v.value) : 0} aria-valuemin={0} aria-valuemax={1} aria-label={`${CONCERN.label} ${v ? Math.round(Number(v.value) * 100)+'%' : 'no data'}`}>
                   <span
                     className="meter__fill"
                     style={{ width: v ? `${Number(v.value) * 100}%` : '0%' }}

@@ -10,5 +10,8 @@ export function fmtDate(
   iso: string,
   opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' }
 ) {
-  return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', opts)
+  // Use UTC to keep server (UTC) and client (local TZ) rendering identical —
+  // otherwise hydration mismatches when the server is west of UTC.
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-GB', { ...opts, timeZone: 'UTC' })
 }

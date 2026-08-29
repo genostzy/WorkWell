@@ -286,6 +286,11 @@ export function Office({
     'workspace_prefs',
     { home_view: 'room' as 'room' | 'list' }
   )
+  const { value: boundaryPrefs } = usePrefs('boundaries', {
+    quiet_from: '18:30:00',
+    quiet_to: '08:30:00',
+    quiet_days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as string[],
+  })
   const setView = useCallback(
     (home_view: 'room' | 'list') => updateHomePrefs({ home_view }),
     [updateHomePrefs]
@@ -336,7 +341,29 @@ export function Office({
     // it was never ported, so the room has been drawn at noon at every hour
     // since. It is set here rather than in React's render because the SVG
     // above is written imperatively and the two must land together.
-    roomRef.current.dataset.phase = WW.room.phaseAt(minutes)
+    // Prefer the DB-backed boundaries (Boundary assistant) over the prototype's
+    // localStorage fallback, so saving Quiet Hours 10:24 am–02:30 pm is
+    // reflected immediately on the dashboard as "Kkena · 10:35 am · quiet hours".
+    const toMins = (t: string) => {
+      const [h, m] = (t ?? '').slice(0, 5).split(':').map(Number)
+      return (Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0)
+    }
+    let phase = WW.room.phaseAt(minutes)
+    try {
+      const b = boundaryPrefs as unknown as { quiet_from?: string; quiet_to?: string; quiet_days?: string[] }
+      if (b?.quiet_from && b?.quiet_to) {
+        const from = toMins(b.quiet_from)
+        const to = toMins(b.quiet_to)
+        const days = b.quiet_days as string[] | undefined
+        // If days is set, respect it; otherwise fall back to time-only check (prototype behaviour)
+        const todayIdx = new Date().getDay() // 0 Sun
+        const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][todayIdx]
+        const inDays = !days || days.length === 0 ? true : days.includes(dayName)
+        const inWindow = from > to ? (minutes >= from || minutes < to) : (minutes >= from && minutes < to)
+        phase = inDays && inWindow ? 'quiet' : inDays ? (minutes < 12 * 60 ? 'morning' : 'day') : WW.room.phaseAt(minutes)
+      }
+    } catch {}
+    roomRef.current.dataset.phase = phase
 
     // The avatar shipped reading "?" because nothing ever filled it in.
     const mark = roomRef.current.querySelector('.room-avatar__initials')
@@ -396,10 +423,30 @@ export function Office({
       listRef.current.innerHTML = WW.room.roomList('employee', false, caps)
     }
 
-    setPhase(WW.room.phaseAt(minutes))
+    // Mirror the phase logic used for the room's dataset above (DB-backed quiet hours)
+    let nextPhase = WW.room.phaseAt(minutes)
+    try {
+      const b = boundaryPrefs as unknown as { quiet_from?: string; quiet_to?: string; quiet_days?: string[] }
+      if (b?.quiet_from && b?.quiet_to) {
+        const hm = (t: string) => {
+          const [h, m] = (t ?? '').slice(0, 5).split(':').map(Number)
+          return (Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0)
+        }
+        const from = hm(b.quiet_from)
+        const to = hm(b.quiet_to)
+        const days = b.quiet_days as string[] | undefined
+        const todayIdx = new Date().getDay()
+        const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][todayIdx]
+        const inDays = !days || days.length === 0 ? true : days.includes(dayName)
+        const inWindow = from > to ? (minutes >= from || minutes < to) : (minutes >= from && minutes < to)
+        if (inDays && inWindow) nextPhase = 'quiet'
+        else if (inDays) nextPhase = minutes < 12 * 60 ? 'morning' : 'day'
+      }
+    } catch {}
+    setPhase(nextPhase)
     setClock(WW.room.formatTime(minutes))
     setLoaded(true)
-  }, [name, initials, colour, avatarUrl, avatarOffsetX, avatarOffsetY, boardTasks])
+  }, [name, initials, colour, avatarUrl, avatarOffsetX, avatarOffsetY, boardTasks, boundaryPrefs])
 
   // Read once on arrival. The board is a glance at the day, not a live
   // view of it — and the room already rebuilds itself every minute, which
@@ -473,6 +520,24 @@ export function Office({
       if (window.WW?.room) build()
     }, 60000)
     return () => window.clearInterval(id)
+  }, [build])
+
+  // React to Boundary assistant saves immediately — Boundaries writes to
+  // private.boundaries (via usePrefs) and mirrors to localStorage +
+  // dispatches ww:quiet-change. Listening here makes the dashboard's
+  // "Kkena · 10:35 am · quiet hours" + banner appear without waiting for
+  // the next 60s tick or a navigation.
+  useEffect(() => {
+    const handler = () => build()
+    window.addEventListener('ww:quiet-change', handler)
+    const onStorage = (e: StorageEvent) => {
+      if (e.key && e.key.startsWith('ww.quiet')) handler()
+    }
+    window.addEventListener('storage', onStorage)
+    return () => {
+      window.removeEventListener('ww:quiet-change', handler)
+      window.removeEventListener('storage', onStorage)
+    }
   }, [build])
 
   /**
@@ -648,6 +713,31 @@ export function Office({
                   }`
                 : ' '}
             </p>
+            {phase === 'quiet' && (
+              <div
+                className="banner banner--info"
+                role="status"
+                style={{ margin: 'var(--s-2) auto', maxWidth: 480, justifyContent: 'center', textAlign: 'center' }}
+              >
+                <span aria-hidden="true">🌙</span>{' '}
+                Quiet hours{' '}
+                {(() => {
+                  try {
+                    const b = boundaryPrefs as unknown as { quiet_from?: string; quiet_to?: string }
+                    if (!b?.quiet_from || !b?.quiet_to) return '— notifications paused'
+                    const fmt = (t: string) => {
+                      const [h, m] = t.slice(0, 5).split(':').map(Number)
+                      const d = new Date()
+                      d.setHours(h, m, 0, 0)
+                      return d.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })
+                    }
+                    return `${fmt(b.quiet_from)} – ${fmt(b.quiet_to)} · notifications paused`
+                  } catch {
+                    return '— notifications paused'
+                  }
+                })()}
+              </div>
+            )}
             <div
               className="room"
               data-room

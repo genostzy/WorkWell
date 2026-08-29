@@ -6,6 +6,7 @@ import { RoomSidebar } from '@/components/room-sidebar'
 import { SidebarToggle } from '@/components/sidebar-toggle'
 import { Notifications } from '@/components/notifications'
 import { ApplyWorkspacePrefs } from '@/components/apply-workspace-prefs'
+import { TopbarTitle } from '@/components/topbar-title'
 import { createClient } from '@/lib/supabase/server'
 import { type Page, type Plane } from '@/components/chrome'
 
@@ -177,11 +178,10 @@ export function Shell({
               <span className="topbar__backword">{isHr ? 'Administration' : 'Your space'}</span>
             </Link>
           )}
-          <span className="topbar__title">
-            {current === 'home'
-              ? isHr ? 'Administration' : 'Your space'
-              : (title ?? (current ? TITLES[current] : 'WorkWell'))}
-          </span>
+          <TopbarTitle
+            fallbackTitle={current === 'home' ? (isHr ? 'Administration' : 'Your space') : (title ?? (current ? TITLES[current] : undefined))}
+            fallbackCurrent={current}
+          />
           <span className="topbar__spacer" />
           <div className="topbar__actions">
             <Notifications />

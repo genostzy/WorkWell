@@ -33,13 +33,16 @@ export function Decide({
       return
     }
 
-    await supabase.from('notifications').insert({
+    const { error: notifError } = await supabase.from('notifications').insert({
       person_id: personId,
       kind: 'leave_decided',
       title: 'Leave request ' + status,
       body: 'Your leave request has been ' + status + '.',
       link: '/leave',
     })
+    if (notifError) {
+      setError('Decision saved but notification failed: ' + notifError.message)
+    }
 
     setBusy(false)
     setDone(status)
