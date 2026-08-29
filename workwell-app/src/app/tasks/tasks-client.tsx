@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { watchTable } from '@/lib/supabase/realtime'
 import Link from 'next/link'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { fmtDate } from '@/lib/format-date'
@@ -13,6 +14,27 @@ type Task = {
   note: string | null
   due_on: string | null
   done_at: string | null
+}
+
+/** The realtime payload for either table carries every column -- person_id,
+ *  and assigned_by on work.assigned_tasks -- not just the five this screen
+ *  keeps in state. Narrowed on the way in rather than widening Task, so a
+ *  live row and a fetched one are shaped identically everywhere else. */
+function toTask(row: Task): Task {
+  return {
+    id: row.id,
+    title: row.title,
+    note: row.note,
+    due_on: row.due_on,
+    done_at: row.done_at,
+  }
+}
+
+function upsert(list: Task[], row: Task): Task[] {
+  const next = list.some((x) => x.id === row.id)
+    ? list.map((x) => (x.id === row.id ? row : x))
+    : [...list, row]
+  return next.sort(order)
 }
 
 /** Today as 'YYYY-MM-DD' in the reader's own zone. Comparing due dates as
@@ -119,6 +141,42 @@ export default function TasksClient() {
       cancelled = true
     }
   }, [])
+
+  // Both lists filtered to this person: private.tasks is nobody else's to
+  // begin with, and work.assigned_tasks is filtered the same way this
+  // screen's own select already is, rather than relying on RLS alone to
+  // narrow a busier table this account has no other reason to hear about.
+  // Waits for personId, since that is what the filter is built from.
+  useEffect(() => {
+    if (!personId) return
+    const supabase = createClient()
+    const filter = `person_id=eq.${personId}`
+
+    const stopMine = watchTable<Task>(
+      supabase,
+      { schema: 'private', table: 'tasks', filter },
+      {
+        onInsert: (row) => setMine((t) => upsert(t, toTask(row))),
+        onUpdate: (row) => setMine((t) => upsert(t, toTask(row))),
+        onDelete: (row) => setMine((t) => t.filter((x) => x.id !== row.id)),
+      }
+    )
+
+    const stopAssigned = watchTable<Task>(
+      supabase,
+      { schema: 'work', table: 'assigned_tasks', filter },
+      {
+        onInsert: (row) => setAssigned((t) => upsert(t, toTask(row))),
+        onUpdate: (row) => setAssigned((t) => upsert(t, toTask(row))),
+        onDelete: (row) => setAssigned((t) => t.filter((x) => x.id !== row.id)),
+      }
+    )
+
+    return () => {
+      stopMine()
+      stopAssigned()
+    }
+  }, [personId])
 
   async function add(e: React.FormEvent) {
     e.preventDefault()

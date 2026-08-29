@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { watchTable } from '@/lib/supabase/realtime'
 
 type Notification = {
   id: string
@@ -39,6 +40,35 @@ export function Notifications() {
       .eq('read', false)
       .order('created_at', { ascending: false })
       .then(({ data }) => setNotifications(data ?? []))
+
+    // No `filter` here — RLS already restricts work.notifications to the
+    // caller's own rows, and Realtime evaluates that same policy per
+    // subscriber, so there is nothing else to scope this to.
+    return watchTable<Notification>(
+      supabase,
+      { schema: 'work', table: 'notifications' },
+      {
+        onInsert: (n) => {
+          if (n.read) return
+          setNotifications((prev) =>
+            prev.some((x) => x.id === n.id)
+              ? prev
+              : [n, ...prev].sort(
+                  (a, b) => +new Date(b.created_at) - +new Date(a.created_at)
+                )
+          )
+        },
+        // The only update a notification ever gets is being marked read
+        // (see 0046's guard trigger), so an update either drops it from
+        // this unread-only list or is a no-op echo of a change this tab
+        // already made itself.
+        onUpdate: (n) => {
+          setNotifications((prev) =>
+            n.read ? prev.filter((x) => x.id !== n.id) : prev
+          )
+        },
+      }
+    )
   }, [])
 
   useEffect(() => {

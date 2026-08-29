@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { watchTable } from '@/lib/supabase/realtime'
 
 type Comment = {
   id: string
@@ -59,6 +60,28 @@ export function TaskComments({
       cancelled = true
     }
   }, [open, comments, taskId])
+
+  // A thread nobody has opened has no reason to hold a socket open for it
+  // -- kept on its own effect, keyed only on `open` and `taskId`, so a new
+  // comment arriving (which changes `comments` above) does not tear this
+  // down and resubscribe on every message.
+  useEffect(() => {
+    if (!open) return
+    const supabase = createClient()
+
+    return watchTable<Comment>(
+      supabase,
+      { schema: 'work', table: 'task_comments', filter: `task_id=eq.${taskId}` },
+      {
+        onInsert: (c) =>
+          setComments((prev) =>
+            prev && !prev.some((x) => x.id === c.id) ? [...prev, c] : prev
+          ),
+        onDelete: (c) =>
+          setComments((prev) => prev && prev.filter((x) => x.id !== c.id)),
+      }
+    )
+  }, [open, taskId])
 
   async function post(e: React.FormEvent) {
     e.preventDefault()

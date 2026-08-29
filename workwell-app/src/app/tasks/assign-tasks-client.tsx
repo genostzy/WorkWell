@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { watchTable } from '@/lib/supabase/realtime'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { fmtDate } from '@/lib/format-date'
 import { TaskComments } from './task-comments'
@@ -13,6 +14,19 @@ type Assigned = {
   note: string | null
   due_on: string | null
   done_at: string | null
+}
+
+/** Realtime's payload carries every column on work.assigned_tasks,
+ *  assigned_by included -- narrowed to what this screen keeps in state. */
+function toAssigned(row: Assigned): Assigned {
+  return {
+    id: row.id,
+    person_id: row.person_id,
+    title: row.title,
+    note: row.note,
+    due_on: row.due_on,
+    done_at: row.done_at,
+  }
 }
 
 type Person = { id: string; full_name: string; status: string }
@@ -76,6 +90,27 @@ export default function AssignTasksClient() {
     return () => {
       cancelled = true
     }
+  }, [])
+
+  // No filter: HR's own read policy already covers every task in the org,
+  // so the same is true of what Realtime will deliver, and there is no
+  // narrower scope for this screen to ask for. Ticking a task off from the
+  // employee's side, or a second HR tab assigning or removing one, shows
+  // up here without a reload.
+  useEffect(() => {
+    const supabase = createClient()
+
+    return watchTable<Assigned>(
+      supabase,
+      { schema: 'work', table: 'assigned_tasks' },
+      {
+        onInsert: (row) =>
+          setRows((r) => (r.some((x) => x.id === row.id) ? r : [toAssigned(row), ...r])),
+        onUpdate: (row) =>
+          setRows((r) => r.map((x) => (x.id === row.id ? toAssigned(row) : x))),
+        onDelete: (row) => setRows((r) => r.filter((x) => x.id !== row.id)),
+      }
+    )
   }, [])
 
   async function assign(e: React.FormEvent) {
