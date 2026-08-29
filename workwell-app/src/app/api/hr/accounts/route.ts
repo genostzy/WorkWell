@@ -152,13 +152,24 @@ export async function POST(request: NextRequest) {
         continue
       }
 
-      const { data: list, error: listError } = await admin.auth.admin.listUsers()
+      // listUsers is paginated (50/page). Scan pages until found — 50k/tenant safe.
+      let existing: { id: string; email?: string } | null = null
+      let page = 1
+      const perPage = 100
+      let listError: Error | null = null
+      while (!existing) {
+        const { data: list, error } = await admin.auth.admin.listUsers({ page, perPage })
+        if (error) { listError = error as Error; break }
+        const found = list.users.find((u) => (u.email ?? '').toLowerCase() === email)
+        if (found) { existing = found; break }
+        if (list.users.length < perPage) break
+        page += 1
+        if (page > 500) break // 50k ceiling
+      }
       if (listError) {
-        results.push({ email, fullName, error: listError.message })
+        results.push({ email, fullName, error: (listError as Error).message })
         continue
       }
-
-      const existing = list.users.find((u) => (u.email ?? '').toLowerCase() === email)
       if (!existing) {
         results.push({ email, fullName, error: 'That address is taken but its account could not be found.' })
         continue
@@ -189,14 +200,15 @@ export async function POST(request: NextRequest) {
     })
 
     if (provisionError) {
-      // The auth user exists but has no person record. That is the
-      // product's existing "signed in, no access" state rather than a new
-      // kind of broken, and it is recoverable: creating the account again
-      // adopts this same auth user by the branch above.
+      // If we just created this auth user, try to roll it back so retry is clean.
+      // Adopted users (found via listUsers) are left alone to avoid deleting a pre-existing account.
+      if (created?.user?.id) {
+        try { await admin.auth.admin.deleteUser(created.user.id) } catch { /* best-effort cleanup */ }
+      }
       results.push({
         email,
         fullName,
-        error: `Signed in was created but not linked to a person: ${provisionError.message}. Creating it again will pick it up.`,
+        error: `Signed in was created but not linked to a person: ${provisionError.message}. ${created?.user?.id ? 'Rolled back — try again.' : 'Creating it again will pick it up.'}`,
       })
       continue
     }

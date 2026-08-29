@@ -1,28 +1,16 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { ConfirmButton } from '@/components/controls'
 import { createClient } from '@/lib/supabase/client'
 import { fmtDate } from '@/lib/format-date'
-import {
-  EARLY_GRACE_MIN,
-  inWindow,
-  labelTime,
-  minutesInZone,
-  toHHMM,
-  timeInWindow,
-  toMinutes,
-  type Shift,
-} from '@/lib/shift'
 
-// Mealtime is not something you clock — the app pauses it for you, at the
-// hours your shift actually runs. This used to be a hardcoded 12:00–13:00
-// for everybody, which paused a night-shift worker in the middle of their
-// own morning off. It comes from the assigned shift now (see 0049_shifts),
-// falling back to the old constants only for an account with no shift set.
-const FALLBACK_MEAL_START = 12 * 60
-const FALLBACK_MEAL_END = 13 * 60
+// Lunch is not something you clock — the app pauses it for you. Two fixed
+// hours, matching the standard PH lunch block; a real rollout would read
+// this from company policy instead of a constant.
+const LUNCH_START_MIN = 12 * 60
+const LUNCH_END_MIN = 13 * 60
 
 type DayLog = {
   timeIn: string | null
@@ -64,6 +52,10 @@ function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })
 }
 
+function minutesSinceMidnight(d: Date) {
+  return d.getHours() * 60 + d.getMinutes()
+}
+
 function hoursWorked(log: DayLog) {
   if (!log.timeIn || !log.timeOut) return null
   let ms = +new Date(log.timeOut) - +new Date(log.timeIn)
@@ -73,7 +65,7 @@ function hoursWorked(log: DayLog) {
 
 function statusOf(log: DayLog) {
   if (log.timeOut) return 'Done for the day'
-  if (log.lunchStart && !log.lunchEnd) return 'On mealtime (auto)'
+  if (log.lunchStart && !log.lunchEnd) return 'On lunch (auto)'
   if (log.timeIn) return 'Working'
   return 'Not timed in'
 }
@@ -89,11 +81,6 @@ export default function AttendanceClient() {
   const week = weekDates()
   const today = week.find((d) => d.isToday)
   const [logs, setLogs] = useState<Record<string, DayLog>>({})
-  const [shift, setShift] = useState<Shift | null>(null)
-  const [timeZone, setTimeZone] = useState<string | null>(null)
-  // Ticks so the Time in button opens on its own when the window arrives,
-  // rather than only on the next reload.
-  const [now, setNow] = useState(() => new Date())
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -140,31 +127,19 @@ export default function AttendanceClient() {
 
     ;(async () => {
       const supabase = createClient()
-      const [
-        { data, error },
-        { data: resets, error: resetsError },
-        { data: assignment },
-        { data: org },
-      ] = await Promise.all([
-          supabase
-            .from('attendance')
-            .select('day, time_in, lunch_start, lunch_end, time_out')
-            .gte('day', week[0].iso)
-            .lte('day', week[week.length - 1].iso),
-          supabase
-            .from('attendance_reset_requests')
-            .select('id, day, reason, status')
-            .order('created_at', { ascending: false }),
-          supabase
-            .from('shift_assignments')
-            .select('shifts(id, name, time_in, meal_start, meal_end, time_out)')
-            .maybeSingle(),
-          supabase.from('org').select('timezone').maybeSingle(),
-        ])
+      const [{ data, error }, { data: resets, error: resetsError }] = await Promise.all([
+        supabase
+          .from('attendance')
+          .select('day, time_in, lunch_start, lunch_end, time_out')
+          .gte('day', week[0].iso)
+          .lte('day', week[week.length - 1].iso),
+        supabase
+          .from('attendance_reset_requests')
+          .select('id, day, reason, status')
+          .order('created_at', { ascending: false }),
+      ])
 
       if (cancelled) return
-      setShift((assignment as { shifts?: Shift } | null)?.shifts ?? null)
-      setTimeZone(org?.timezone ?? null)
       if (error) {
         setLoadError(error.message)
         setLoading(false)
@@ -186,20 +161,8 @@ export default function AttendanceClient() {
 
   const todayLog = today ? logs[today.iso] ?? EMPTY_LOG : EMPTY_LOG
 
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(new Date()), 30000)
-    return () => window.clearInterval(id)
-  }, [])
-
-  // Half an hour before the rostered start, through to the rostered end.
-  // Enforced here rather than in attendance_time_in(): a shift is a
-  // wall-clock pattern and there is still no timezone on a person or an org
-  // (0018_scheduler.sql calls out the same gap), so the server would have to
-  // compare in UTC and would disagree with the clock the person is reading
-  // by however far their offset is. This gate matches the clock they can
-  // see. It is a roster nudge, not a security boundary — attendance is
-  // self-only data that only the person themselves can write.
-  const window_ = timeInWindow(shift, now, timeZone)
+  const logsRef = useRef(logs)
+  useEffect(() => { logsRef.current = logs }, [logs])
 
   // The auto-pause: nothing to click, nothing to forget. While timed in and
   // not yet out, the tick checks the wall clock against the lunch window
@@ -208,26 +171,19 @@ export default function AttendanceClient() {
   // is harmless.
   useEffect(() => {
     if (!today) return
-    const mealStart = shift ? toMinutes(shift.meal_start) : FALLBACK_MEAL_START
-    const mealEnd = shift ? toMinutes(shift.meal_end) : FALLBACK_MEAL_END
-
+    const supabase = createClient()
     const tick = async () => {
-      const log = logs[today.iso]
+      const log = (logsRef.current as Record<string, DayLog>)[today.iso]
       if (!log?.timeIn || log.timeOut) return
-      const mins = minutesInZone(new Date(), timeZone)
-      const supabase = createClient()
-      const onMeal = inWindow(mins, mealStart, mealEnd)
+      const mins = minutesSinceMidnight(new Date())
 
-      if (!log.lunchStart && onMeal) {
+      if (!log.lunchStart && mins >= LUNCH_START_MIN && mins < LUNCH_END_MIN) {
         const { error } = await supabase.rpc('attendance_lunch_start')
         if (error) setActionError(error.message)
         else reloadToday()
         return
       }
-      // Having left the window is what ends the pause — comparing against
-      // the end minute alone would never fire for a meal that runs past
-      // midnight, which a graveyard shift's can.
-      if (log.lunchStart && !log.lunchEnd && !onMeal) {
+      if (log.lunchStart && !log.lunchEnd && mins >= LUNCH_END_MIN) {
         const { error } = await supabase.rpc('attendance_lunch_end')
         if (error) setActionError(error.message)
         else reloadToday()
@@ -236,7 +192,7 @@ export default function AttendanceClient() {
     tick()
     const id = window.setInterval(tick, 30000)
     return () => window.clearInterval(id)
-  }, [today, logs, reloadToday, shift, timeZone])
+  }, [today?.iso, reloadToday, logsRef])
 
   async function timeIn() {
     setActionError(null)
@@ -293,7 +249,7 @@ export default function AttendanceClient() {
 
   return (
     <>
-      <PageHead title="Attendance" lead="Time in, time out — mealtime pauses itself." />
+      <PageHead title="Attendance" lead="Time in, time out — lunch pauses itself." />
       <PlaneBadge plane="work" />
 
       {(loadError || actionError) && (
@@ -305,19 +261,13 @@ export default function AttendanceClient() {
       <div className="card mb-5">
         <div className="card__head">
           <div>
-            <h2 className="card__title">Today</h2>
+            <div className="card__title">Today</div>
             <div className="card__sub">{loading ? 'Loading…' : statusOf(todayLog)}</div>
           </div>
           {!loading && !todayLog.timeIn && (
-            window_.open ? (
-              <button className="btn btn--primary btn--sm" type="button" onClick={timeIn}>
-                Time in
-              </button>
-            ) : (
-              <span className="t-subtle">
-                Opens {labelTime(toHHMM(window_.opensAt ?? 0))}
-              </span>
-            )
+            <button className="btn btn--primary btn--sm" type="button" onClick={timeIn}>
+              Time in
+            </button>
           )}
           {!loading && todayLog.timeIn && !todayLog.timeOut && (
             <ConfirmButton label="Time out" confirmLabel="Time out" onConfirm={timeOut} />
@@ -334,7 +284,7 @@ export default function AttendanceClient() {
               {todayLog.lunchStart ? fmtTime(todayLog.lunchStart) : '—'}
               {todayLog.lunchEnd ? ` – ${fmtTime(todayLog.lunchEnd)}` : todayLog.lunchStart ? ' –' : ''}
             </span>
-            <span className="stat__label">Mealtime (auto)</span>
+            <span className="stat__label">Lunch (auto)</span>
           </div>
           <div className="stat">
             <span className="stat__value t-num">{todayLog.timeOut ? fmtTime(todayLog.timeOut) : '—'}</span>
@@ -344,28 +294,12 @@ export default function AttendanceClient() {
 
         <p className="field__hint mt-3">
           {daysLogged} of {week.length} days completed this week.
-          {shift ? (
-            <>
-              {' '}
-              You&rsquo;re on <b>{shift.name}</b> — {labelTime(shift.time_in)} to{' '}
-              {labelTime(shift.time_out)}, mealtime pauses {labelTime(shift.meal_start)}–
-              {labelTime(shift.meal_end)}.
-              {!todayLog.timeIn && !window_.open && (
-                <>
-                  {' '}Timing in opens {EARLY_GRACE_MIN} minutes before that, at{' '}
-                  <b>{labelTime(toHHMM(window_.opensAt ?? 0))}</b>.
-                </>
-              )}
-            </>
-          ) : (
-            ' No shift is set for you, so mealtime pauses at midday by default.'
-          )}
         </p>
       </div>
 
       <div className="card card--flush">
         <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-          <h2 className="card__title">This week</h2>
+          <div className="card__title">This week</div>
         </div>
         <div className="table-scroll">
           <table className="data-table">
@@ -374,7 +308,7 @@ export default function AttendanceClient() {
               <tr>
                 <th scope="col">Day</th>
                 <th scope="col">Time in</th>
-                <th scope="col">Mealtime</th>
+                <th scope="col">Lunch</th>
                 <th scope="col">Time out</th>
                 <th scope="col">Hours</th>
               </tr>
@@ -401,7 +335,7 @@ export default function AttendanceClient() {
       </div>
 
       <div className="card mt-5">
-        <h2 className="card__title mb-1">Something wrong with a day?</h2>
+        <div className="card__title mb-1">Something wrong with a day?</div>
         <p className="card__sub mb-4">
           Say what happened. HR can only see and fix the one day you name, and only until your request is decided.
         </p>
@@ -493,7 +427,7 @@ export default function AttendanceClient() {
 
       <PrivacyNote
         plane="work"
-        detail="A per-minute time record is a real change from the confirmation-only design this screen used to mock — worth knowing it's here. Mealtime is paused automatically between 12:00 pm and 1:00 pm rather than clocked, so it never counts as worked time and never needs a separate button. This record is yours alone by default — never visible to HR, individually or aggregated. The one exception: if you request a reset with a reason below, HR can see and correct that single day while your request is open, and nothing else. Approve, decline, or withdraw it and the door closes again."
+        detail="A per-minute time record is a real change from the confirmation-only design this screen used to mock — worth knowing it's here. Lunch is paused automatically between 12:00 pm and 1:00 pm rather than clocked, so it never counts as worked time and never needs a separate button. This record is yours alone by default — never visible to HR, individually or aggregated. The one exception: if you request a reset with a reason below, HR can see and correct that single day while your request is open, and nothing else. Approve, decline, or withdraw it and the door closes again."
       >
         <b>Self-only, with one narrow exception you control.</b>{' '}
       </PrivacyNote>

@@ -1,13 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { Empty, LoadError, PageHead, PlaneBadge, PrivacyNote, RoleLocked } from '@/components/chrome'
-
-const METRICS = [
-  { key: 'mood', label: 'Mood' },
-  { key: 'energy', label: 'Energy' },
-  { key: 'pressure', label: 'Pressure' },
-]
-
-const CONCERN = { key: 'concern', label: 'Team concern raised' }
+import { OrgFilter } from '@/app/org/org-filter'
 
 export default async function Org() {
   const supabase = await createClient()
@@ -50,9 +43,6 @@ export default async function Org() {
   const shown = all.filter((c) => !c.suppressed)
   const hidden = all.filter((c) => c.suppressed)
 
-  const valueFor = (cohort: string, metric: string) =>
-    (metrics ?? []).find((m) => m.cohort === cohort && m.metric === metric)
-
   return (
     <>
       <PageHead
@@ -77,11 +67,12 @@ export default async function Org() {
         </div>
         <div className="stat">
           <span className="stat__label">People counted</span>
-          <span className="stat__value t-num">
-            {all.reduce((s, c) => s + c.headcount, 0)}
+          <span className="stat__value t-num" title={hidden.length > 0 ? "Total hidden when any group is suppressed — prevents subtraction" : undefined}>
+            {hidden.length > 0 ? "—" : all.reduce((s, c) => s + c.headcount, 0)}
           </span>
         </div>
       </div>
+      {hidden.length > 0 && <p className="t-subtle mb-4" style={{ fontSize: 'var(--fs-sm)' }}>Totals hidden while any group is suppressed — this prevents inferring a hidden group by subtraction.</p>}
 
       {all.length === 0 && (
         <Empty icon="&#x1f465;" title="No groups yet">
@@ -98,73 +89,7 @@ export default async function Org() {
         </Empty>
       )}
 
-      {shown.map((c) => (
-        <div className="card" key={c.cohort}>
-          <div className="card__head">
-            <div>
-              <h2 className="card__title">{c.cohort}</h2>
-              <div className="card__sub">{c.headcount} people contributing</div>
-            </div>
-            <span className="chip chip--accent">Reporting</span>
-          </div>
-          {METRICS.map((m) => {
-            const v = valueFor(c.cohort, m.key)
-            return (
-              <div className="metric" key={m.key}>
-                <span>{m.label}</span>
-                <span className="meter__track">
-                  <span
-                    className="meter__fill"
-                    style={{
-                      width: v ? `${(Number(v.value) / 5) * 100}%` : '0%',
-                    }}
-                  />
-                </span>
-                <b className="t-num">
-                  {v ? Number(v.value).toFixed(1) : '—'}
-                </b>
-              </div>
-            )
-          })}
-          {(() => {
-            const v = valueFor(c.cohort, CONCERN.key)
-            return (
-              <div className="metric">
-                <span>{CONCERN.label}</span>
-                <span className="meter__track">
-                  <span
-                    className="meter__fill"
-                    style={{ width: v ? `${Number(v.value) * 100}%` : '0%' }}
-                  />
-                </span>
-                <b className="t-num">
-                  {v ? `${Math.round(Number(v.value) * 100)}%` : '—'}
-                </b>
-              </div>
-            )
-          })()}
-        </div>
-      ))}
-
-      {hidden.length > 0 && (
-        <div className="card card--quiet">
-          <h2 className="card__title mb-2">Hidden: too few people</h2>
-          <p className="t-subtle mb-4">
-            Named so that a gap is never mistaken for a signal. No figures exist
-            for these groups.
-          </p>
-          <div className="stack stack--tight">
-            {hidden.map((c) => (
-              <div className="row row--between" key={c.cohort}>
-                <b>{c.cohort}</b>
-                <span className="chip">
-                  {c.headcount} {c.headcount === 1 ? 'person' : 'people'} — under 8
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <OrgFilter cohorts={all} metrics={metrics ?? []} />
 
       <PrivacyNote
         plane="org"

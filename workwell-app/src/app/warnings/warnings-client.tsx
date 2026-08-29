@@ -1,102 +1,126 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useState } from 'react'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
-
-function fmtDateTime(iso: string) {
-  return new Date(iso).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
-}
 
 type Warning = {
   id: string
+  employee: string
   category: string
   note: string
   status: 'Active' | 'Resolved'
-  created_at: string
 }
 
-/** Read-only: an employee sees their own warnings the moment HR raises one,
- *  the same visibility Expenses and Complaints already give their own
- *  subject. There's nothing here to act on — no withdraw, no reply. */
+const CATEGORIES = ['Attendance', 'Conduct', 'Performance', 'Policy breach'] as const
+
 export default function WarningsClient() {
   const [warnings, setWarnings] = useState<Warning[]>([])
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  const [employee, setEmployee] = useState('')
+  const [category, setCategory] = useState<string>(CATEGORIES[0])
+  const [note, setNote] = useState('')
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from('warnings')
-        .select('id, category, note, status, created_at')
-        .order('created_at', { ascending: false })
-      if (cancelled) return
-      if (error) setLoadError(error.message)
-      else setWarnings((data ?? []) as Warning[])
-      setLoading(false)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  function submit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!employee.trim()) return setError('Name the employee this concerns.')
+    if (!note.trim()) return setError('State what the warning is for.')
+    setError(null)
+    setWarnings((w) => [
+      { id: crypto.randomUUID(), employee: employee.trim(), category, note: note.trim(), status: 'Active' },
+      ...w,
+    ])
+    setEmployee('')
+    setNote('')
+  }
+
+  function resolve(id: string) {
+    setWarnings((w) => w.map((x) => (x.id === id ? { ...x, status: 'Resolved' } : x)))
+  }
 
   return (
     <>
-      <PageHead title="Warnings" lead="Formal disciplinary records on your file." />
+      <PageHead title="Warnings" lead="Formal disciplinary records." />
       <PlaneBadge plane="work" />
 
-      {loadError && (
-        <div className="banner banner--error mb-5" role="alert">
-          {loadError}
-        </div>
-      )}
-
-      <div className="card card--flush">
-        <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
-          <h2 className="card__title">Your records</h2>
-        </div>
-        {loading ? (
-          <div style={{ padding: '0 var(--s-5) var(--s-5)' }}>
-            <div className="skel skel--text" />
-          </div>
-        ) : warnings.length === 0 ? (
-          <p className="t-subtle" style={{ padding: '0 var(--s-5) var(--s-5)' }}>
-            None on file.
-          </p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {warnings.map((w) => (
-              <div
-                key={w.id}
-                style={{ padding: 'var(--s-4) var(--s-5)', borderBottom: '1px solid var(--border)' }}
-              >
-                <div className="row row--between" style={{ flexWrap: 'wrap' }}>
-                  <div className="row" style={{ gap: 'var(--s-3)', flexWrap: 'wrap' }}>
-                    <span className="chip">{w.category}</span>
-                    <span className={w.status === 'Active' ? 'chip chip--accent' : 'chip'}>
-                      {w.status}
-                    </span>
+      <div className="grid grid--records">
+        <div className="stack">
+          <div className="card card--flush">
+            <div style={{ padding: 'var(--s-5) var(--s-5) var(--s-3)' }}>
+              <div className="card__title">Records</div>
+            </div>
+            {warnings.length === 0 ? (
+              <p className="t-subtle" style={{ padding: '0 var(--s-5) var(--s-5)' }}>
+                None on file.
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {warnings.map((w) => (
+                  <div
+                    key={w.id}
+                    style={{
+                      padding: 'var(--s-4) var(--s-5)',
+                      borderBottom: '1px solid var(--border)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s-3)', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', flexWrap: 'wrap' }}>
+                        <b style={{ fontWeight: 600 }}>{w.employee}</b>
+                        <span className="chip">{w.category}</span>
+                        <span className={w.status === 'Active' ? 'chip chip--accent' : 'chip'}>
+                          {w.status}
+                        </span>
+                      </div>
+                      {w.status === 'Active' && (
+                        <button className="btn btn--ghost btn--sm" type="button" onClick={() => resolve(w.id)}>
+                          Mark resolved
+                        </button>
+                      )}
+                    </div>
+                    <p style={{ marginTop: 'var(--s-2)', color: 'var(--text-muted)', fontSize: 'var(--fs-sm)' }}>
+                      {w.note}
+                    </p>
                   </div>
-                  <span className="t-subtle">{fmtDateTime(w.created_at)}</span>
-                </div>
-                <p className="t-subtle mt-2">{w.note}</p>
+                ))}
               </div>
-            ))}
+            )}
           </div>
-        )}
+        </div>
+
+        <div className="stack">
+          <form className="card" onSubmit={submit}>
+            <div className="card__title">Raise a warning</div>
+
+            {error && <div className="banner banner--error" role="alert">{error}</div>}
+
+            <div className="mt-4">
+              <label className="field__label" htmlFor="wemp">Employee</label>
+              <input id="wemp" className="input" value={employee} onChange={(e) => setEmployee(e.target.value)} />
+            </div>
+
+            <div className="mt-4">
+              <label className="field__label" htmlFor="wcat">Category</label>
+              <select id="wcat" className="select" value={category} onChange={(e) => setCategory(e.target.value)}>
+                {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+
+            <div className="mt-4">
+              <label className="field__label" htmlFor="wnote">What it&apos;s for</label>
+              <textarea id="wnote" className="textarea" value={note} onChange={(e) => setNote(e.target.value)} />
+            </div>
+
+            <div className="mt-4">
+              <button className="btn btn--primary" type="submit">Raise warning</button>
+            </div>
+          </form>
+        </div>
       </div>
 
       <PrivacyNote
         plane="work"
-        detail="A warning is visible to you and to HR of your organisation from the moment it's raised — the same access Expenses and Complaints already give their own subject. Nothing about it reaches the private plane, and nothing you record elsewhere (check-ins, mood, boundaries) is ever attached to one."
+        detail="Every other work-plane record here is neutral fact HR needs to run the place — a job title, a leave balance. A warning is a judgement about a person, and putting it next to the same private-plane data this product goes out of its way to wall off is worth deciding on purpose, with whoever owns HR policy. What is mocked below is one option, not a decided design."
       >
-        <b>Visible to you and HR, nowhere else.</b>{' '}
+        <b>Illustrative only — a different kind of record than the rest of this list.</b>{' '}
       </PrivacyNote>
     </>
   )

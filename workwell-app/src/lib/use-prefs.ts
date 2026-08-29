@@ -62,8 +62,11 @@ export function usePrefs<T extends Record<string, unknown>>(
   const update = useCallback(
     async (patch: Partial<T>) => {
       if (!personId) return
-      const previous = value
-      setValue({ ...value, ...patch })
+      let previous!: T
+      setValue((prev) => {
+        previous = prev
+        return { ...prev, ...patch }
+      })
       setSaving(true)
       setError(null)
 
@@ -78,7 +81,7 @@ export function usePrefs<T extends Record<string, unknown>>(
         setValue(previous)
       }
     },
-    [personId, table, value]
+    [personId, table]
   )
 
   return { value, update, loading, saving, error, personId }

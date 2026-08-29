@@ -271,11 +271,41 @@ export default function CheckInClient() {
   }, [ready])
 
   /* -------------------------------------------------------------- Saving */
+  const QUEUE_KEY = 'ww:pending_checkins'
+
+  function queueOffline(payload: Answers & { note: string; day: string }) {
+    try {
+      const q = JSON.parse(localStorage.getItem(QUEUE_KEY) ?? '[]')
+      q.push(payload)
+      localStorage.setItem(QUEUE_KEY, JSON.stringify(q))
+    } catch { /* ignore quota */ }
+  }
+
+  useEffect(() => {
+    // Sync any queued offline check-ins when back online.
+    if (!navigator.onLine) return
+    const raw = localStorage.getItem(QUEUE_KEY)
+    if (!raw) return
+    let q: (Answers & { note: string; day: string })[]
+    try { q = JSON.parse(raw) } catch { localStorage.removeItem(QUEUE_KEY); return }
+    if (q.length === 0) return
+    const supabase = createClient()
+    ;(async () => {
+      for (const item of q) {
+        const { error } = await supabase.rpc('save_check_in', {
+          p_mood: item.mood, p_energy: item.energy, p_pressure: item.pressure, p_workload: item.workload, p_note: item.note,
+        })
+        if (error) return // keep queue for next try
+      }
+      localStorage.removeItem(QUEUE_KEY)
+    })()
+  }, [loading])
 
   async function save() {
     setSaving(true)
     setError(null)
 
+    const day = new Date().toISOString().slice(0,10)
     const supabase = createClient()
     const { error } = await supabase.rpc('save_check_in', {
       p_mood: answers.mood,
@@ -286,8 +316,15 @@ export default function CheckInClient() {
     })
 
     setSaving(false)
-    if (error) setError(error.message)
-    else {
+    if (error) {
+      if (!navigator.onLine || /Failed to fetch|NetworkError/i.test(error.message)) {
+        queueOffline({ ...answers, note, day })
+        setSaved(true)
+        setError('Saved locally — will sync when back online.')
+      } else setError(error.message)
+    } else {
+      // flushed offline queue on success
+      try { localStorage.removeItem(QUEUE_KEY) } catch {}
       setSaved(true)
       router.refresh()
     }
