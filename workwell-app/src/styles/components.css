@@ -1301,6 +1301,91 @@ a, button {
   .offline-bar { font-size: var(--fs-xs); }
 }
 
+/* Notification toasts. The component is portalled to <body> rather than
+   rendered where the bell sits inside .topbar — see notifications.tsx for
+   why a toast is kept out of any ancestor's stacking context on
+   principle, .topbar's current backdrop-filter included, even though
+   that specific property was checked and does not force the issue today.
+   Above the offline bar's 200: a toast reporting something that just
+   happened outranks a strip explaining why nothing else is responding
+   right now. */
+.toast-stack {
+  position: fixed;
+  top: calc(var(--topbar-h) + var(--s-4));
+  right: var(--s-4);
+  z-index: 210;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  width: min(340px, calc(100vw - var(--s-8)));
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-2);
+  padding: var(--s-3) var(--s-3) var(--s-3) var(--s-4);
+  background: var(--glass-sheen), var(--noise), var(--surface);
+  backdrop-filter: var(--glass-filter-3);
+  border: 1px solid var(--border-strong);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--r-sm);
+  box-shadow: var(--shadow-2);
+  animation: toast-in var(--dur-med) var(--ease);
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-6px); }
+}
+
+.toast__body {
+  flex: 1;
+  min-width: 0;
+  display: block;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.toast__title { font-weight: var(--fw-bold); }
+.toast__text {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  /* Two lines and done — a toast the reader has to scroll is a toast that
+     has stopped being brief. The full text is never lost: it is still
+     sitting in the bell's own list underneath, unclipped. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.toast__dismiss {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--r-pill);
+  background: none;
+  color: var(--text-subtle);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.toast__dismiss:hover { background: var(--surface-2); color: var(--text); }
+
+@media (max-width: 640px) {
+  .toast-stack { left: var(--s-4); right: var(--s-4); width: auto; }
+}
+
 /* Task list. A row is a checkbox, the task, its due chip and its actions —
    laid out as a grid so the title column is the one that flexes and the
    chip never gets squeezed into two lines by a long task name. */

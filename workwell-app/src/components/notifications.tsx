@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { watchTable } from '@/lib/supabase/realtime'
@@ -15,6 +16,19 @@ type Notification = {
   created_at: string
 }
 
+/** Whether this render is happening in the browser, for the one thing
+ *  here that needs one: a portal target. Nothing external is actually
+ *  being subscribed to — "has hydration happened yet" never changes
+ *  again once it's true — but useSyncExternalStore is what lets the
+ *  server-vs-client answer differ without setting state inside an
+ *  effect, which is exactly the shape connection-watch.tsx already
+ *  uses for the same reason. */
+function subscribeNever() {
+  return () => {}
+}
+const isBrowser = () => true
+const assumeServer = () => false
+
 function timeAgo(iso: string) {
   const ms = Date.now() - new Date(iso).getTime()
   const mins = Math.floor(ms / 60000)
@@ -26,11 +40,49 @@ function timeAgo(iso: string) {
   return `${days}d ago`
 }
 
+/** How long a toast stays before it dismisses itself. Long enough to read
+ *  two short sentences without rushing, short enough that four arriving
+ *  close together don't outlive their own relevance. */
+const TOAST_MS = 6000
+
 export function Notifications() {
   const router = useRouter()
   const [notifications, setNotifications] = useState<Notification[]>([])
+  const [toasts, setToasts] = useState<Notification[]>([])
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>())
+
+  // Portalled to <body> rather than rendered where the bell sits, inside
+  // .topbar: a toast has to out-rank whatever the rest of the page is
+  // doing with z-index, and the moment the bell's own markup gets nested
+  // one layer deeper — a wrapper that clips overflow, one with a
+  // transform for a future animation — a toast rendered in place inherits
+  // that ancestor's stacking context instead of the page's. Checked
+  // directly rather than assumed: .topbar's own backdrop-filter, on its
+  // own, does not do this in current Chromium — only filter/transform/
+  // will-change reliably create a containing block for position: fixed —
+  // so nothing here is being defended against a problem that exists
+  // today. It costs nothing to not depend on that staying true.
+  //
+  // document is not there yet during the server render of this 'use
+  // client' component, hence waiting for the browser before the portal
+  // target is ever touched.
+  const mounted = useSyncExternalStore(subscribeNever, isBrowser, assumeServer)
+
+  const dismissToast = useCallback((id: string) => {
+    const timer = timers.current.get(id)
+    if (timer) clearTimeout(timer)
+    timers.current.delete(id)
+    setToasts((t) => t.filter((x) => x.id !== id))
+  }, [])
+
+  useEffect(() => {
+    const live = timers.current
+    return () => {
+      live.forEach(clearTimeout)
+    }
+  }, [])
 
   useEffect(() => {
     const supabase = createClient()
@@ -57,6 +109,16 @@ export function Notifications() {
                   (a, b) => +new Date(b.created_at) - +new Date(a.created_at)
                 )
           )
+
+          // Toasts are for the moment something arrives, not for what was
+          // already sitting unread when the page loaded — that is what the
+          // bell and its badge are for. This only ever runs from the
+          // subscription, never from the initial fetch above, so a page
+          // opened with five unread notifications shows five in the bell
+          // and zero toasts.
+          setToasts((t) => [...t, n])
+          const timer = setTimeout(() => dismissToast(n.id), TOAST_MS)
+          timers.current.set(n.id, timer)
         },
         // The only update a notification ever gets is being marked read
         // (see 0046's guard trigger), so an update either drops it from
@@ -69,7 +131,7 @@ export function Notifications() {
         },
       }
     )
-  }, [])
+  }, [dismissToast])
 
   useEffect(() => {
     if (!open) return
@@ -90,6 +152,7 @@ export function Notifications() {
   // notification you can only dismiss, never follow, is half a feature.
   function follow(n: Notification) {
     setOpen(false)
+    dismissToast(n.id)
     markRead(n.id)
     if (n.link) router.push(n.link)
   }
@@ -208,6 +271,34 @@ export function Notifications() {
           )}
         </div>
       )}
+
+      {mounted &&
+        toasts.length > 0 &&
+        createPortal(
+          <div className="toast-stack" aria-live="polite">
+            {toasts.map((n) => (
+              <div className="toast" key={n.id}>
+                <button
+                  type="button"
+                  className="toast__body"
+                  onClick={() => follow(n)}
+                >
+                  <div className="toast__title">{n.title}</div>
+                  <div className="toast__text">{n.body}</div>
+                </button>
+                <button
+                  type="button"
+                  className="toast__dismiss"
+                  aria-label="Dismiss notification"
+                  onClick={() => dismissToast(n.id)}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>,
+          document.body
+        )}
     </div>
   )
 }
