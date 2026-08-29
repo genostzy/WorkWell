@@ -1,14 +1,19 @@
 import { createBrowserClient } from '@supabase/ssr'
 
-function requireEnv(name: string): string {
-  const v = process.env[name]
-  if (!v) throw new Error(`${name} is not set — add it to .env.local from Supabase → Project Settings → API.`)
-  return v
-}
-
 export function createClient() {
-  return createBrowserClient(
-    requireEnv('NEXT_PUBLIC_SUPABASE_URL'),
-    requireEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY')
-  )
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+  if (!url || !key) {
+    // Don't throw in the browser — that crashes the whole page with a white
+    // screen (see 2hml4iembow74.js:24). Log once and return a client that will
+    // fail on queries with a readable error instead.
+    if (typeof window !== 'undefined') {
+      console.error('Missing NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY — set them in .env.local (local) or Vercel → Settings → Environment Variables (deployed).')
+    }
+    return createBrowserClient(
+      url || 'https://missing-supabase-url.supabase.co',
+      key || 'missing-key'
+    )
+  }
+  return createBrowserClient(url, key)
 }

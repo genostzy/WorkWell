@@ -1,18 +1,17 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-function requireEnv(name: string): string {
-  const v = process.env[name]
-  if (!v) throw new Error(`${name} is not set — add it to .env.local from Supabase → Project Settings → API.`)
-  return v
-}
-
 export async function createClient() {
   const cookieStore = await cookies()
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+  if (!url || !key) {
+    console.error('Missing NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY — set them in .env.local or Vercel env.')
+  }
 
   return createServerClient(
-    requireEnv('NEXT_PUBLIC_SUPABASE_URL'),
-    requireEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'),
+    url || 'https://missing-supabase-url.supabase.co',
+    key || 'missing-key',
     {
       cookies: {
         getAll() {
