@@ -18,7 +18,7 @@
 -- 3-day retention window on a project other sessions use live -- counting
 -- would be flaky against traffic this test did not create.
 begin;
-select plan(12);
+select plan(15);
 
 create temp table res(i int, r text) on commit drop;
 grant all on res to authenticated;
@@ -69,9 +69,14 @@ values
   ('d0000000-0000-0000-0000-000000000002', 'a3000000-0000-0000-0000-00000000000a', 'Finish onboarding', 'a3000000-0000-0000-0000-00000000000b'),
   ('d0000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000009', 'Southridge task', null);
 
--- work.task_comments: on the employee's assigned task, from the employee.
+-- work.task_comments: on the employee's assigned task, from the employee;
+-- and one on the Southridge person's task, from the Southridge person
+-- (nobody else is in that org), so assertions 13-14 have a real broadcast
+-- to deny rather than an empty topic.
 insert into work.task_comments (id, task_id, author_id, body)
-values ('d0000000-0000-0000-0000-000000000004', 'd0000000-0000-0000-0000-000000000002', 'a3000000-0000-0000-0000-00000000000a', 'Blocked on IT');
+values
+  ('d0000000-0000-0000-0000-000000000004', 'd0000000-0000-0000-0000-000000000002', 'a3000000-0000-0000-0000-00000000000a', 'Blocked on IT'),
+  ('d0000000-0000-0000-0000-000000000006', 'd0000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000009', 'Southridge-only comment');
 
 -- work.notifications: to the employee.
 insert into work.notifications (id, person_id, kind, title)
@@ -158,7 +163,30 @@ set local realtime.topic = 'task-comments:d0000000-0000-0000-0000-000000000003';
 insert into res select 10, ok(not exists(
   select 1 from realtime.messages
    where topic = 'task-comments:d0000000-0000-0000-0000-000000000003'
-), 'nobody has a comment topic for the Southridge person''s task in this test (none posted), and the policy does not error on an empty join');
+     and payload->'record'->>'id' = 'd0000000-0000-0000-0000-000000000006'
+), 'HR (still signed in from assertion 9) does not see the Southridge person''s comment broadcast, even though a real one exists on that topic');
+
+-- 13-14. Same topic as above, but this is the real true-negative coverage:
+-- a comment genuinely exists on d...0003 (inserted above as fixture row
+-- d...0006), so these two assertions can only pass if the policy's exists()
+-- join actually excludes it -- unlike assertion 10 above (or the old,
+-- unfixed version of this test), which would pass even if the policy's
+-- "and exists (...)" clause were deleted entirely, since no comment existed
+-- to leak.
+set local request.jwt.claims = '{"sub":"a2000000-0000-0000-0000-00000000000a"}';
+set local realtime.topic = 'task-comments:d0000000-0000-0000-0000-000000000003';
+insert into res select 13, ok(not exists(
+  select 1 from realtime.messages
+   where topic = 'task-comments:d0000000-0000-0000-0000-000000000003'
+     and payload->'record'->>'id' = 'd0000000-0000-0000-0000-000000000006'
+), 'the Northwind employee is denied the Southridge task''s comment topic (fails both t.person_id = current_person_id() and is_hr())');
+
+set local request.jwt.claims = '{"sub":"a2000000-0000-0000-0000-00000000000b"}';
+insert into res select 14, ok(not exists(
+  select 1 from realtime.messages
+   where topic = 'task-comments:d0000000-0000-0000-0000-000000000003'
+     and payload->'record'->>'id' = 'd0000000-0000-0000-0000-000000000006'
+), 'Northwind HR is also denied: is_hr() passes but identity.same_org(t.person_id) fails since the Southridge person is in a different org');
 
 -- 4. work.notifications -- the employee reads their own, HR does not.
 set local request.jwt.claims = '{"sub":"a2000000-0000-0000-0000-00000000000a"}';
@@ -175,6 +203,22 @@ insert into res select 12, ok(not exists(
    where topic = 'notifications:a3000000-0000-0000-0000-00000000000a'
      and payload->'record'->>'id' = 'd0000000-0000-0000-0000-000000000005'
 ), 'HR does not see a broadcast on the employee''s notifications topic');
+
+-- 15. DELETE path -- every broadcast function topic-builds off
+-- coalesce(new.person_id, old.person_id) (or new.task_id/old.task_id) so
+-- that a DELETE, where new is null, still resolves a topic; and the
+-- client's onDelete handler reads payload.old_record. Nothing above ever
+-- deletes a row, so that branch and that payload key are otherwise
+-- unverified. Done last, after every other assertion that still needed
+-- this row (private.tasks d...0001 was only read by assertions 1-2 above).
+set local request.jwt.claims = '{"sub":"a2000000-0000-0000-0000-00000000000a"}';
+set local realtime.topic = 'private-tasks:a3000000-0000-0000-0000-00000000000a';
+delete from private.tasks where id = 'd0000000-0000-0000-0000-000000000001';
+insert into res select 15, ok(exists(
+  select 1 from realtime.messages
+   where topic = 'private-tasks:a3000000-0000-0000-0000-00000000000a'
+     and payload->'old_record'->>'id' = 'd0000000-0000-0000-0000-000000000001'
+), 'the employee sees a DELETE broadcast on their own private-tasks topic, with the deleted row in payload.old_record');
 
 reset role;
 
