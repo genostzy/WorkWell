@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from '
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { watchTable } from '@/lib/supabase/realtime'
+import { watchTopic } from '@/lib/supabase/realtime'
 
 type Notification = {
   id: string
@@ -85,21 +85,26 @@ export function Notifications() {
   }, [])
 
   useEffect(() => {
-    const supabase = createClient()
-    supabase
-      .from('notifications')
-      .select('id, kind, title, body, link, read, created_at')
-      .eq('read', false)
-      .order('created_at', { ascending: false })
-      .then(({ data }) => setNotifications(data ?? []))
+    let cancelled = false
+    let stop: (() => void) | null = null
 
-    // No `filter` here — RLS already restricts work.notifications to the
-    // caller's own rows, and Realtime evaluates that same policy per
-    // subscriber, so there is nothing else to scope this to.
-    return watchTable<Notification>(
-      supabase,
-      { schema: 'work', table: 'notifications' },
-      {
+    ;(async () => {
+      const supabase = createClient()
+      const [{ data: me }, { data }] = await Promise.all([
+        supabase.from('me').select('id').maybeSingle(),
+        supabase
+          .from('notifications')
+          .select('id, kind, title, body, link, read, created_at')
+          .eq('read', false)
+          .order('created_at', { ascending: false }),
+      ])
+      if (cancelled) return
+      setNotifications(data ?? [])
+
+      const personId = me?.id
+      if (!personId) return
+
+      stop = watchTopic<Notification>(supabase, `notifications:${personId}`, {
         onInsert: (n) => {
           if (n.read) return
           setNotifications((prev) =>
@@ -129,8 +134,13 @@ export function Notifications() {
             n.read ? prev.filter((x) => x.id !== n.id) : prev
           )
         },
-      }
-    )
+      })
+    })()
+
+    return () => {
+      cancelled = true
+      stop?.()
+    }
   }, [dismissToast])
 
   useEffect(() => {
