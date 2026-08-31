@@ -57,20 +57,22 @@ export function watchTable<T extends Record<string, unknown>>(
   // TOKEN_REFRESHED -- those fire on auth *transitions*, and a page loaded
   // with a session already in cookies races them.
   //
-  // Note this is necessary but, on this project, not currently sufficient.
-  // Realtime is registering authenticated subscribers as role `anon`
-  // (confirmed: realtime.subscription.claims_role = 'anon', claims->>'sub'
-  // null, while the very same client's REST reads return that user's rows
-  // correctly). The access token is a valid ES256 JWT -- this project uses
-  // Supabase's asymmetric JWT signing keys -- and Realtime's postgres_changes
-  // path appears not to verify it, falling back to anon rather than
-  // erroring. Every row is then filtered out by the same RLS that is meant
-  // to be delivering it: current_person_id() is null for anon, so
-  // `person_id = ...` can never match. It fails completely silently -- the
-  // channel still reports SUBSCRIBED and nothing throws.
+  // This matters more than it looks, because the failure mode is silent.
+  // A channel that joins without the user's token is registered by
+  // Realtime as role `anon`, and every row is then filtered out by the
+  // same RLS that is meant to be delivering it -- current_person_id() is
+  // null for anon, so `person_id = ...` can never match. The channel
+  // still reports SUBSCRIBED, nothing throws, nothing logs, and the
+  // screen simply never updates.
   //
-  // Ordering auth before join is what makes this work the moment that token
-  // is verifiable; it is not the fix for the verification itself.
+  // That is not hypothetical: this project spent a while in exactly that
+  // state for an unrelated reason (it was signing user JWTs with an
+  // asymmetric ES256 key that Realtime's postgres_changes path did not
+  // verify, so it fell back to anon). Diagnosed by reading
+  // realtime.subscription -- claims_role there is the ground truth for
+  // who Realtime thinks a subscriber is, and it disagreeing with the
+  // same client's REST reads is the tell. Worth knowing about if live
+  // updates ever go quiet again.
   ;(async () => {
     const { data } = await supabase.auth.getSession()
     if (cancelled) return
