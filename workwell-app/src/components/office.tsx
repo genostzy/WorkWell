@@ -286,7 +286,11 @@ export function Office({
     'workspace_prefs',
     { home_view: 'room' as 'room' | 'list' }
   )
-  const { value: boundaryPrefs } = usePrefs('boundaries', {
+  // loading is checked before this default is ever trusted: '18:30:00' is
+  // only what an *unset* preference resolves to, not a guess for what a
+  // still-loading one might be. Applying it before the real row arrives
+  // painted quiet hours nobody had asked for, on every account, every time.
+  const { value: boundaryPrefs, loading: boundaryPrefsLoading } = usePrefs('boundaries', {
     quiet_from: '18:30:00',
     quiet_to: '08:30:00',
     quiet_days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as string[],
@@ -351,7 +355,7 @@ export function Office({
     let phase = WW.room.phaseAt(minutes)
     try {
       const b = boundaryPrefs as unknown as { quiet_from?: string; quiet_to?: string; quiet_days?: string[] }
-      if (b?.quiet_from && b?.quiet_to) {
+      if (!boundaryPrefsLoading && b?.quiet_from && b?.quiet_to) {
         const from = toMins(b.quiet_from)
         const to = toMins(b.quiet_to)
         const days = b.quiet_days as string[] | undefined
@@ -427,7 +431,7 @@ export function Office({
     let nextPhase = WW.room.phaseAt(minutes)
     try {
       const b = boundaryPrefs as unknown as { quiet_from?: string; quiet_to?: string; quiet_days?: string[] }
-      if (b?.quiet_from && b?.quiet_to) {
+      if (!boundaryPrefsLoading && b?.quiet_from && b?.quiet_to) {
         const hm = (t: string) => {
           const [h, m] = (t ?? '').slice(0, 5).split(':').map(Number)
           return (Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0)
@@ -446,7 +450,7 @@ export function Office({
     setPhase(nextPhase)
     setClock(WW.room.formatTime(minutes))
     setLoaded(true)
-  }, [name, initials, colour, avatarUrl, avatarOffsetX, avatarOffsetY, boardTasks, boundaryPrefs])
+  }, [name, initials, colour, avatarUrl, avatarOffsetX, avatarOffsetY, boardTasks, boundaryPrefs, boundaryPrefsLoading])
 
   // Read once on arrival. The board is a glance at the day, not a live
   // view of it — and the room already rebuilds itself every minute, which
