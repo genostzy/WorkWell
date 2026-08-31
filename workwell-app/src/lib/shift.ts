@@ -226,6 +226,51 @@ export function ringState(shift: Shift, log: DayLog, now: Date): RingState {
   }
 }
 
+export type AttendanceFlag = 'late_in' | 'early_in' | 'late_out' | 'early_out'
+
+/** How many minutes off the roster before a stamp counts as late or early,
+ *  rather than close enough to call on time. Separate from EARLY_GRACE_MIN
+ *  above, which gates when the time-in button unlocks -- this one judges a
+ *  stamp that already happened. */
+export const LATE_GRACE_MIN = 5
+
+/**
+ * Which of the four flags apply, comparing actual time_in/time_out against
+ * the rostered shift.
+ *
+ * Wall-clock, so it wraps the same way timeInWindow does: the distance from
+ * roster to actual is taken the short way around the clock (forward if
+ * under twelve hours, backward otherwise), which only misreads a stamp that
+ * is itself more than twelve hours from its own roster -- never true for a
+ * real clock-in or clock-out against the shift it belongs to.
+ *
+ * Judges each stamp independently: a day with a time_in but no time_out yet
+ * can already be "late in" while time_out is still unknown, and the two
+ * edges of a completed day can both be flagged at once.
+ */
+export function attendanceFlags(shift: Shift, log: DayLog): AttendanceFlag[] {
+  function signedOffset(rosterHHMM: string, stamp: string) {
+    const forward = forwardMinutes(toMinutes(rosterHHMM), minutesSinceMidnight(new Date(stamp)))
+    return forward > 720 ? forward - 1440 : forward
+  }
+
+  const flags: AttendanceFlag[] = []
+
+  if (log.timeIn) {
+    const offset = signedOffset(shift.time_in, log.timeIn)
+    if (offset > LATE_GRACE_MIN) flags.push('late_in')
+    else if (offset < -LATE_GRACE_MIN) flags.push('early_in')
+  }
+
+  if (log.timeOut) {
+    const offset = signedOffset(shift.time_out, log.timeOut)
+    if (offset > LATE_GRACE_MIN) flags.push('late_out')
+    else if (offset < -LATE_GRACE_MIN) flags.push('early_out')
+  }
+
+  return flags
+}
+
 export type DockState = {
   label: string
   /** null when there is nothing to press — the button still says why. */
