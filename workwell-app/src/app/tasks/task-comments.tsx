@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { watchTable } from '@/lib/supabase/realtime'
+import { watchTopic } from '@/lib/supabase/realtime'
 
 type Comment = {
   id: string
@@ -69,18 +69,14 @@ export function TaskComments({
     if (!open) return
     const supabase = createClient()
 
-    return watchTable<Comment>(
-      supabase,
-      { schema: 'work', table: 'task_comments', filter: `task_id=eq.${taskId}` },
-      {
-        onInsert: (c) =>
-          setComments((prev) =>
-            prev && !prev.some((x) => x.id === c.id) ? [...prev, c] : prev
-          ),
-        onDelete: (c) =>
-          setComments((prev) => prev && prev.filter((x) => x.id !== c.id)),
-      }
-    )
+    return watchTopic<Comment>(supabase, `task-comments:${taskId}`, {
+      onInsert: (c) =>
+        setComments((prev) =>
+          prev && !prev.some((x) => x.id === c.id) ? [...prev, c] : prev
+        ),
+      onDelete: (c) =>
+        setComments((prev) => prev && prev.filter((x) => x.id !== c.id)),
+    })
   }, [open, taskId])
 
   async function post(e: React.FormEvent) {
