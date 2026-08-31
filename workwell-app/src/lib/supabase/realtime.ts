@@ -49,7 +49,39 @@ export function watchTable<T extends Record<string, unknown>>(
     return Object.keys(data).length > 0 ? (data as T) : null
   }
 
-  const channel = supabase
+  let channel: ReturnType<SupabaseClient['channel']> | null = null
+  let cancelled = false
+
+  // The socket is told who is watching before the channel joins, rather
+  // than relying on supabase-js's own realtime.setAuth() on SIGNED_IN /
+  // TOKEN_REFRESHED -- those fire on auth *transitions*, and a page loaded
+  // with a session already in cookies races them.
+  //
+  // Note this is necessary but, on this project, not currently sufficient.
+  // Realtime is registering authenticated subscribers as role `anon`
+  // (confirmed: realtime.subscription.claims_role = 'anon', claims->>'sub'
+  // null, while the very same client's REST reads return that user's rows
+  // correctly). The access token is a valid ES256 JWT -- this project uses
+  // Supabase's asymmetric JWT signing keys -- and Realtime's postgres_changes
+  // path appears not to verify it, falling back to anon rather than
+  // erroring. Every row is then filtered out by the same RLS that is meant
+  // to be delivering it: current_person_id() is null for anon, so
+  // `person_id = ...` can never match. It fails completely silently -- the
+  // channel still reports SUBSCRIBED and nothing throws.
+  //
+  // Ordering auth before join is what makes this work the moment that token
+  // is verifiable; it is not the fix for the verification itself.
+  ;(async () => {
+    const { data } = await supabase.auth.getSession()
+    if (cancelled) return
+    await supabase.realtime.setAuth(data.session?.access_token ?? null)
+    if (cancelled) return
+
+    channel = buildChannel()
+  })()
+
+  function buildChannel() {
+    return supabase
     .channel(name)
     .on(
       'postgres_changes',
@@ -86,8 +118,10 @@ export function watchTable<T extends Record<string, unknown>>(
         console.error(`Realtime subscription to ${where.schema}.${where.table} failed (${status})`, err)
       }
     })
+  }
 
   return () => {
-    supabase.removeChannel(channel)
+    cancelled = true
+    if (channel) supabase.removeChannel(channel)
   }
 }
