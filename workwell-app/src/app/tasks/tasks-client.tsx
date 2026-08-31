@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { watchTable } from '@/lib/supabase/realtime'
+import { watchTopic } from '@/lib/supabase/realtime'
 import Link from 'next/link'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { fmtDate } from '@/lib/format-date'
@@ -146,31 +146,22 @@ export default function TasksClient() {
   // begin with, and work.assigned_tasks is filtered the same way this
   // screen's own select already is, rather than relying on RLS alone to
   // narrow a busier table this account has no other reason to hear about.
-  // Waits for personId, since that is what the filter is built from.
+  // Waits for personId, since that is what each topic is built from.
   useEffect(() => {
     if (!personId) return
     const supabase = createClient()
-    const filter = `person_id=eq.${personId}`
 
-    const stopMine = watchTable<Task>(
-      supabase,
-      { schema: 'private', table: 'tasks', filter },
-      {
-        onInsert: (row) => setMine((t) => upsert(t, toTask(row))),
-        onUpdate: (row) => setMine((t) => upsert(t, toTask(row))),
-        onDelete: (row) => setMine((t) => t.filter((x) => x.id !== row.id)),
-      }
-    )
+    const stopMine = watchTopic<Task>(supabase, `private-tasks:${personId}`, {
+      onInsert: (row) => setMine((t) => upsert(t, toTask(row))),
+      onUpdate: (row) => setMine((t) => upsert(t, toTask(row))),
+      onDelete: (row) => setMine((t) => t.filter((x) => x.id !== row.id)),
+    })
 
-    const stopAssigned = watchTable<Task>(
-      supabase,
-      { schema: 'work', table: 'assigned_tasks', filter },
-      {
-        onInsert: (row) => setAssigned((t) => upsert(t, toTask(row))),
-        onUpdate: (row) => setAssigned((t) => upsert(t, toTask(row))),
-        onDelete: (row) => setAssigned((t) => t.filter((x) => x.id !== row.id)),
-      }
-    )
+    const stopAssigned = watchTopic<Task>(supabase, `work-assigned-tasks:${personId}`, {
+      onInsert: (row) => setAssigned((t) => upsert(t, toTask(row))),
+      onUpdate: (row) => setAssigned((t) => upsert(t, toTask(row))),
+      onDelete: (row) => setAssigned((t) => t.filter((x) => x.id !== row.id)),
+    })
 
     return () => {
       stopMine()
@@ -200,7 +191,10 @@ export default function TasksClient() {
 
     if (insertError) return setError(insertError.message)
 
-    setMine((t) => [...t, data as Task].sort(order))
+    // upsert() rather than a bare append: the broadcast's own onInsert can
+    // land over the already-open socket before this request's response
+    // does, and without the id check this row would be added twice.
+    setMine((t) => upsert(t, data as Task))
     setTitle('')
     setDue('')
     setNote('')

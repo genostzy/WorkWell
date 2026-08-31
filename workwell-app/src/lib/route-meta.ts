@@ -33,6 +33,7 @@ export const ROUTE_META: Record<string, { title: string; plane: Plane }> = {
   '/news': { title: 'News', plane: 'work' },
   '/complaints': { title: 'Complaints', plane: 'work' },
   '/resignations': { title: 'Resignations', plane: 'work' },
+  '/shifts': { title: 'Working hours', plane: 'work' },
 
   // Each of these matches the plane its own page.tsx already passes to
   // PlaneBadge — org is reserved for anonymous, aggregate data (structural

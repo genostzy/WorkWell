@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { watchTable } from '@/lib/supabase/realtime'
+import { watchTopic } from '@/lib/supabase/realtime'
 
 type Comment = {
   id: string
@@ -69,18 +69,14 @@ export function TaskComments({
     if (!open) return
     const supabase = createClient()
 
-    return watchTable<Comment>(
-      supabase,
-      { schema: 'work', table: 'task_comments', filter: `task_id=eq.${taskId}` },
-      {
-        onInsert: (c) =>
-          setComments((prev) =>
-            prev && !prev.some((x) => x.id === c.id) ? [...prev, c] : prev
-          ),
-        onDelete: (c) =>
-          setComments((prev) => prev && prev.filter((x) => x.id !== c.id)),
-      }
-    )
+    return watchTopic<Comment>(supabase, `task-comments:${taskId}`, {
+      onInsert: (c) =>
+        setComments((prev) =>
+          prev && !prev.some((x) => x.id === c.id) ? [...prev, c] : prev
+        ),
+      onDelete: (c) =>
+        setComments((prev) => prev && prev.filter((x) => x.id !== c.id)),
+    })
   }, [open, taskId])
 
   async function post(e: React.FormEvent) {
@@ -101,7 +97,13 @@ export function TaskComments({
     setBusy(false)
 
     if (writeError) return setError(writeError.message)
-    setComments((c) => [...(c ?? []), data as Comment])
+    // Guarded the same way the broadcast's own onInsert is: the trigger's
+    // broadcast can land over the already-open socket before this request's
+    // response comes back, so without the id check a fast round trip adds
+    // the same row twice.
+    setComments((c) =>
+      c && c.some((x) => x.id === (data as Comment).id) ? c : [...(c ?? []), data as Comment]
+    )
     setBody('')
   }
 

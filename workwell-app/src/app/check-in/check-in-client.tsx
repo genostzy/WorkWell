@@ -149,6 +149,17 @@ const EMOJI = ['', '😞', '😕', '😐', '🙂', '😄']
 
 type Answers = Record<Key, number | null>
 
+/** Answered on the "Saved" screen, after the timed four-question flow is
+ *  already recorded — never inside it, so F2's ten-second target is never
+ *  at stake for this. Fully private, same as the four questions above:
+ *  there is no HR read path for it, on this table or any other. */
+const DAY_TAGS: { key: string; label: string }[] = [
+  { key: 'meetings', label: 'Meetings' },
+  { key: 'deep_work', label: 'Deep work' },
+  { key: 'interruptions', label: 'Interruptions' },
+  { key: 'admin', label: 'Admin' },
+]
+
 export default function CheckInClient() {
   const router = useRouter()
   const flowRef = useRef<HTMLDivElement>(null)
@@ -174,6 +185,11 @@ export default function CheckInClient() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** The row just saved, so "What ate your day?" has something to attach
+   *  to. Stays null for an offline-queued save — there is no row yet to
+   *  tag until it actually syncs, so the tag picker doesn't offer itself. */
+  const [checkInId, setCheckInId] = useState<string | null>(null)
+  const [dayEatenBy, setDayEatenBy] = useState<string[]>([])
   const [ready, setReady] = useState(false)
   const [scalesFailed, setScalesFailed] = useState(false)
 
@@ -307,7 +323,7 @@ export default function CheckInClient() {
 
     const day = new Date().toISOString().slice(0,10)
     const supabase = createClient()
-    const { error } = await supabase.rpc('save_check_in', {
+    const { data, error } = await supabase.rpc('save_check_in', {
       p_mood: answers.mood,
       p_energy: answers.energy,
       p_pressure: answers.pressure,
@@ -325,8 +341,31 @@ export default function CheckInClient() {
     } else {
       // flushed offline queue on success
       try { localStorage.removeItem(QUEUE_KEY) } catch {}
+      setCheckInId(data as string)
+      setDayEatenBy([])
       setSaved(true)
       router.refresh()
+    }
+  }
+
+  /** Fires immediately on tap, no separate submit — the same instant feel
+   *  as the rest of this screen. Reverts on a failed write rather than
+   *  leaving the chip showing a state that never actually saved. */
+  async function toggleDayEatenBy(key: string) {
+    if (!checkInId) return
+    const prev = dayEatenBy
+    const next = prev.includes(key) ? prev.filter((t) => t !== key) : [...prev, key]
+    setDayEatenBy(next)
+
+    const supabase = createClient()
+    const { error: updateError } = await supabase
+      .from('check_ins')
+      .update({ day_eaten_by: next.length > 0 ? next : null })
+      .eq('id', checkInId)
+
+    if (updateError) {
+      setDayEatenBy(prev)
+      setError(updateError.message)
     }
   }
 
@@ -589,6 +628,35 @@ export default function CheckInClient() {
               ))}
             </div>
 
+            {checkInId && (
+              <div className="mt-5">
+                <p className="t-subtle mb-2">What ate your day? (optional)</p>
+                <div
+                  className="row"
+                  role="group"
+                  aria-label="What ate your day?"
+                  style={{ justifyContent: 'center', flexWrap: 'wrap', gap: 'var(--s-2)' }}
+                >
+                  {DAY_TAGS.map((t) => (
+                    <button
+                      key={t.key}
+                      type="button"
+                      className="chip"
+                      aria-pressed={dayEatenBy.includes(t.key)}
+                      onClick={() => toggleDayEatenBy(t.key)}
+                      style={
+                        dayEatenBy.includes(t.key)
+                          ? { background: 'var(--accent-quiet)', borderColor: 'var(--accent-border)', color: 'var(--accent-text)' }
+                          : undefined
+                      }
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div
               className="state__actions row"
               style={{ justifyContent: 'center' }}
@@ -602,6 +670,8 @@ export default function CheckInClient() {
                 onClick={() => {
                   setSaved(false)
                   setStep(0)
+                  setCheckInId(null)
+                  setDayEatenBy([])
                 }}
               >
                 Change an answer

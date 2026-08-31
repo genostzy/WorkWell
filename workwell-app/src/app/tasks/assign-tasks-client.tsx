@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { watchTable } from '@/lib/supabase/realtime'
+import { watchTopic } from '@/lib/supabase/realtime'
 import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { fmtDate } from '@/lib/format-date'
 import { TaskComments } from './task-comments'
@@ -50,6 +50,7 @@ export default function AssignTasksClient() {
   const [rows, setRows] = useState<Assigned[]>([])
   const [people, setPeople] = useState<Person[]>([])
   const [meId, setMeId] = useState<string | null>(null)
+  const [orgId, setOrgId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -69,7 +70,7 @@ export default function AssignTasksClient() {
     ;(async () => {
       const supabase = createClient()
       const [me, peopleRes, tasksRes] = await Promise.all([
-        supabase.from('me').select('id').maybeSingle(),
+        supabase.from('me').select('id, org_id').maybeSingle(),
         supabase.from('people').select('id, full_name, status').order('full_name'),
         supabase
           .from('assigned_tasks')
@@ -82,6 +83,7 @@ export default function AssignTasksClient() {
         setLoadError((peopleRes.error ?? tasksRes.error)!.message)
       } else {
         setMeId(me.data?.id ?? null)
+        setOrgId(me.data?.org_id ?? null)
         setPeople((peopleRes.data ?? []) as Person[])
         setRows((tasksRes.data ?? []) as Assigned[])
       }
@@ -92,26 +94,24 @@ export default function AssignTasksClient() {
     }
   }, [])
 
-  // No filter: HR's own read policy already covers every task in the org,
-  // so the same is true of what Realtime will deliver, and there is no
-  // narrower scope for this screen to ask for. Ticking a task off from the
-  // employee's side, or a second HR tab assigning or removing one, shows
-  // up here without a reload.
+  // The org-wide topic: HR's own read policy already covers every task in
+  // the org, so the same is true of what this topic's RLS policy will let
+  // through, and there is no narrower scope for this screen to ask for.
+  // Ticking a task off from the employee's side, or a second HR tab
+  // assigning or removing one, shows up here without a reload. Waits for
+  // orgId, since that is what the topic is built from.
   useEffect(() => {
+    if (!orgId) return
     const supabase = createClient()
 
-    return watchTable<Assigned>(
-      supabase,
-      { schema: 'work', table: 'assigned_tasks' },
-      {
-        onInsert: (row) =>
-          setRows((r) => (r.some((x) => x.id === row.id) ? r : [toAssigned(row), ...r])),
-        onUpdate: (row) =>
-          setRows((r) => r.map((x) => (x.id === row.id ? toAssigned(row) : x))),
-        onDelete: (row) => setRows((r) => r.filter((x) => x.id !== row.id)),
-      }
-    )
-  }, [])
+    return watchTopic<Assigned>(supabase, `work-assigned-tasks-org:${orgId}`, {
+      onInsert: (row) =>
+        setRows((r) => (r.some((x) => x.id === row.id) ? r : [toAssigned(row), ...r])),
+      onUpdate: (row) =>
+        setRows((r) => r.map((x) => (x.id === row.id ? toAssigned(row) : x))),
+      onDelete: (row) => setRows((r) => r.filter((x) => x.id !== row.id)),
+    })
+  }, [orgId])
 
   async function assign(e: React.FormEvent) {
     e.preventDefault()
@@ -148,7 +148,11 @@ export default function AssignTasksClient() {
     })
 
     setBusy(false)
-    setRows((r) => [data as Assigned, ...r])
+    // Guarded the same way the broadcast's own onInsert is: that broadcast
+    // can land over the already-open socket before this request's response
+    // comes back, so without the id check a fast round trip adds the same
+    // row twice.
+    setRows((r) => (r.some((x) => x.id === (data as Assigned).id) ? r : [data as Assigned, ...r]))
     setTitle('')
     setDue('')
     setNote('')

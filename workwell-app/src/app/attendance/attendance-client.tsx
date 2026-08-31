@@ -5,6 +5,7 @@ import { PageHead, PlaneBadge, PrivacyNote } from '@/components/chrome'
 import { ConfirmButton } from '@/components/controls'
 import { createClient } from '@/lib/supabase/client'
 import { fmtDate } from '@/lib/format-date'
+import { attendanceFlags, type AttendanceFlag, type Shift } from '@/lib/shift'
 
 // Lunch is not something you clock — the app pauses it for you. Read from
 // the rostered shift's own meal window (wall-clock minutes), not a fixed
@@ -92,6 +93,10 @@ export default function AttendanceClient() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [mealWindow, setMealWindow] = useState<{ start: number; end: number }>({ start: FALLBACK_LUNCH_START, end: FALLBACK_LUNCH_END })
+  // Null until the roster loads (or for an account with none) -- attendanceFlags
+  // has nothing to compare a stamp against without it, so the flags below stay
+  // empty rather than guessing at a shift nobody was actually given.
+  const [shift, setShift] = useState<Shift | null>(null)
 
   const [resetRequests, setResetRequests] = useState<ResetRequest[]>([])
   const [resetDay, setResetDay] = useState(today?.iso ?? week[0].iso)
@@ -147,16 +152,17 @@ export default function AttendanceClient() {
           .order('created_at', { ascending: false }),
         supabase
           .from('shift_assignments')
-          .select('shifts(meal_start, meal_end)')
+          .select('shifts(id, name, time_in, meal_start, meal_end, time_out)')
           .maybeSingle(),
       ])
       if (!cancelled && shiftRow) {
-        const s = (shiftRow as unknown as { shifts?: { meal_start: string; meal_end: string } | null })?.shifts
+        const s = (shiftRow as unknown as { shifts?: Shift | null })?.shifts
         // Supabase may return shifts as array if relationship not singular; handle both.
-        const meal = Array.isArray(s) ? (s as unknown as { meal_start: string; meal_end: string }[])[0] : s
-        if (meal?.meal_start && meal?.meal_end) {
-          setMealWindow({ start: toMinutes(meal.meal_start), end: toMinutes(meal.meal_end) })
+        const roster = Array.isArray(s) ? (s as unknown as Shift[])[0] : s
+        if (roster?.meal_start && roster?.meal_end) {
+          setMealWindow({ start: toMinutes(roster.meal_start), end: toMinutes(roster.meal_end) })
         }
+        if (roster?.time_in && roster?.time_out) setShift(roster)
       }
 
       if (cancelled) return
@@ -180,6 +186,13 @@ export default function AttendanceClient() {
   }, [])
 
   const todayLog = today ? logs[today.iso] ?? EMPTY_LOG : EMPTY_LOG
+  const todayFlags = shift ? attendanceFlags(shift, todayLog) : []
+  const flagLabel: Record<AttendanceFlag, string> = {
+    late_in: 'Late',
+    early_in: 'Early',
+    late_out: 'Late',
+    early_out: 'Early',
+  }
 
   const logsRef = useRef(logs)
   useEffect(() => { logsRef.current = logs }, [logs])
@@ -303,7 +316,14 @@ export default function AttendanceClient() {
 
         <div className="row row--between mt-4" style={{ flexWrap: 'wrap', gap: 'var(--s-4)' }}>
           <div className="stat">
-            <span className="stat__value t-num">{todayLog.timeIn ? fmtTime(todayLog.timeIn) : '—'}</span>
+            <span className="stat__value t-num">
+              {todayLog.timeIn ? fmtTime(todayLog.timeIn) : '—'}
+              {(todayFlags.includes('late_in') || todayFlags.includes('early_in')) && (
+                <span className="chip" style={{ marginLeft: 'var(--s-2)' }}>
+                  {flagLabel[todayFlags.includes('late_in') ? 'late_in' : 'early_in']}
+                </span>
+              )}
+            </span>
             <span className="stat__label">Time in</span>
           </div>
           <div className="stat">
@@ -314,7 +334,14 @@ export default function AttendanceClient() {
             <span className="stat__label">Lunch (auto)</span>
           </div>
           <div className="stat">
-            <span className="stat__value t-num">{todayLog.timeOut ? fmtTime(todayLog.timeOut) : '—'}</span>
+            <span className="stat__value t-num">
+              {todayLog.timeOut ? fmtTime(todayLog.timeOut) : '—'}
+              {(todayFlags.includes('late_out') || todayFlags.includes('early_out')) && (
+                <span className="chip" style={{ marginLeft: 'var(--s-2)' }}>
+                  {flagLabel[todayFlags.includes('late_out') ? 'late_out' : 'early_out']}
+                </span>
+              )}
+            </span>
             <span className="stat__label">Time out</span>
           </div>
         </div>
