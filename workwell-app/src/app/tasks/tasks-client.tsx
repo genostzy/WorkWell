@@ -191,7 +191,10 @@ export default function TasksClient() {
 
     if (insertError) return setError(insertError.message)
 
-    setMine((t) => [...t, data as Task].sort(order))
+    // upsert() rather than a bare append: the broadcast's own onInsert can
+    // land over the already-open socket before this request's response
+    // does, and without the id check this row would be added twice.
+    setMine((t) => upsert(t, data as Task))
     setTitle('')
     setDue('')
     setNote('')

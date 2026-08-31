@@ -148,7 +148,11 @@ export default function AssignTasksClient() {
     })
 
     setBusy(false)
-    setRows((r) => [data as Assigned, ...r])
+    // Guarded the same way the broadcast's own onInsert is: that broadcast
+    // can land over the already-open socket before this request's response
+    // comes back, so without the id check a fast round trip adds the same
+    // row twice.
+    setRows((r) => (r.some((x) => x.id === (data as Assigned).id) ? r : [data as Assigned, ...r]))
     setTitle('')
     setDue('')
     setNote('')
