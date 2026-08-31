@@ -11,3 +11,6 @@ desktop.ini
 
 # Node (not used by the app itself, only by build tooling)
 node_modules/
+
+# Scratch workspace for subagent-driven-development plan execution
+.superpowers/
