@@ -1,7 +1,11 @@
-# WorkWell — User Manual
+# WorkWell
 
-A plain-language guide to using WorkWell. No technical knowledge needed —
-if you can use a web browser, you can follow this.
+A workplace wellbeing + HR platform, built around a strict split between
+what's private to an employee and what's visible to their employer. The
+app itself lives in [`workwell-app/`](workwell-app) (Next.js + Supabase).
+
+This file is the user manual — a plain-language guide to using the app.
+No technical knowledge needed.
 
 ---
 
