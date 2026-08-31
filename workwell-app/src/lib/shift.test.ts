@@ -417,42 +417,42 @@ describe('dockState', () => {
 
 describe('attendanceFlags', () => {
   it('flags nothing for a day with no stamps at all', () => {
-    expect(attendanceFlags(DAY, NO_LOG)).toEqual([])
+    expect(attendanceFlags(DAY, NO_LOG, ZONE)).toEqual([])
   })
 
   it('flags nothing within the grace window either side of the roster', () => {
     const log = { ...NO_LOG, timeIn: manila('09:03').toISOString() }
-    expect(attendanceFlags(DAY, log)).toEqual([])
+    expect(attendanceFlags(DAY, log, ZONE)).toEqual([])
   })
 
   it('does not flag a stamp exactly on the grace boundary', () => {
     const log = { ...NO_LOG, timeIn: manila('09:05').toISOString() }
-    expect(attendanceFlags(DAY, log)).toEqual([])
+    expect(attendanceFlags(DAY, log, ZONE)).toEqual([])
   })
 
   it('flags late_in once a time_in is more than grace minutes after the roster', () => {
     const log = { ...NO_LOG, timeIn: manila('09:10').toISOString() }
-    expect(attendanceFlags(DAY, log)).toEqual(['late_in'])
+    expect(attendanceFlags(DAY, log, ZONE)).toEqual(['late_in'])
   })
 
   it('flags early_in once a time_in is more than grace minutes before the roster', () => {
     const log = { ...NO_LOG, timeIn: manila('08:40').toISOString() }
-    expect(attendanceFlags(DAY, log)).toEqual(['early_in'])
+    expect(attendanceFlags(DAY, log, ZONE)).toEqual(['early_in'])
   })
 
   it('flags late_out once a time_out is more than grace minutes after the roster', () => {
     const log = { ...NO_LOG, timeOut: manila('18:20').toISOString() }
-    expect(attendanceFlags(DAY, log)).toEqual(['late_out'])
+    expect(attendanceFlags(DAY, log, ZONE)).toEqual(['late_out'])
   })
 
   it('flags early_out once a time_out is more than grace minutes before the roster', () => {
     const log = { ...NO_LOG, timeOut: manila('17:30').toISOString() }
-    expect(attendanceFlags(DAY, log)).toEqual(['early_out'])
+    expect(attendanceFlags(DAY, log, ZONE)).toEqual(['early_out'])
   })
 
   it('judges time_in before time_out is known -- a day can be late_in with no time_out yet', () => {
     const log = { ...NO_LOG, timeIn: manila('09:10').toISOString() }
-    expect(attendanceFlags(DAY, log)).toEqual(['late_in'])
+    expect(attendanceFlags(DAY, log, ZONE)).toEqual(['late_in'])
   })
 
   it('flags both edges of the same day independently', () => {
@@ -461,7 +461,7 @@ describe('attendanceFlags', () => {
       timeIn: manila('09:10').toISOString(),
       timeOut: manila('17:30').toISOString(),
     }
-    expect(attendanceFlags(DAY, log)).toEqual(['late_in', 'early_out'])
+    expect(attendanceFlags(DAY, log, ZONE)).toEqual(['late_in', 'early_out'])
   })
 
   it('wraps past midnight for an overnight shift, into the next calendar day', () => {
@@ -470,11 +470,11 @@ describe('attendanceFlags', () => {
       timeIn: manila('15:00').toISOString(),
       timeOut: manila('00:10', '03').toISOString(),
     }
-    expect(attendanceFlags(NIGHT, log)).toEqual(['late_out'])
+    expect(attendanceFlags(NIGHT, log, ZONE)).toEqual(['late_out'])
   })
 
   it('reads an early arrival on an overnight shift the same way as a day shift', () => {
     const log = { ...NO_LOG, timeIn: manila('14:40').toISOString() }
-    expect(attendanceFlags(NIGHT, log)).toEqual(['early_in'])
+    expect(attendanceFlags(NIGHT, log, ZONE)).toEqual(['early_in'])
   })
 })

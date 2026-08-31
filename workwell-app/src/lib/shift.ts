@@ -247,10 +247,25 @@ export const LATE_GRACE_MIN = 5
  * Judges each stamp independently: a day with a time_in but no time_out yet
  * can already be "late in" while time_out is still unknown, and the two
  * edges of a completed day can both be flagged at once.
+ *
+ * Takes `timeZone` the same way timeInWindow does -- `log.timeIn`/`timeOut`
+ * are absolute instants, and reading their wall-clock hour without a zone
+ * answers with whichever zone the machine running this happens to be set
+ * to. That difference is invisible on a browser (the visitor's own local
+ * time is correct there) and wrong everywhere else this same function
+ * gets called from -- it is exactly what turned every stamp into
+ * `early_in`/`early_out` on a CI runner set to UTC while passing on a
+ * machine already close to the org's zone. `minutesSinceMidnight` stays
+ * correct only for a caller that has already resolved to local wall-clock
+ * some other way.
  */
-export function attendanceFlags(shift: Shift, log: DayLog): AttendanceFlag[] {
+export function attendanceFlags(
+  shift: Shift,
+  log: DayLog,
+  timeZone?: string | null
+): AttendanceFlag[] {
   function signedOffset(rosterHHMM: string, stamp: string) {
-    const forward = forwardMinutes(toMinutes(rosterHHMM), minutesSinceMidnight(new Date(stamp)))
+    const forward = forwardMinutes(toMinutes(rosterHHMM), minutesInZone(new Date(stamp), timeZone))
     return forward > 720 ? forward - 1440 : forward
   }
 
