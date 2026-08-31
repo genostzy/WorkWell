@@ -242,19 +242,6 @@ export function SignInRoom({ notice }: { notice?: string }) {
               {busy ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
-
-          {/* No self-service reset, on purpose: HR decides who gets in,
-              and that carries through to who gets back in. Saying where
-              to go beats a dead "forgot password?" link. */}
-          <p className="auth__foot mt-4">
-            Forgotten it, or never had one? Ask whoever runs WorkWell where
-            you work — they create the accounts.
-          </p>
-
-          <p className="auth__foot mt-3">
-            🔒 What you record in WorkWell is yours. Your employer never
-            sees it.
-          </p>
         </aside>
 
         <div className="room-shell is-fit signin-room-pane" aria-hidden="true">
